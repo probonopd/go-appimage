@@ -5,6 +5,12 @@ git:
   depth: 1
 
 script:
+  - mkdir -p gopath ; export GOPATH=$(readlink -f gopath)
+  - go get cmd/appimagetool/
   - go build -ldflags "-s -w" cmd/appimagetool/appimagetool.go
+  - strip ./appimagetool
   - ls -lh ./appimagetool
   - ./appimagetool
+  - go build -ldflags "-s -w" cmd/appimaged/appimaged.go
+  - strip ./appimaged
+  - ls -lh ./appimaged
