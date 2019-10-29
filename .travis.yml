@@ -16,6 +16,7 @@ git:
   depth: 1
 
 script:
+  - sudo apt-get -y install psmisc # killall
   - export GO111MODULE=on # Needed?
   - cd src/appimagetool/
   - go build appimagetool.go
