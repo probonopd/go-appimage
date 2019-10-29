@@ -15,11 +15,11 @@ git:
 
 script:
   - unset GO111MODULE # Needed?
-  - go build appimagetool/appimagetool.go
+  - go build src/appimagetool/appimagetool.go
   - strip ./appimagetool
   - ls -lh ./appimagetool
   - ./appimagetool
-  - go build appimaged/appimaged.go
+  - go build src/appimaged/appimaged.go
   - strip ./appimaged
   - ls -lh ./appimaged
   - ./appimaged &
