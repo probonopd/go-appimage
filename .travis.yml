@@ -8,11 +8,11 @@ git:
   depth: 1
 
 script:
-  - go build cmd/appimagetool/appimagetool.go
+  - go build cmd/appimagetool
   - strip ./appimagetool
   - ls -lh ./appimagetool
   - ./appimagetool
-  - go build cmd/appimaged/appimaged.go
+  - go build cmd/appimaged
   - strip ./appimaged
   - ls -lh ./appimaged
   - ./appimaged &
