@@ -12,7 +12,7 @@ script:
   - strip ./appimagetool
   - ls -lh ./appimagetool
   - ./appimagetool
-  - go cmd/appimaged/appimaged.go
+  - go build cmd/appimaged/appimaged.go
   - strip ./appimaged
   - ls -lh ./appimaged
   - ./appimaged &
