@@ -8,10 +8,13 @@ git:
   depth: 1
 
 script:
-  - go build -ldflags "-s -w" cmd/appimagetool/appimagetool.go
+  - go build cmd/appimagetool/appimagetool.go
   - strip ./appimagetool
   - ls -lh ./appimagetool
   - ./appimagetool
-  - go build -ldflags "-s -w" cmd/appimaged/appimaged.go
+  - go cmd/appimaged/appimaged.go
   - strip ./appimaged
   - ls -lh ./appimaged
+  - ./appimaged &
+  - sleep 10
+  - killall appimaged
