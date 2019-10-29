@@ -19,7 +19,7 @@ script:
   - strip ./appimagetool
   - ls -lh ./appimagetool
   - ./appimagetool
-  - go build cmd/appimaged/appimaged.go
+  - go build cmd/appimaged
   - strip ./appimaged
   - ls -lh ./appimaged
   - ./appimaged &
