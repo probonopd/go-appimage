@@ -29,7 +29,7 @@ script:
   # sleep 10
   # killall appimaged
   - cd -
-  - ARCH=$(go version | cut -d '/' -f 2)
+  - ARCH=$(arch)
   - cp ./src/appimaged/appimaged appimaged-$ARCH
 
 after_success:
