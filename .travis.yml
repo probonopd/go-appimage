@@ -15,16 +15,20 @@ git:
 
 script:
   - export GO111MODULE=on # Needed?
-  - go build src/appimagetool/appimagetool.go
+  - cd src/appimagetool/
+  - go build appimagetool.go
   - strip ./appimagetool
   - ls -lh ./appimagetool
   - ./appimagetool
-  - go build src/appimaged/appimaged.go
+  - cd -
+  - cd src/appimaged/
+  - go build appimaged.go
   - strip ./appimaged
   - ls -lh ./appimaged
   - ./appimaged &
   - sleep 10
   - killall appimaged
+  - cd -
 
 after_success:
   - wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh
