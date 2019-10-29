@@ -3,7 +3,9 @@ language: go
 
 arch:
   - amd64
+  - i386
   - arm64
+  - arm32
   
 go:
 - "1.12"
