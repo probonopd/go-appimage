@@ -22,7 +22,7 @@ script:
   - ./appimagetool
   - cd -
   - cd src/appimaged/
-  - go build appimaged.go
+  - go build
   - strip ./appimaged
   - ls -lh ./appimaged
   - ./appimaged &
