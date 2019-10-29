@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/probonopd/appimage/bin/appimaged"
+	"github.com/probonopd/appimage/cmd/appimaged"
 	"github.com/adrg/xdg"
 	issvg "github.com/h2non/go-is-svg"
 	. "github.com/srwiley/oksvg"
