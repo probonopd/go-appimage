@@ -17,8 +17,9 @@ rm "$HOME"/.local/share/applications/appimage*
 
 # Get everything (as long as this is not packaged as an AppImage yet)
 wget -c https://github.com/probonopd/static-tools/releases/download/continuous/unsquashfs
+wget -c https://github.com/probonopd/static-tools/releases/download/continuous/bsdtar
 wget -c https://github.com/probonopd/appimage/releases/download/continuous/appimaged-x86_64
-chmod +x appimaged-x86_64 unsquashfs
+chmod +x appimaged-x86_64 unsquashfs bsdtar
 
 # Launch
 ./appimaged-x86_64
