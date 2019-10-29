@@ -1,6 +1,8 @@
 dist: xenial
 language: go
 
+# Not clear from https://blog.travis-ci.com/2019-10-07-multi-cpu-architecture-support
+# whether this works in this way. How can we access the architecture within build scripts?
 arch:
   - amd64
   - i386
