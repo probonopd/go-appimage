@@ -48,7 +48,7 @@ func monitorDbusSessionBus() {
 	conn, err := dbus.SessionBus()
 	if err != nil {
 		log.Println(os.Stderr, "Failed to connect to session bus:", err)
-		os.Exit(1)
+		return
 	}
 
 	var rules = []string{
@@ -64,7 +64,7 @@ func monitorDbusSessionBus() {
 	call := conn.BusObject().Call("org.freedesktop.DBus.Monitoring.BecomeMonitor", 0, rules, flag)
 	if call.Err != nil {
 		log.Println(os.Stderr, "Failed to become monitor:", call.Err)
-		os.Exit(1)
+		return
 	}
 
 	c := make(chan *dbus.Message, 10)
