@@ -16,7 +16,7 @@ I am playing around with Go because
 
 ## Ideas
 
-* Build in p2p distribution using IPFS (which is written in Go)? https://github.com/hsanjuan/ipfs-lite/
+* Build in p2p distribution using IPFS (which is written in Go)? https://github.com/hsanjuan/ipfs-lite/ or https://github.com/ipfs/go-ipfs/tree/master/docs/examples/go-ipfs-as-a-library
 * Build in zsync (Go should be a good choice for it)? https://github.com/agriardyan/go-zsyncmake/ + TBD
 
 ## TODO
