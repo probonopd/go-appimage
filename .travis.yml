@@ -1,12 +1,13 @@
 dist: xenial
 language: go
 
+go:
+- "1.12"
+
 git:
   depth: 1
 
 script:
-  - mkdir -p gopath ; export GOPATH=$(readlink -f gopath)
-  - go get cmd/appimagetool/
   - go build -ldflags "-s -w" cmd/appimagetool/appimagetool.go
   - strip ./appimagetool
   - ls -lh ./appimagetool
