@@ -8,8 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-	
-	"github.com/probonopd/appimage/internal"
+
 	"github.com/prometheus/procfs"
 
 	"github.com/adrg/xdg"
