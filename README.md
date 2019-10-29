@@ -22,6 +22,7 @@ I am playing around with Go because
 ## TODO
 
 * Get rid of C code embedded in Go (e.g., for the calculation of the size of an ELF)
+* Write tests
 
 ## Conventions
 
