@@ -30,7 +30,7 @@ script:
   # killall appimaged
   - cd -
   - ARCH=$(go version | cut -d '/' -f 2)
-  - cp ./appimaged/appimaged appimaged-$ARCH
+  - cp ./src/appimaged/appimaged appimaged-$ARCH
 
 after_success:
   - wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh
