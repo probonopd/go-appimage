@@ -9,7 +9,7 @@ Nothing useful here to see at this time. You might be looking for https://github
 I am playing around with Go because
 
 * Go follows the "keep it simple" principle - in line with what I like
-* Go compiles code to static binaries by default - no messing around with shared libraries that tend to break on some target systems (e.g., for converting SVG to PNG), no need top build in Docker containers with ancient systems for compatibility
+* Go compiles code to static binaries by default - no messing around with shared libraries that tend to break on some target systems (e.g., for converting SVG to PNG), no need to build in Docker containers with ancient systems for compatibility
 * Go does not need Makefiles, Autoconf, CMake, Meson - stuff that adds "meta work" which I don't like to spend my time on
 * Go is designed with concurrency and networking in mind - stuff that will come in handy for building in p2p distribution and updating
 * Go is something I want to learn - and one learns best using a concrete project
