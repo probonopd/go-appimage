@@ -1,13 +1,27 @@
 # Go AppImage
 
-Purely experimental playgroud for Go implementation of AppImage tools.
+Purely experimental playgroud for a Go implementation of AppImage tools.
 
 Nothing useful here to see at this time. You might be looking for https://github.com/AppImage/AppImageKit instead in case you are looking for current production code.
 
-## Principles
+## Why Go?
 
-* Keep it simple
-* Standalone monorepo
+I am playing around with Go because
+
+* Go follows the "keep it simple" principle - in line with what I like
+* Go compiles code to static binaries by default - no messing around with shared libraries that tend to break on some target systems
+* Go does not need Makefiles, Autoconf, CMake, Meson - stuff that adds "meta work" which I don't like to spend my time on
+* Go is designed with concurrency and networking in mind - stuff that will come in handy for building in p2p distribution and updating
+* Go is something I want to learn - and one learns best using a concrete project
+
+## Ideas
+
+* Build in p2p distribution using IPFS (which is written in Go)?
+* Build in zsync (Go should be a good choice for it)?
+
+## TODO
+
+* Get rid of C code embedded in Go (e.g., for the calculation of the size of an ELF)
 
 ## Conventions
 
