@@ -1,4 +1,4 @@
-# Go AppImage
+# Go AppImage [![Build Status](https://travis-ci.com/probonopd/appimage.svg?branch=master)](https://travis-ci.com/probonopd/appimage)
 
 Purely experimental playgroud for a Go implementation of AppImage tools.
 
