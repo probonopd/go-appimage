@@ -14,6 +14,7 @@ git:
   depth: 1
 
 script:
+  - unset GO111MODULE # Needed?
   - go build cmd/appimagetool/appimagetool.go
   - strip ./appimagetool
   - ls -lh ./appimagetool
