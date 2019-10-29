@@ -27,9 +27,9 @@ script:
   - go build
   - strip ./appimaged
   - ls -lh ./appimaged
-  # ./appimaged &
-  # sleep 10
-  # killall appimaged
+  - ./appimaged &
+  - sleep 10
+  - killall appimaged
   - cd -
   - ARCH=$(arch)
   - cp ./src/appimaged/appimaged appimaged-$ARCH
