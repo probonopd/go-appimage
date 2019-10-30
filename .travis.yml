@@ -27,6 +27,12 @@ script:
   - ls -lh ./appimagetool
   - ./appimagetool
   - cd -
+  - cd src/zsyncmake/
+  - go build -trimpath -ldflags="-s -w" zsyncmake.go
+  - upx -9 zsyncmake
+  - ls -lh ./zsyncmake
+  - ./zsyncmake || true
+  - cd -
   - cd src/appimaged/
   - go build -trimpath -ldflags="-s -w"
   - upx -9 appimaged
