@@ -10,7 +10,7 @@ arch:
   - arm32
   
 go:
-- "1.12"
+- "1.13"
 
 git:
   depth: 1
