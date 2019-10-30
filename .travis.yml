@@ -16,11 +16,12 @@ git:
   depth: 1
 
 script:
+- ex
   - wget -c -q https://github.com/upx/upx/releases/download/v3.95/upx-3.95-amd64_linux.tar.xz
   - tar xf upx-*_linux.tar.xz
   - export PATH=$(readlink -f upx-*_linux/):$PATH
   - sudo apt-get -y install psmisc dbus-x11 # killall, dbus-launch
-  - export GO111MODULE=on # Needed?
+  - unset GO111MODULE # Needed?
   - cd src/appimagetool/
   - go build -trimpath -ldflags="-s -w" appimagetool.go
   - upx -9 appimagetool
