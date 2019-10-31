@@ -34,7 +34,7 @@ script:
   - ./zsyncmake || true
   - cd -
   - cd src/appimaged/
-  - go build -trimpath -ldflags="-s -w" appimaged.go
+  - go build -trimpath -ldflags="-s -w" .
   - upx -9 appimaged
   - ls -lh ./appimaged
   - ./appimaged &
