@@ -56,13 +56,13 @@ func newAppImage(path string) AppImage {
 		return ai
 	}
 
-	ai.imagetype = ai.determineImageType()
 	ai.md5 = ai.calculateMD5filenamepart() // Need this also for non-existing AppImages for removal
 	ai.desktopfilename = "appimagekit_" + ai.md5 + ".desktop"
 	ai.desktopfilepath = xdg.DataHome + "/applications/" + "appimagekit_" + ai.md5 + ".desktop"
 	ai.thumbnailfilename = ai.md5 + ".png"
 	home, _ := os.UserHomeDir()
 	ai.thumbnailfilepath = home + "/.thumbnails/normal/" + ai.thumbnailfilename
+	ai.imagetype = ai.determineImageType()
 	// Don't waste more time if the file is not actually an AppImage
 	if ai.imagetype < 0 {
 		return ai
@@ -308,7 +308,10 @@ func saveToPngFile(filePath string, m image.Image) error {
 func (ai AppImage) determineImageType() int {
 	log.Println(ai.path)
 	f, err := os.Open(ai.path)
-	printError("appimage", err)
+	// printError("appimage", err)
+	if err != nil {
+		return -1 // If we were not able to open the file, then we report that it is not an AppImage
+	}
 	if info, err := os.Stat(ai.path); err == nil && info.IsDir() {
 		return -1
 	}

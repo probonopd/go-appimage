@@ -31,6 +31,9 @@ var quit = make(chan struct{})
 var overwritePtr = flag.Bool("o", false, "Overwrite existing desktop integration")
 var cleanPtr = flag.Bool("c", false, "Clean pre-existing desktop files")
 
+var toBeIntegrated []string
+var toBeUnintegrated []string
+
 func main() {
 
 	log.Println("main: Running from", here())
@@ -159,7 +162,7 @@ func main() {
 			if err != nil {
 				// log.Printf("%v\n", err)
 			} else if info.IsDir() == true {
-				log.Println("main: Watching", path)
+				go inotifyWatch(path)
 			} else if info.IsDir() == false {
 				ai := newAppImage(path)
 				if ai.imagetype > 0 {
@@ -175,7 +178,11 @@ func main() {
 		}
 	}
 
-	go monitorDbusSessionBus()
+	// Use dbus to find out about AppImages to be handled
+	// go monitorDbusSessionBus()
+	// or
+	// use inotify to find out about AppImages to be handled
+
 	// sendDesktopNotification("watcher", "Started")
 
 	// Ticker to periodically move desktop files into system
@@ -202,7 +209,22 @@ func main() {
 // Periodically move desktop files from their temporary location
 // into the menu, so that the menu does not get rebuilt all the time
 func moveDesktopFiles() {
-	// log.Println("main: Periodically move desktop files")
+	// log.Println("main: Ticktock")
+
+	for _, path := range toBeIntegrated {
+		ai := newAppImage(path)
+		go ai.integrate()
+
+	}
+	toBeIntegrated = nil
+
+	for _, path := range toBeUnintegrated {
+		ai := newAppImage(path)
+		go ai.removeIntegration()
+
+	}
+	toBeUnintegrated = nil
+
 	desktopcachedir := xdg.CacheHome + "/applications/" // FIXME: Do not hardcode here and in other places
 
 	files, err := ioutil.ReadDir(desktopcachedir)

@@ -69,7 +69,6 @@ static long unsigned int read_elf32(int fd)
 	if (ret < 0 || (size_t)ret != sizeof(ehdr)) {
 		fprintf(stderr, "Read of ELF header from %s failed: %s\n",
 			fname, strerror(errno));
-		exit(10);
 	}
 
 	ehdr.e_shoff		= file32_to_cpu(ehdr32.e_shoff);
@@ -88,7 +87,6 @@ static long unsigned int read_elf64(int fd)
 	if (ret < 0 || (size_t)ret != sizeof(ehdr)) {
 		fprintf(stderr, "Read of ELF header from %s failed: %s\n",
 			fname, strerror(errno));
-		exit(10);
 	}
 
 	ehdr.e_shoff		= file64_to_cpu(ehdr64.e_shoff);

@@ -14,6 +14,12 @@ package main
 // but does send interface=org.kde.KDirNotify and interface=org.kde.JobViewV2
 // and interface=org.kde.ActivityManager.ResourcesScoring
 
+// https://developer.gnome.org/notification-spec/ has
+// "transfer.complete": Completed file transfer
+// Maybe we should watch those in addition to/instead of
+// inotify?
+// Are there notifications for folders being "looked at"?
+
 import (
 	"fmt"
 	"log"

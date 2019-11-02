@@ -1,76 +1,72 @@
 package main
 
-// Currently not used at all since we are not using inotify at the moment.
 // Watches a directory using inotify.
 // Not clear yet whether we want to make use of this at all
 // and if so then sparingly because it is said to eat resources
 // (a claim still to be verified)
+//
+// TODO: Check https://github.com/amir73il/fsnotify-utils/wiki/Super-block-root-watch
+// Super block root watch is designed to solve the scalability issues with inotify recursive watches.
+// The fanotify super block watch patch set is meant to fill this gap in functionality and add the functionality of a root watch.
+// It was merged to kernel v5.1-rc1.
 
 import (
 	"log"
 
-	"github.com/fsnotify/fsnotify"
+	"github.com/purpleidea/mgmt/recwatch"
+	"gopkg.in/fsnotify.v1"
 )
 
 // Can we watch files with a certain file name extension only
 // and how would this improve performance?
 
-// https://developer.gnome.org/notification-spec/ has
-// "transfer.complete": Completed file transfer
-// Maybe we should watch those in addition to/instead of
-// inotify?
-// Are there notifications for folders being "looked at"?
-
-func NewWatcher(path string) {
-	watcher, err := fsnotify.NewWatcher()
+func inotifyWatch(path string) {
+	watcher, err := recwatch.NewRecWatcher(path, true)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer watcher.Close()
 
-	go func() {
-		for {
-			select {
-			case event, ok := <-watcher.Events:
-				if !ok {
+	log.Println("inotify: Watching", path)
+
+	var done bool
+	for {
+		select {
+		case event, ok := <-watcher.Events():
+			if !ok {
+				if done {
 					return
 				}
-				log.Println("event:", event)
-				handle(event)
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					return
-				}
-				log.Println("error:", err)
+				done = true
+				continue
+			}
+			if err := event.Error; err != nil {
+				return
+			}
+
+			// log.Println(event.Body.Name)
+			log.Println("inotify:", event.Body.Op)
+
+			if event.Body.Op&fsnotify.Write == fsnotify.Write || event.Body.Op&fsnotify.Create == fsnotify.Create {
+				log.Println("inotify: Should check whether to register file:", event.Body.Name)
+				// We would be interesting in "write complete", file closed
+				// IN_CLOSE https://stackoverflow.com/questions/2895187/which-inotify-event-signals-the-completion-of-a-large-file-operation
+				toBeIntegrated = appendIfMissing(toBeIntegrated, event.Body.Name)
+			}
+			if event.Body.Op&fsnotify.Remove == fsnotify.Remove || event.Body.Op&fsnotify.Rename == fsnotify.Rename {
+				log.Println("inotify: Should check whether to unregister file:", event.Body.Name)
+				// May want to check filesystem whether it was integrated at all before doing anything
+				toBeUnintegrated = appendIfMissing(toBeUnintegrated, event.Body.Name)
 			}
 		}
-	}()
-
-	err = watcher.Add(path)
-	if err != nil {
-		log.Fatal(err)
 	}
-	log.Println("Watching", path)
-
 }
 
-func handle(event fsnotify.Event) {
-
-	// Before we do any action, we should probably put
-	// the file into a queue in which it stays for some time
-	// before we take any action on it, because one downloaded
-	// file may trigger many inotify events and there seems to be
-	// nothing like "download complete" besides IN_CLOSE which
-	// I didn't find in fsnotify yet
-
-	if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Create == fsnotify.Create || event.Op&fsnotify.Chmod == fsnotify.Chmod {
-		log.Println("watcher: Should check whether to register file:", event.Name)
-		// We would be interesting in "write complete", file closed
-		// IN_CLOSE https://stackoverflow.com/questions/2895187/which-inotify-event-signals-the-completion-of-a-large-file-operation
+func appendIfMissing(slice []string, s string) []string {
+	for _, ele := range slice {
+		if ele == s {
+			return slice
+		}
 	}
-	if event.Op&fsnotify.Remove == fsnotify.Remove || event.Op&fsnotify.Rename == fsnotify.Rename {
-		log.Println("watcher: Should check whether to unregister file:", event.Name)
-		// May want to check filesystem whether it was integrated at all before doing anything
-	}
-
+	return append(slice, s)
 }
