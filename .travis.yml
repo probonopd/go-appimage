@@ -47,7 +47,7 @@ script:
     
 after_success:
   - wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh
-  - bash upload.sh *-amd64 *-386 *-arm *-arm64
+  - bash upload.sh appimaged-*
   
 branches:
   except:
