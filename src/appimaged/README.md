@@ -28,7 +28,7 @@ chmod +x appimaged-* unsquashfs bsdtar
 ./appimaged-*
 ```
 
-https://github.com/probonopd/appimage/releases/download/continuous/ also has builds for 32-bit Intel, 32-bit ARM (e.g., Raspberry Pi), and 64-bit ARM.
+https://github.com/probonopd/appimage/releases/tag/continuous also has builds for 32-bit Intel, 32-bit ARM (e.g., Raspberry Pi), and 64-bit ARM.
 
 ## Building
 
