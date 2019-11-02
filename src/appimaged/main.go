@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/prometheus/procfs"
-
 	"github.com/adrg/xdg"
+	"github.com/godbus/dbus"
+	"github.com/prometheus/procfs"
 )
 
 // TODO: Understand whether we can make clever use of
@@ -29,12 +29,20 @@ var quit = make(chan struct{})
 
 var overwritePtr = flag.Bool("o", false, "Overwrite existing desktop integration")
 var cleanPtr = flag.Bool("c", false, "Clean pre-existing desktop files")
-var quietPtr = flag.Bool("q", false, "Do not send desktop notifications")
+var notifPtr = flag.Bool("n", false, "Send desktop notifications")
 
 var toBeIntegrated []string
 var toBeUnintegrated []string
 
+var conn *dbus.Conn
+
 func main() {
+
+	conn, err := dbus.SessionBus()
+	if err != nil {
+		log.Println(os.Stderr, "Failed to connect to session bus:", err)
+		return
+	}
 
 	log.Println("main: Running from", here())
 	log.Println("main: xdg.DataHome =", xdg.DataHome)
@@ -65,76 +73,16 @@ func main() {
 	// 	println(call.Err.Error())
 	// }
 
-	// Register AppImages from well-known locations
-	// https://github.com/AppImage/appimaged#monitored-directories specifies:
-	// $HOME/Downloads (or its localized equivalent, as determined by G_USER_DIRECTORY_DOWNLOAD in glib)
-	// $HOME/.local/bin
-	// $HOME/bin
-	// $HOME/Applications
-	// /Applications
-	// [any mounted partition]/Applications
-	// /opt
-	// /usr/local/bin
+	go monitorUdisks(conn)
 
-	home, _ := os.UserHomeDir()
-	// FIXME: Use XDG translated names for Downloads and Desktop; blocked by https://github.com/adrg/xdg/issues/1 or https://github.com/OpenPeeDeeP/xdg/issues/6
-	watchedDirectories := []string{
-		home + "/Downloads",
-		home + "/Desktop",
-		home + "/.local/bin",
-		home + "/bin",
-		home + "/Applications",
-		home + "/opt",
-		home + "/usr/local/bin",
-	}
-
-	mounts, _ := procfs.GetMounts()
-	// FIXME: This breaks when the partition label has "-", see https://github.com/prometheus/procfs/issues/227
-
-	for _, mount := range mounts {
-		log.Println(mount.MountPoint)
-		if strings.HasPrefix(mount.MountPoint, "/sys") == false && // Is /dev needed for openSUSE Live?
-			strings.HasPrefix(mount.MountPoint, "/run") == false &&
-			strings.HasPrefix(mount.MountPoint, "/tmp") == false &&
-			strings.HasPrefix(mount.MountPoint, "/proc") == false {
-			watchedDirectories = append(watchedDirectories, mount.MountPoint+"/Applications")
-		}
-	}
-
-	// TODO: Maybe we don't want to walk subdirectories?
-	// filepath.Walk is handy but scans subfolders too, by default, which might not be what you want.
-	// The Go stdlib also provides ioutil.ReadDir
-	println("Registering AppImages in well-known locations and their subdirectories...")
-	println("TODO: Use all mounted disks; react to disks coming and going using UDisks2")
-
-	for _, v := range watchedDirectories {
-		err := filepath.Walk(v, func(path string, info os.FileInfo, err error) error {
-
-			if err != nil {
-				// log.Printf("%v\n", err)
-			} else if info.IsDir() == true {
-				go inotifyWatch(path)
-			} else if info.IsDir() == false {
-				ai := newAppImage(path)
-				if ai.imagetype > 0 {
-					go ai.integrate()
-				}
-			}
-
-			return nil
-		})
-		if err != nil {
-			log.Printf("error walking the path %q: %v\n", v, err)
-			return
-		}
-	}
+	watchDirectories()
 
 	// Use dbus to find out about AppImages to be handled
 	// go monitorDbusSessionBus()
 	// or
 	// use inotify to find out about AppImages to be handled
 
-	// sendDesktopNotification("watcher", "Started")
+	// sendDesktopNotification(conn, "watcher", "Started")
 
 	// Ticker to periodically move desktop files into system
 	ticker := time.NewTicker(5 * time.Second)
@@ -164,13 +112,13 @@ func moveDesktopFiles() {
 
 	for _, path := range toBeIntegrated {
 		ai := newAppImage(path)
-		go ai.integrate()
+		go ai.integrateOrUnintegrate()
 	}
 	toBeIntegrated = nil
 
 	for _, path := range toBeUnintegrated {
 		ai := newAppImage(path)
-		go ai.removeIntegration()
+		go ai.integrateOrUnintegrate()
 	}
 	toBeUnintegrated = nil
 
@@ -218,4 +166,63 @@ func printError(context string, e error) {
 	if e != nil {
 		log.Println("ERROR", context+":", e)
 	}
+}
+
+func watchDirectories() {
+
+	// Register AppImages from well-known locations
+	// https://github.com/AppImage/appimaged#monitored-directories
+	home, _ := os.UserHomeDir()
+	// FIXME: Use XDG translated names for Downloads and Desktop; blocked by https://github.com/adrg/xdg/issues/1 or https://github.com/OpenPeeDeeP/xdg/issues/6
+
+	watchedDirectories := []string{
+		home + "/Downloads",
+		home + "/Desktop",
+		home + "/.local/bin",
+		home + "/bin",
+		home + "/Applications",
+		home + "/opt",
+		home + "/usr/local/bin",
+	}
+
+	mounts, _ := procfs.GetMounts()
+	// FIXME: This breaks when the partition label has "-", see https://github.com/prometheus/procfs/issues/227
+
+	for _, mount := range mounts {
+		log.Println(mount.MountPoint)
+		if strings.HasPrefix(mount.MountPoint, "/sys") == false && // Is /dev needed for openSUSE Live?
+			strings.HasPrefix(mount.MountPoint, "/run") == false &&
+			strings.HasPrefix(mount.MountPoint, "/tmp") == false &&
+			strings.HasPrefix(mount.MountPoint, "/proc") == false {
+			watchedDirectories = appendIfMissing(watchedDirectories, mount.MountPoint+"/Applications")
+		}
+	}
+	// TODO: Maybe we don't want to walk subdirectories?
+	// filepath.Walk is handy but scans subfolders too, by default, which might not be what you want.
+	// The Go stdlib also provides ioutil.ReadDir
+	println("Registering AppImages in well-known locations and their subdirectories...")
+	println("TODO: Use all mounted disks; react to disks coming and going using UDisks2")
+
+	for _, v := range watchedDirectories {
+		err := filepath.Walk(v, func(path string, info os.FileInfo, err error) error {
+
+			if err != nil {
+				// log.Printf("%v\n", err)
+			} else if info.IsDir() == true {
+				go inotifyWatch(path)
+			} else if info.IsDir() == false {
+				ai := newAppImage(path)
+				if ai.imagetype > 0 {
+					go ai.integrateOrUnintegrate()
+				}
+			}
+
+			return nil
+		})
+		if err != nil {
+			log.Printf("error walking the path %q: %v\n", v, err)
+			return
+		}
+	}
+
 }

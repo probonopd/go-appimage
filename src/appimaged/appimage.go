@@ -361,7 +361,7 @@ func (ai AppImage) setExecBit() {
 
 // Integrate an AppImage into the system (put in menu, extract thumbnail)
 // Can take a long time, hence run with "go"
-func (ai AppImage) integrate() {
+func (ai AppImage) _integrate() {
 
 	// log.Println("integrate called on:", ai.path)
 
@@ -391,8 +391,8 @@ func (ai AppImage) integrate() {
 
 	writeDesktopFile(ai) // Do not run with "go" as it would interfere with extractDirIconAsThumbnail
 
-	if *quietPtr == false {
-		sendDesktopNotification(ai.path, "Integrated")
+	if *notifPtr == true {
+		sendDesktopNotification(conn, ai.path, "Integrated")
 	}
 
 	// For performance reasons, we stop working immediately
@@ -415,27 +415,31 @@ func (ai AppImage) integrate() {
 
 }
 
-func (ai AppImage) removeIntegration() {
+func (ai AppImage) _removeIntegration() {
 
+	log.Println("appimage: Remove integration", ai.path)
+	err := os.Remove(ai.thumbnailfilepath)
+	if err == nil {
+		log.Println("appimage: Deleted", ai.thumbnailfilepath)
+	} else {
+		log.Println("appimage:", err, ai.thumbnailfilepath)
+	}
+
+	err = os.Remove(ai.desktopfilepath)
+	if err == nil {
+		log.Println("appimage: Deleted", ai.desktopfilepath)
+		if *notifPtr == true {
+			sendDesktopNotification(conn, ai.path, "Integration removed")
+		}
+
+	}
+}
+
+func (ai AppImage) integrateOrUnintegrate() {
 	if _, err := os.Stat(ai.path); os.IsNotExist(err) {
-
-		log.Println("appimage: Remove integration", ai.path)
-		err := os.Remove(ai.thumbnailfilepath)
-		if err == nil {
-			log.Println("appimage: Deleted", ai.thumbnailfilepath)
-		} else {
-			log.Println("appimage:", err, ai.thumbnailfilepath)
-		}
-
-		err = os.Remove(ai.desktopfilepath)
-		if err == nil {
-			log.Println("appimage: Deleted", ai.desktopfilepath)
-			if *quietPtr == false {
-				sendDesktopNotification(ai.path, "Integration removed")
-			}
-		} else {
-			log.Println("appimage:", err, ai.desktopfilepath)
-		}
+		ai._removeIntegration()
+	} else {
+		ai._integrate()
 	}
 }
 

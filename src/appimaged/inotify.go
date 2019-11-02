@@ -19,9 +19,7 @@ import (
 
 func inotifyWatch(path string) {
 	watcher, err := recwatch.NewRecWatcher(path, true)
-	if err != nil {
-		log.Fatal(err)
-	}
+	printError("inotify, probably already watching", err)
 	defer watcher.Close()
 
 	log.Println("inotify: Watching", path)

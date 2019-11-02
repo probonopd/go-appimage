@@ -50,12 +50,7 @@ func removeDuplicatesUnordered(elements []string) []string {
 // system bus handles system-wide stuff (e.g. USB stick plugged in).
 // TODO: Watch system bus, too.
 
-func monitorDbusSessionBus() {
-	conn, err := dbus.SessionBus()
-	if err != nil {
-		log.Println(os.Stderr, "Failed to connect to session bus:", err)
-		return
-	}
+func monitorDbusSessionBus(conn *dbus.Conn) {
 
 	var rules = []string{
 		// "path_namespace='/'", // Everything
@@ -64,6 +59,7 @@ func monitorDbusSessionBus() {
 		"interface='org.kde.KDirNotify'",
 		"interface='org.kde.JobViewV2'",
 		"interface='org.gtk.vfs.Metadata', member='Set'", // This notifies us e.g., of finished Firefox downloads
+		// "interface='org.freedesktop.UDisks2'"
 	}
 	var flag uint = 0
 
@@ -104,7 +100,7 @@ func monitorDbusSessionBus() {
 				log.Println("org.gtk.vfs.Metadata", str)
 				// time.Sleep(1 * time.Second)
 				ai := newAppImage(str)
-				go ai.integrate()
+				go ai.integrateOrUnintegrate()
 			}
 
 		}
@@ -122,7 +118,7 @@ func monitorDbusSessionBus() {
 			fp := v.Body[2].(string)
 			log.Println("monitor: ResourceScoreUpdated: ", fp)
 			ai := newAppImage(fp)
-			go ai.integrate()
+			go ai.integrateOrUnintegrate()
 		}
 
 		// KDE
@@ -166,13 +162,13 @@ func monitorDbusSessionBus() {
 					fp := getFilepath(s)
 					log.Println("monitor: MoveFrom: ", fp)
 					ai := newAppImage(fp)
-					ai.removeIntegration()
+					ai.integrateOrUnintegrate()
 				}
 				for _, s := range tofiles {
 					fp := getFilepath(s)
 					log.Println("monitor: MoveTo: ", fp)
 					ai := newAppImage(fp)
-					go ai.integrate()
+					go ai.integrateOrUnintegrate()
 				}
 			}
 		}
@@ -190,7 +186,7 @@ func monitorDbusSessionBus() {
 					fp := getFilepath(s)
 					log.Println("monitor: CopyTo: ", fp)
 					ai := newAppImage(fp)
-					go ai.integrate()
+					go ai.integrateOrUnintegrate()
 				}
 			}
 		}
@@ -202,7 +198,7 @@ func monitorDbusSessionBus() {
 					fp := getFilepath(s)
 					log.Println("monitor: CleanupOrDelete: ", fp)
 					ai := newAppImage(fp)
-					ai.removeIntegration()
+					ai.integrateOrUnintegrate()
 				}
 			}
 		}
