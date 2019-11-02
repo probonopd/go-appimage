@@ -21,7 +21,7 @@ script:
   - tar xf upx-*_linux.tar.xz
   - export PATH=$(readlink -f upx-*_linux/):$PATH
   - sudo apt-get -y install psmisc dbus-x11 # killall, dbus-launch
-  # export GO111MODULE=off # Needed?
+  - GO111MODULE=on # To disable vendoring, set GO111MODULE=on
   - go get github.com/probonopd/appimage/src/appimagetool
   - go build -trimpath -ldflags="-s -w" github.com/probonopd/appimage/src/appimagetool
   - upx -9 appimagetool
