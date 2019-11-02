@@ -30,6 +30,7 @@ var quit = make(chan struct{})
 
 var overwritePtr = flag.Bool("o", false, "Overwrite existing desktop integration")
 var cleanPtr = flag.Bool("c", false, "Clean pre-existing desktop files")
+var quietPtr = flag.Bool("q", false, "Do not send desktop notifications")
 
 var toBeIntegrated []string
 var toBeUnintegrated []string
@@ -130,6 +131,7 @@ func main() {
 
 	watchedDirectories := []string{
 		home + "/Downloads",
+		home + "/Desktop",
 		home + "/.local/bin",
 		home + "/bin",
 		home + "/Applications",
@@ -214,14 +216,12 @@ func moveDesktopFiles() {
 	for _, path := range toBeIntegrated {
 		ai := newAppImage(path)
 		go ai.integrate()
-
 	}
 	toBeIntegrated = nil
 
 	for _, path := range toBeUnintegrated {
 		ai := newAppImage(path)
 		go ai.removeIntegration()
-
 	}
 	toBeUnintegrated = nil
 

@@ -53,6 +53,7 @@ func newAppImage(path string) AppImage {
 		strings.HasSuffix(path, "~") ||
 		strings.HasSuffix(path, ".part") ||
 		strings.HasSuffix(path, ".partial") {
+		ai.imagetype = -1
 		return ai
 	}
 
@@ -406,24 +407,35 @@ func (ai AppImage) integrate() {
 		}
 	}
 
+	if *quietPtr == false {
+		sendDesktopNotification(ai.path, "Integrated")
+	}
+
 	ai.extractDirIconAsThumbnail() // Do not run with "go" as it would interfere with writeDesktopFile
 
 }
 
 func (ai AppImage) removeIntegration() {
-	log.Println("appimage: Remove integration", ai.path)
-	err := os.Remove(ai.thumbnailfilepath)
-	if err == nil {
-		log.Println("appimage: Deleted", ai.thumbnailfilepath)
-	} else {
-		log.Println("appimage:", err, ai.thumbnailfilepath)
-	}
 
-	err = os.Remove(ai.desktopfilepath)
-	if err == nil {
-		log.Println("appimage: Deleted", ai.desktopfilepath)
-	} else {
-		log.Println("appimage:", err, ai.desktopfilepath)
+	if _, err := os.Stat(ai.path); os.IsNotExist(err) {
+
+		log.Println("appimage: Remove integration", ai.path)
+		err := os.Remove(ai.thumbnailfilepath)
+		if err == nil {
+			log.Println("appimage: Deleted", ai.thumbnailfilepath)
+		} else {
+			log.Println("appimage:", err, ai.thumbnailfilepath)
+		}
+
+		err = os.Remove(ai.desktopfilepath)
+		if err == nil {
+			log.Println("appimage: Deleted", ai.desktopfilepath)
+			if *quietPtr == false {
+				sendDesktopNotification(ai.path, "Integration removed")
+			}
+		} else {
+			log.Println("appimage:", err, ai.desktopfilepath)
+		}
 	}
 }
 
