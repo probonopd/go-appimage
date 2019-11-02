@@ -36,6 +36,7 @@ https://github.com/probonopd/appimage/releases/tag/continuous also has builds fo
 If for whatever reason you would like to build from source:
 
 ```
+sudo apt-get -y install gcc 
 go get github.com/probonopd/appimage/src/appimaged
 go build -trimpath -ldflags="-s -w" github.com/probonopd/appimage/src/appimaged
 ```
