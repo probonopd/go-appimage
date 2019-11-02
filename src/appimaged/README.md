@@ -10,9 +10,10 @@ To try it out:
 
 ```
 # Remove pre-existing similar tools
-systemctl --user stop appimaged || true
-systemctl --user stop appimagelauncherd || true
-sudo apt-get -yremove appimagelauncher || true
+systemctl --user stop appimaged.service || true
+systemctl --user stop appimagelauncherd.service || true
+systemctl --user stop appimagelauncherfs.service || true
+sudo apt-get -y remove appimagelauncher || true
 
 # Clear caches
 rm "$HOME"/.thumbnails/normal/*
