@@ -11,7 +11,8 @@ script:
   - sudo apt-get -y update
   - sudo apt-get -y install gcc-multilib g++-multilib psmisc dbus-x11
   - sudo apt-get -y install gcc-arm-linux-gnueabi
-  - sudo apt-get -y install gcc-aarch64-linux-gnu 
+  - sudo apt-get -y install gcc-aarch64-linux-gnu
+  - sudo apt-get -y install linux-libc-dev linux-libc-dev:i386
   - if [ $(go env GOHOSTARCH) == "amd64" ] ; then wget -c -q https://github.com/upx/upx/releases/download/v3.95/upx-3.95-amd64_linux.tar.xz ; fi
   - if [ $(go env GOHOSTARCH) == "arm64" ] ; then wget -c -q https://github.com/upx/upx/releases/download/v3.95/upx-3.95-arm64_linux.tar.xz ; fi
   - tar xf upx-*_linux.tar.xz
