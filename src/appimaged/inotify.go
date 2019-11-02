@@ -1,9 +1,6 @@
 package main
 
 // Watches a directory using inotify.
-// Not clear yet whether we want to make use of this at all
-// and if so then sparingly because it is said to eat resources
-// (a claim still to be verified)
 //
 // TODO: Check https://github.com/amir73il/fsnotify-utils/wiki/Super-block-root-watch
 // Super block root watch is designed to solve the scalability issues with inotify recursive watches.

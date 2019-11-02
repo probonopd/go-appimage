@@ -62,9 +62,9 @@ func checkPrerequisites() {
 // Print a warning if a tool is not there
 func checkToolAvailable(toolname string) bool {
 	if _, err := os.Stat(here() + "/" + toolname); os.IsNotExist(err) {
-		log.Println("WARNING: bsdtar is missing in", here()+"/"+toolname+", functionality will be degraded")
+		log.Println("ERROR: bsdtar is missing in", here()+"/"+toolname)
 		log.Println("You can get it from https://github.com/probonopd/static-tools/releases/tag/continuous")
-		return false
+		os.Exit(1)
 	}
 	return true
 }
