@@ -12,14 +12,15 @@ git:
 
 script:
   - unset GOARCH GOBIN GOEXE GOHOSTARCH GOHOSTOS GOOS GORACE GOROOT GOTOOLDIR CC GOGCCFLAGS CGO_ENABLED
-  - mkdir -p $GOPATH/src/gopkg.in/fsnotify.v1 $GOPATH/src/gopkg.in/fsnotify.v1 $GOPATH/src/github.com/purpleidea/mgmt/vendor/gopkg.in/
-  - go get gopkg.in/fsnotify/fsnotify.v1
-  - ln -s $(readlink -f $GOPATH/src/gopkg.in/fsnotify.v1) $(readlink -f $GOPATH/src/github.com/purpleidea/mgmt/vendor/gopkg.in/) # Ensure those are never out of sync
+  - export GOPATH=$HOME/go
   - if [ "aarch64" == "$TRAVIS_ARCH" ] ; then export ARCH=arm64 ; fi
   - if [ "amd64" == "$TRAVIS_ARCH" ] ; then export ARCH=amd64 ; fi
   - wget -q https://dl.google.com/go/go1.13.4.linux-$ARCH.tar.gz
   - sudo tar -C /usr/local -xzf go*.tar.gz
   - export PATH=/usr/local/go/bin:$PATH
+  - mkdir -p $GOPATH/src/gopkg.in/fsnotify.v1 $GOPATH/src/gopkg.in/fsnotify.v1 $GOPATH/src/github.com/purpleidea/mgmt/vendor/gopkg.in/
+  - go get gopkg.in/fsnotify/fsnotify.v1
+  - ln -s $(readlink -f $GOPATH/src/gopkg.in/fsnotify.v1) $(readlink -f $GOPATH/src/github.com/purpleidea/mgmt/vendor/gopkg.in/) # Ensure those are never out of sync
   - if [ $(go env GOHOSTARCH) == "amd64" ] ; then sudo apt-get -y install gcc-multilib g++-multilib ; fi
   - if [ $(go env GOHOSTARCH) == "amd64" ] ; then wget -c -q https://github.com/upx/upx/releases/download/v3.95/upx-3.95-amd64_linux.tar.xz ; fi
   - if [ $(go env GOHOSTARCH) == "arm64" ] ; then sudo apt-get -y install gcc-arm-linux-gnueabi ; fi
