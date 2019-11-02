@@ -40,11 +40,13 @@ script:
   - sleep 10
   - killall appimaged
   - mv ./appimaged appimaged-$(go env GOHOSTARCH)
-  - if [ $(go env GOHOSTARCH) == "amd64" ] ; then env  CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -trimpath -ldflags="-s -w" github.com/probonopd/appimage/src/appimaged ; fi
+  - if [ $(go env GOHOSTARCH) == "amd64" ] ; then env CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -trimpath -ldflags="-s -w" github.com/probonopd/appimage/src/appimaged ; fi
+  - if [ $(go env GOHOSTARCH) == "amd64" ] ; then upx -9 ./appimaged ; fi
   - if [ $(go env GOHOSTARCH) == "amd64" ] ; then mv ./appimaged appimaged-386 ; fi
   - if [ $(go env GOHOSTARCH) == "arm64" ] ; then env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=5 go build -trimpath -ldflags="-s -w" github.com/probonopd/appimage/src/appimaged ; fi
+  - if [ $(go env GOHOSTARCH) == "arm64" ] ; then upx -9 ./appimaged ; fi
   - if [ $(go env GOHOSTARCH) == "arm64" ] ; then mv ./appimaged appimaged-arm ; fi
-    
+
 after_success:
   - wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh
   - bash upload.sh appimaged-*
