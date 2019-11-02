@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -40,10 +39,7 @@ func main() {
 	log.Println("main: Running from", here())
 	log.Println("main: xdg.DataHome =", xdg.DataHome)
 
-	// Check if the tools that we need are available and warn if they are not
-	// TODO: Elaborate checks whether the tools have the functionality we need (offset, ZISOFS)
-	checkToolAvailable("unsquashfs")
-	checkToolAvailable("bsdtar")
+	checkPrerequisites()
 
 	flag.Parse()
 	log.Println("Overwrite:", *overwritePtr)
@@ -52,55 +48,6 @@ func main() {
 	// Disable desktop integration provided by scripts within AppImages
 	// as per https://github.com/AppImage/AppImageSpec/blob/master/draft.md#desktop-integration
 	os.Setenv("DESKTOPINTEGRATION", "go-appimaged")
-
-	// Stop any other AppImage system integration daemon
-	// so that they won't interfere with each other
-	// TODO: How to disable binfmt-misc of AppImageLauncher when we are NOT root? Argh!
-	cmd := exec.Command("systemctl", "--user", "stop", "appimagelauncherd.service")
-	if err := cmd.Run(); err != nil {
-		printError(cmd.String(), err)
-	} else {
-		*cleanPtr = true // Clean up pre-existing desktop files from the other AppImage system integration daemon
-	}
-	cmd = exec.Command("systemctl", "--user", "stop", "appimaged.service")
-	if err := cmd.Run(); err != nil {
-		printError(cmd.String(), err)
-	} else {
-		*cleanPtr = true // Clean up pre-existing desktop files from the other AppImage system integration daemon
-	}
-
-	// Clean pre-existing desktop files and thumbnails
-	// This is useful for debugging
-	if *cleanPtr == true {
-		files, err := filepath.Glob(filepath.Join(xdg.DataHome+"/applications/", "appimagekit_*"))
-		printError("main:", err)
-		for _, file := range files {
-			log.Println("Deleting", file)
-			err := os.Remove(file)
-			printError("main:", err)
-		}
-
-	}
-
-	// E.g., on Xubuntu this directory is not there by default
-	// but luckily it starts working right away without
-	// the desktop needing to be restarted
-	err := os.MkdirAll(xdg.DataHome+"/applications/", os.ModePerm)
-	printError("main:", err)
-	err = os.MkdirAll(xdg.CacheHome+"/thumbnails/normal", os.ModePerm)
-	printError("main:", err)
-	home, _ := os.UserHomeDir()
-	err = os.MkdirAll(home+"/.cache/applications/", os.ModePerm)
-	printError("main:", err)
-
-	// Create $HOME/.local/share/appimagekit/no_desktopintegration
-	// so that AppImages know they should not do desktop integration themselves
-	err = os.MkdirAll(xdg.DataHome+"/appimagekit/", os.ModePerm)
-	printError("main:", err)
-	f, err := os.Create(xdg.DataHome + "/appimagekit/no_desktopintegration")
-	printError("main:", err)
-	f.Close()
-	printError("main:", err)
 
 	// Maybe not needed? At least on Xubuntu it seems to work without this
 	// Try to register ourselves as a thumbnailer for AppImages, in the hope that
@@ -129,6 +76,7 @@ func main() {
 	// /opt
 	// /usr/local/bin
 
+	home, _ := os.UserHomeDir()
 	// FIXME: Use XDG translated names for Downloads and Desktop; blocked by https://github.com/adrg/xdg/issues/1 or https://github.com/OpenPeeDeeP/xdg/issues/6
 	watchedDirectories := []string{
 		home + "/Downloads",
@@ -160,7 +108,7 @@ func main() {
 	println("TODO: Use all mounted disks; react to disks coming and going using UDisks2")
 
 	for _, v := range watchedDirectories {
-		err = filepath.Walk(v, func(path string, info os.FileInfo, err error) error {
+		err := filepath.Walk(v, func(path string, info os.FileInfo, err error) error {
 
 			if err != nil {
 				// log.Printf("%v\n", err)
@@ -263,16 +211,6 @@ func here() string {
 		return ""
 	}
 	return (dir)
-}
-
-// Print a warning if a tool is not there
-func checkToolAvailable(toolname string) bool {
-	if _, err := os.Stat(here() + "/" + toolname); os.IsNotExist(err) {
-		log.Println("WARNING: bsdtar is missing in", here()+"/"+toolname+", functionality will be degraded")
-		log.Println("You can get it from https://github.com/probonopd/static-tools/releases/tag/continuous")
-		return false
-	}
-	return true
 }
 
 // Print error, prefixed by a string that explains the context
