@@ -16,24 +16,23 @@ git:
   depth: 1
 
 script:
+  - if [ $(go env GOHOSTARCH) == "arm64" ] ; then sudo apt-get -y install gcc-multilib g++-multilib ; fi
   - if [ $(go env GOHOSTARCH) == "amd64" ] ; then wget -c -q https://github.com/upx/upx/releases/download/v3.95/upx-3.95-amd64_linux.tar.xz ; fi
   - if [ $(go env GOHOSTARCH) == "arm64" ] ; then wget -c -q https://github.com/upx/upx/releases/download/v3.95/upx-3.95-arm64_linux.tar.xz ; fi
   - tar xf upx-*_linux.tar.xz
   - export PATH=$(readlink -f upx-*_linux/):$PATH
   - sudo apt-get -y install psmisc dbus-x11 # killall, dbus-launch
   - export GO111MODULE=off # Needed?
-  - cd src/appimagetool/
-  - go build -trimpath -ldflags="-s -w" appimagetool.go
+  - go get github.com/probonopd/appimage/src/appimagetool
+  - go build -trimpath -ldflags="-s -w" github.com/probonopd/appimage/src/appimagetool
   - upx -9 appimagetool
   - ls -lh ./appimagetool
   - ./appimagetool
-  - cd -
-  - cd src/zsyncmake/
-  - go build -trimpath -ldflags="-s -w" zsyncmake.go
+  - go get github.com/probonopd/appimage/src/zsyncmake
+  - go build -trimpath -ldflags="-s -w" github.com/probonopd/appimage/src/zsyncmake
   - upx -9 zsyncmake
   - ls -lh ./zsyncmake
   - ./zsyncmake || true
-  - cd -
   - go get github.com/probonopd/appimage/src/appimaged
   - go build -trimpath -ldflags="-s -w" github.com/probonopd/appimage/src/appimaged
   - upx -9 appimaged
@@ -41,12 +40,13 @@ script:
   - ./appimaged &
   - sleep 10
   - killall appimaged
-  - ARCH=$(arch)
-  - cp ./appimaged appimaged-$ARCH
+  - mv ./appimaged appimaged-$(go env GOHOSTARCH)
+  - if [ $(go env GOHOSTARCH) == "amd64" ] ; then env  CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -trimpath -ldflags="-s -w" github.com/probonopd/appimage/src/appimaged ; fi
+  - if [ $(go env GOHOSTARCH) == "amd64" ] ; then mv ./appimaged appimaged-386 ; fi
 
 after_success:
   - wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh
-  - bash upload.sh appimaged-*
+  - bash upload.sh *-amd64 *-386 *-arm32 *-arm64
   
 branches:
   except:
