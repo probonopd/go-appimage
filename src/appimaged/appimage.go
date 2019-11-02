@@ -185,12 +185,11 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 					cmd := exec.Command(here()+"/unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, iconvalue)
 					runCommand(cmd)
 					err = os.Rename(thumbnailcachedir+"/"+iconvalue, thumbnailcachedir+"/.DirIcon")
-					printError("xxxxx", err)
+					printError("appimage", err)
 					err = os.RemoveAll(thumbnailcachedir + "/" + file.Name())
-					printError("yyyyy", err)
+					printError("appimage", err)
 				}
 			}
-
 		}
 
 		// Workaround for electron-builder not generating .DirIcon
@@ -231,11 +230,11 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	if os.IsNotExist(err) {
 		log.Printf("Could not extract icon, use default icon instead: %s\n", thumbnailcachedir+"/.DirIcon")
 		data, err := Asset("data/appimage.png")
-		printError("xzzzzzzzzzzzzzzappimage", err)
+		printError("appimage", err)
 		err = os.MkdirAll(thumbnailcachedir, 0755)
-		printError("aaaaaaaaaxxappimage", err)
+		printError("appimage", err)
 		err = ioutil.WriteFile(thumbnailcachedir+"/.DirIcon", data, 0644)
-		printError("xxxxxxxxxxxxxxxappimage", err)
+		printError("appimage", err)
 	} else if err != nil {
 		log.Printf("Error: %s\n", err)
 	}
