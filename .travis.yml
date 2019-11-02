@@ -1,19 +1,19 @@
 dist: xenial
-language: go
+language: none
 
 # Not clear from https://blog.travis-ci.com/2019-10-07-multi-cpu-architecture-support
 # whether this works in this way. How can we access the architecture within build scripts?
 arch:
   - amd64
   - arm64
-  
-go:
-- "1.13"
 
 git:
   depth: 1
 
 script:
+  - wget https://dl.google.com/go/go1.13.4.linux-$TRAVIS_ARCH.tar.gz
+  - tar -C /usr/local -xzf go*.tar.gz
+  - export PATH=/usr/local/go/bin:$PATH
   - if [ $(go env GOHOSTARCH) == "amd64" ] ; then sudo apt-get -y install gcc-multilib g++-multilib ; fi
   - if [ $(go env GOHOSTARCH) == "amd64" ] ; then wget -c -q https://github.com/upx/upx/releases/download/v3.95/upx-3.95-amd64_linux.tar.xz ; fi
   - if [ $(go env GOHOSTARCH) == "arm64" ] ; then sudo apt-get -y install gcc-arm-linux-gnueabi ; fi
