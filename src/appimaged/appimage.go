@@ -324,6 +324,7 @@ func (ai AppImage) determineImageType() int {
 }
 
 // Return true if magic string (hex) is found at offset
+// TODO: Instead of magic string, could probably use something like []byte{'\r', '\n'} or []byte("AI")
 func checkMagicAtOffset(f *os.File, magic string, offset int64) bool {
 	_, err := f.Seek(offset, 0) // Go to offset
 	printError("checkMagicAtOffset", err)

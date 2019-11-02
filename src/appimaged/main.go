@@ -152,6 +152,7 @@ func main() {
 	// The Go stdlib also provides ioutil.ReadDir
 	println("Registering AppImages in well-known locations and their subdirectories...")
 	println("TODO: Use all mounted disks; react to disks coming and going using UDisks2")
+
 	for _, v := range watchedDirectories {
 		err = filepath.Walk(v, func(path string, info os.FileInfo, err error) error {
 
