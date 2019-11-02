@@ -37,7 +37,6 @@ script:
   - go get github.com/probonopd/appimage/src/appimaged || true # This fails
   - mkdir -p $GOPATH/src/github.com/purpleidea/mgmt/vendor/gopkg.in/ # https://github.com/purpleidea/mgmt/issues/561
   - rm -rf $GOPATH/src/github.com/purpleidea/mgmt/vendor/gopkg.in/fsnotify.v1 # https://github.com/purpleidea/mgmt/issues/561
-  - cp -Rf $(readlink -f $GOPATH/src/gopkg.in/fsnotify.v1) $(readlink -f $GOPATH/src/github.com/purpleidea/mgmt/vendor/gopkg.in/fsnotify.v1) # https://github.com/purpleidea/mgmt/issues/561
   - go build -trimpath -ldflags="-s -w" github.com/probonopd/appimage/src/appimaged
   - upx -9 appimaged
   - mv ./appimaged appimaged-$(go env GOHOSTARCH)
