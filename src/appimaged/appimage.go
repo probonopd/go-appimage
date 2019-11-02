@@ -228,7 +228,15 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	// f.Close()
 
 	buf, err := ioutil.ReadFile(thumbnailcachedir + "/.DirIcon")
-	if err != nil {
+	if os.IsNotExist(err) {
+		log.Printf("Could not extract icon, use default icon instead: %s\n", thumbnailcachedir+"/.DirIcon")
+		data, err := Asset("data/appimage.png")
+		printError("xzzzzzzzzzzzzzzappimage", err)
+		err = os.MkdirAll(thumbnailcachedir, 0755)
+		printError("aaaaaaaaaxxappimage", err)
+		err = ioutil.WriteFile(thumbnailcachedir+"/.DirIcon", data, 0644)
+		printError("xxxxxxxxxxxxxxxappimage", err)
+	} else if err != nil {
 		log.Printf("Error: %s\n", err)
 	}
 	if issvg.Is(buf) {
