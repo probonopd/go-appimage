@@ -13,6 +13,7 @@ git:
 script:
   - unset GOARCH GOBIN GOEXE GOHOSTARCH GOHOSTOS GOOS GORACE GOROOT GOTOOLDIR CC GOGCCFLAGS CGO_ENABLED
   - mkdir -p $GOPATH/src/gopkg.in/fsnotify.v1 $GOPATH/src/gopkg.in/fsnotify.v1 $GOPATH/src/github.com/purpleidea/mgmt/vendor/gopkg.in/
+  - go get gopkg.in/fsnotify/fsnotify.v1
   - ln -s $(readlink -f $GOPATH/src/gopkg.in/fsnotify.v1) $(readlink -f $GOPATH/src/github.com/purpleidea/mgmt/vendor/gopkg.in/) # Ensure those are never out of sync
   - if [ "aarch64" == "$TRAVIS_ARCH" ] ; then export ARCH=arm64 ; fi
   - if [ "amd64" == "$TRAVIS_ARCH" ] ; then export ARCH=amd64 ; fi
