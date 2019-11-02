@@ -18,9 +18,9 @@ script:
   - wget -q https://dl.google.com/go/go1.13.4.linux-$ARCH.tar.gz
   - sudo tar -C /usr/local -xzf go*.tar.gz
   - export PATH=/usr/local/go/bin:$PATH
-  - mkdir -p $GOPATH/src/gopkg.in/fsnotify.v1 $GOPATH/src/gopkg.in/fsnotify.v1 $GOPATH/src/github.com/purpleidea/mgmt/vendor/gopkg.in/ # https://github.com/purpleidea/mgmt/issues/561
-  - go get gopkg.in/fsnotify/fsnotify.v1 # https://github.com/purpleidea/mgmt/issues/561
-  - ln -s $(readlink -f $GOPATH/src/gopkg.in/fsnotify.v1) $(readlink -f $GOPATH/src/github.com/purpleidea/mgmt/vendor/gopkg.in/) # https://github.com/purpleidea/mgmt/issues/561
+  - go get gopkg.in/fsnotify.v1 # https://github.com/purpleidea/mgmt/issues/561
+  - mkdir -p $GOPATH/src/github.com/purpleidea/mgmt/vendor/gopkg.in/ # https://github.com/purpleidea/mgmt/issues/561
+  - ln -s $(readlink -f $GOPATH/src/gopkg.in/fsnotify.v1) $(readlink -f $GOPATH/src/github.com/purpleidea/mgmt/vendor/gopkg.in/fsnotify.v1) # https://github.com/purpleidea/mgmt/issues/561
   - if [ $(go env GOHOSTARCH) == "amd64" ] ; then sudo apt-get -y install gcc-multilib g++-multilib ; fi
   - if [ $(go env GOHOSTARCH) == "amd64" ] ; then wget -c -q https://github.com/upx/upx/releases/download/v3.95/upx-3.95-amd64_linux.tar.xz ; fi
   - if [ $(go env GOHOSTARCH) == "arm64" ] ; then sudo apt-get -y install gcc-arm-linux-gnueabi ; fi
