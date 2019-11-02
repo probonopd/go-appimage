@@ -1,6 +1,14 @@
-dist: bionic
+dist: xenial
 language: go
 
+# Not clear from https://blog.travis-ci.com/2019-10-07-multi-cpu-architecture-support
+# whether this works in this way. How can we access the architecture within build scripts?
+arch:
+  - amd64
+  - i386
+  - arm64
+  - arm32
+  
 go:
 - "1.13"
 
@@ -8,63 +16,37 @@ git:
   depth: 1
 
 script:
-  - sudo apt-get -y update
-  - sudo apt-get -y install gcc-multilib g++-multilib psmisc dbus-x11
-  - sudo apt-get -y install gcc-arm-linux-gnueabi
-  - sudo apt-get -y install gcc-aarch64-linux-gnu
-  - sudo apt-get -y install linux-libc-dev linux-libc-dev:i386
   - if [ $(go env GOHOSTARCH) == "amd64" ] ; then wget -c -q https://github.com/upx/upx/releases/download/v3.95/upx-3.95-amd64_linux.tar.xz ; fi
   - if [ $(go env GOHOSTARCH) == "arm64" ] ; then wget -c -q https://github.com/upx/upx/releases/download/v3.95/upx-3.95-arm64_linux.tar.xz ; fi
   - tar xf upx-*_linux.tar.xz
   - export PATH=$(readlink -f upx-*_linux/):$PATH
+  - sudo apt-get -y install psmisc dbus-x11 # killall, dbus-launch
   - export GO111MODULE=off # Needed?
-  - go get github.com/probonopd/appimage/src/appimagetool
-  - env CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -trimpath -ldflags="-s -w" github.com/probonopd/appimage/src/appimaged
-  - upx -9 appimagetool
-  - mv ./appimagetool ./appimagetool-386
+  - cd src/appimagetool/
   - go build -trimpath -ldflags="-s -w" appimagetool.go
   - upx -9 appimagetool
-  - mv ./appimagetool ./appimagetool-amd64
-  - env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm32 go build -trimpath -ldflags="-s -w" github.com/probonopd/appimage/src/appimaged
-  - upx -9 appimagetool
-  - mv ./appimagetool ./appimagetool-arm32
-  - env CC=aarch64-linux-gnu CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w" github.com/probonopd/appimage/src/appimaged
-  - upx -9 appimagetool
-  - mv ./appimagetool ./appimagetool-arm64
-  - go get github.com/probonopd/appimage/src/zsyncmake
-  - env CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -trimpath -ldflags="-s -w" github.com/probonopd/appimage/src/appimaged
-  - upx -9 zsyncmake
-  - mv ./zsyncmake ./zsyncmake-386
+  - ls -lh ./appimagetool
+  - ./appimagetool
+  - cd -
+  - cd src/zsyncmake/
   - go build -trimpath -ldflags="-s -w" zsyncmake.go
   - upx -9 zsyncmake
-  - mv ./zsyncmake ./zsyncmake-amd64
-  - env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm32 go build -trimpath -ldflags="-s -w" github.com/probonopd/appimage/src/appimaged
-  - upx -9 zsyncmake
-  - mv ./zsyncmake ./zsyncmake-arm32
-  - env CC=aarch64-linux-gnu CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w" github.com/probonopd/appimage/src/appimaged
-  - upx -9 zsyncmake
-  - mv ./zsyncmake ./zsyncmake-arm64
+  - ls -lh ./zsyncmake
+  - ./zsyncmake || true
+  - cd -
   - go get github.com/probonopd/appimage/src/appimaged
-  - env CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -trimpath -ldflags="-s -w" github.com/probonopd/appimage/src/appimaged
+  - go build -trimpath -ldflags="-s -w" github.com/probonopd/appimage/src/appimaged
   - upx -9 appimaged
-  - mv ./appimaged ./appimaged-386
-  - go build -trimpath -ldflags="-s -w" appimaged.go
-  - upx -9 appimaged
-  - mv ./appimaged ./appimaged-amd64
-  - env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm32 go build -trimpath -ldflags="-s -w" github.com/probonopd/appimage/src/appimaged
-  - upx -9 appimaged
-  - mv ./appimaged ./appimaged-arm32
-  - env CC=aarch64-linux-gnu CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w" github.com/probonopd/appimage/src/appimaged
-  - upx -9 appimaged
-  - mv ./appimaged ./appimaged-arm64
-  # Test run
-  - ./appimaged-amd64 &
+  - ls -lh ./appimaged
+  - ./appimaged &
   - sleep 10
   - killall appimaged
+  - ARCH=$(arch)
+  - cp ./appimaged appimaged-$ARCH
 
 after_success:
   - wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh
-  - bash upload.sh *.386 *amd64 *arm32 *arm64
+  - bash upload.sh appimaged-*
   
 branches:
   except:
