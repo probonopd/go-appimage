@@ -16,8 +16,8 @@ git:
   depth: 1
 
 script:
-  - env
-  - wget -c -q https://github.com/upx/upx/releases/download/v3.95/upx-3.95-amd64_linux.tar.xz
+  - if [ $(go env GOHOSTARCH) == "amd64" ] ; then wget -c -q https://github.com/upx/upx/releases/download/v3.95/upx-3.95-amd64_linux.tar.xz ; fi
+  - if [ $(go env GOHOSTARCH) == "arm64" ] ; then wget -c -q https://github.com/upx/upx/releases/download/v3.95/upx-3.95-arm64_linux.tar.xz ; fi
   - tar xf upx-*_linux.tar.xz
   - export PATH=$(readlink -f upx-*_linux/):$PATH
   - sudo apt-get -y install psmisc dbus-x11 # killall, dbus-launch
