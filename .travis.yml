@@ -34,7 +34,7 @@ script:
   - upx -9 zsyncmake
   - ./zsyncmake || true
   - go get github.com/probonopd/appimage/src/appimaged || true # This fails
-  - rm -rf $GOPATH/src/github.com/purpleidea/mgmt/vendor/gopkg.in/fsnotify.v1/ || true
+  - rm -rf $GOPATH/src/github.com/purpleidea/mgmt/vendor/gopkg.in/fsnotify.v1
   # go get github.com/probonopd/appimage/src/appimaged # Hopefully it succeeds now
   - go build -trimpath -ldflags="-s -w" github.com/probonopd/appimage/src/appimaged
   - upx -9 appimaged
