@@ -58,8 +58,8 @@ func newAppImage(path string) AppImage {
 
 	ai.imagetype = ai.determineImageType()
 	ai.md5 = ai.calculateMD5filenamepart() // Need this also for non-existing AppImages for removal
-	ai.desktopfilename = "appimagekit-" + ai.md5 + ".desktop"
-	ai.desktopfilepath = xdg.DataHome + "/applications/" + "appimagekit-" + ai.md5 + ".desktop"
+	ai.desktopfilename = "appimagekit_" + ai.md5 + ".desktop"
+	ai.desktopfilepath = xdg.DataHome + "/applications/" + "appimagekit_" + ai.md5 + ".desktop"
 	ai.thumbnailfilename = ai.md5 + ".png"
 	home, _ := os.UserHomeDir()
 	ai.thumbnailfilepath = home + "/.thumbnails/normal/" + ai.thumbnailfilename

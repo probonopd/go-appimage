@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -28,14 +29,54 @@ import (
 var quit = make(chan struct{})
 
 var overwritePtr = flag.Bool("o", false, "Overwrite existing desktop integration")
+var cleanPtr = flag.Bool("c", false, "Clean pre-existing desktop files")
 
 func main() {
 
+	log.Println("main: Running from", here())
+	log.Println("main: xdg.DataHome =", xdg.DataHome)
+
+	// Check if the tools that we need are available and warn if they are not
+	// TODO: Elaborate checks whether the tools have the functionality we need (offset, ZISOFS)
+	checkToolAvailable("unsquashfs")
+	checkToolAvailable("bsdtar")
+
 	flag.Parse()
 	log.Println("Overwrite:", *overwritePtr)
+	log.Println("Clean:", *overwritePtr)
 
-	log.Println("main: Running from", here())
-	log.Println("main: xdg.DataHome =", xdg.DataHome) // TODO: Need to set $HOME/.local/share if not set?
+	// Disable desktop integration provided by scripts within AppImages
+	// as per https://github.com/AppImage/AppImageSpec/blob/master/draft.md#desktop-integration
+	os.Setenv("DESKTOPINTEGRATION", "go-appimaged")
+
+	// Stop any other AppImage system integration daemon
+	// so that they won't interfere with each other
+	// TODO: How to disable binfmt-misc of AppImageLauncher when we are NOT root? Argh!
+	cmd := exec.Command("systemctl", "--user", "stop", "appimagelauncherd.service")
+	if err := cmd.Run(); err != nil {
+		printError(cmd.String(), err)
+	} else {
+		*cleanPtr = true // Clean up pre-existing desktop files from the other AppImage system integration daemon
+	}
+	cmd = exec.Command("systemctl", "--user", "stop", "appimaged.service")
+	if err := cmd.Run(); err != nil {
+		printError(cmd.String(), err)
+	} else {
+		*cleanPtr = true // Clean up pre-existing desktop files from the other AppImage system integration daemon
+	}
+
+	// Clean pre-existing desktop files and thumbnails
+	// This is useful for debugging
+	if *cleanPtr == true {
+		files, err := filepath.Glob(filepath.Join(xdg.DataHome+"/applications/", "appimagekit_*"))
+		printError("main:", err)
+		for _, file := range files {
+			log.Println("Deleting", file)
+			err := os.Remove(file)
+			printError("main:", err)
+		}
+
+	}
 
 	// E.g., on Xubuntu this directory is not there by default
 	// but luckily it starts working right away without
@@ -198,6 +239,16 @@ func here() string {
 		return ""
 	}
 	return (dir)
+}
+
+// Print a warning if a tool is not there
+func checkToolAvailable(toolname string) bool {
+	if _, err := os.Stat(here() + toolname); os.IsNotExist(err) {
+		log.Println("WARNING: bsdtar is missing in", here()+toolname+", functionality will be degraded")
+		log.Println("You can get it from https://github.com/probonopd/static-tools/releases/tag/continuous")
+		return false
+	}
+	return true
 }
 
 // Print error, prefixed by a string that explains the context

@@ -22,7 +22,7 @@ import (
 // for a while
 func writeDesktopFile(ai AppImage) {
 
-	filename := "appimagekit-" + ai.md5 + ".desktop"
+	filename := "appimagekit_" + ai.md5 + ".desktop"
 
 	// log.Println(md5s)
 	// XDG directories
