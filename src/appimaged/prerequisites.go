@@ -21,7 +21,7 @@ func checkPrerequisites() {
 	stopSystemdService("appimagelauncherd")
 	stopSystemdService("appimagelauncherfs")
 
-	// TODO: How to disable binfmt-misc of AppImageLauncher when we are NOT root? Argh!
+	// Disable binfmt-misc of AppImageLauncher when we are NOT root? Argh!
 	exitIfBinfmtExists("/proc/sys/fs/binfmt_misc/appimage-type1")
 	exitIfBinfmtExists("/proc/sys/fs/binfmt_misc/appimage-type2")
 
@@ -79,6 +79,9 @@ func stopSystemdService(servicename string) {
 }
 
 func exitIfBinfmtExists(path string) {
+
+	cmd := exec.Command("/bin/sh", "-c", "echo -1 | sudo tee "+path)
+	cmd.Run()
 	if _, err := os.Stat(path); err == nil {
 		log.Println("ERROR:", path, "exists. Please remove it by running")
 		println("echo -1 | sudo tee", path)
