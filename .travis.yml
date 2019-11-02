@@ -18,9 +18,6 @@ script:
   - wget -q https://dl.google.com/go/go1.13.4.linux-$ARCH.tar.gz
   - sudo tar -C /usr/local -xzf go*.tar.gz
   - export PATH=/usr/local/go/bin:$PATH
-  - go get gopkg.in/fsnotify.v1 # https://github.com/purpleidea/mgmt/issues/561
-  - mkdir -p $GOPATH/src/github.com/purpleidea/mgmt/vendor/gopkg.in/ # https://github.com/purpleidea/mgmt/issues/561
-  - ln -s $(readlink -f $GOPATH/src/gopkg.in/fsnotify.v1) $(readlink -f $GOPATH/src/github.com/purpleidea/mgmt/vendor/gopkg.in/fsnotify.v1) # https://github.com/purpleidea/mgmt/issues/561
   - if [ $(go env GOHOSTARCH) == "amd64" ] ; then sudo apt-get -y install gcc-multilib g++-multilib ; fi
   - if [ $(go env GOHOSTARCH) == "amd64" ] ; then wget -c -q https://github.com/upx/upx/releases/download/v3.95/upx-3.95-amd64_linux.tar.xz ; fi
   - if [ $(go env GOHOSTARCH) == "arm64" ] ; then sudo apt-get -y install gcc-arm-linux-gnueabi ; fi
@@ -38,6 +35,9 @@ script:
   - upx -9 zsyncmake
   - ./zsyncmake || true
   - go get github.com/probonopd/appimage/src/appimaged || true # This fails
+  - mkdir -p $GOPATH/src/github.com/purpleidea/mgmt/vendor/gopkg.in/ # https://github.com/purpleidea/mgmt/issues/561
+  - rm -rf $GOPATH/src/github.com/purpleidea/mgmt/vendor/gopkg.in/fsnotify.v1 # https://github.com/purpleidea/mgmt/issues/561
+  - cp -Rf $(readlink -f $GOPATH/src/gopkg.in/fsnotify.v1) $(readlink -f $GOPATH/src/github.com/purpleidea/mgmt/vendor/gopkg.in/fsnotify.v1) # https://github.com/purpleidea/mgmt/issues/561
   - go build -trimpath -ldflags="-s -w" github.com/probonopd/appimage/src/appimaged
   - upx -9 appimaged
   - mv ./appimaged appimaged-$(go env GOHOSTARCH)
