@@ -11,6 +11,7 @@ git:
   depth: 1
 
 script:
+  - unset GOARCH GOBIN GOEXE GOHOSTARCH GOHOSTOS GOOS GOPATH GORACE GOROOT GOTOOLDIR CC GOGCCFLAGS CGO_ENABLED
   - if [ "aarch64" == "$TRAVIS_ARCH" ] ; then export ARCH=arm64 ; fi
   - if [ "amd64" == "$TRAVIS_ARCH" ] ; then export ARCH=amd64 ; fi
   - wget -q https://dl.google.com/go/go1.13.4.linux-$ARCH.tar.gz
