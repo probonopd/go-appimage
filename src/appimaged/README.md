@@ -2,6 +2,10 @@
 
 This is an experimental implementation of the optional AppImage daemon, `appimaged`, in Go, mainly to see what is possible.
 
+## Installation and usage
+
+Assuming you are using a 64-bit Intel machine (arm64, also known as x86_64), you can use our pre-compiled binaries:
+
 To try it out:
 
 ```
@@ -15,12 +19,22 @@ rm "$HOME"/.thumbnails/normal/*
 rm "$HOME"/.thumbnails/large/*
 rm "$HOME"/.local/share/applications/appimage*
 
-# Get everything (as long as this is not packaged as an AppImage yet)
-wget -c https://github.com/probonopd/static-tools/releases/download/continuous/unsquashfs
-wget -c https://github.com/probonopd/static-tools/releases/download/continuous/bsdtar
-wget -c https://github.com/probonopd/appimage/releases/download/continuous/appimaged-x86_64
-chmod +x appimaged-x86_64 unsquashfs bsdtar
+# Get external tools. Eventually we want to replace those with native Go implementations
+wget -c https://github.com/probonopd/static-tools/releases/download/continuous/bsdtar https://github.com/probonopd/static-tools/releases/download/continuous/unsquashfs
+wget -c https://github.com/probonopd/appimage/releases/download/continuous/appimaged-amd64
+chmod +x appimaged-* unsquashfs bsdtar
 
 # Launch
-./appimaged-x86_64
+./appimaged-*
+```
+
+https://github.com/probonopd/appimage/releases/download/continuous/ also has builds for 32-bit Intel, 32-bit ARM (e.g., Raspberry Pi), and 64-bit ARM.
+
+## Building
+
+If for whatever reason you would like to build from source:
+
+```
+go get github.com/probonopd/appimage/src/appimaged
+go build -trimpath -ldflags="-s -w" github.com/probonopd/appimage/src/appimaged
 ```
