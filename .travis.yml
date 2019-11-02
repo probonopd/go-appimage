@@ -16,6 +16,7 @@ git:
   depth: 1
 
 script:
+  - env
   - wget -c -q https://github.com/upx/upx/releases/download/v3.95/upx-3.95-amd64_linux.tar.xz
   - tar xf upx-*_linux.tar.xz
   - export PATH=$(readlink -f upx-*_linux/):$PATH
