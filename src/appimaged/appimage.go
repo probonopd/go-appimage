@@ -84,9 +84,9 @@ func (ai AppImage) discoverContents() {
 	// to resolve symlinks, and to determine which files to extract in addition to the desktop file and icon
 	cmd := exec.Command("")
 	if ai.imagetype == 1 {
-		cmd = exec.Command(here()+"/bsdtar", "-t", ai.path)
+		cmd = exec.Command(here()+"/bsdtar", "-t", "'"+ai.path+"'")
 	} else if ai.imagetype == 2 {
-		cmd = exec.Command(here()+"/unsquashfs", "-f", "-n", "-ll", "-o", strconv.FormatInt(ai.offset, 10), "-d", "", ai.path)
+		cmd = exec.Command(here()+"/unsquashfs", "-f", "-n", "-ll", "-o", strconv.FormatInt(ai.offset, 10), "-d", "'"+ai.path+"'")
 	}
 	log.Printf("cmd: %q\n", cmd)
 	var out bytes.Buffer
@@ -354,9 +354,9 @@ func (ai AppImage) setExecBit() {
 
 	err := os.Chmod(ai.path, 0755)
 	if err == nil {
-		log.Println("monitor: Set executable bit on", ai.path)
+		log.Println("appimage: Set executable bit on", ai.path)
 	}
-	// printError("monitor", err) // Do not print error since AppImages on read-only media are common
+	// printError("appimage", err) // Do not print error since AppImages on read-only media are common
 }
 
 // Integrate an AppImage into the system (put in menu, extract thumbnail)
@@ -391,24 +391,24 @@ func (ai AppImage) integrate() {
 
 	writeDesktopFile(ai) // Do not run with "go" as it would interfere with extractDirIconAsThumbnail
 
+	if *quietPtr == false {
+		sendDesktopNotification(ai.path, "Integrated")
+	}
+
 	// For performance reasons, we stop working immediately
-	// in case a desktop file already exists at that location
+	// in case a thumbnail file already exists at that location
 	if *overwritePtr == false {
-		// Compare mtime of desktop file and AppImage, similar to
+		// Compare mtime of thumbnail file and AppImage, similar to
 		// https://specifications.freedesktop.org/thumbnail-spec/thumbnail-spec-latest.html#MODIFICATIONS
 		if thumbnailFileInfo, err := os.Stat(ai.thumbnailfilepath); err == nil {
 			if appImageInfo, err := os.Stat(ai.path); err == nil {
 				diff := thumbnailFileInfo.ModTime().Sub(appImageInfo.ModTime())
 				if diff > (time.Duration(0) * time.Second) {
-					// Do nothing if the desktop file is already newer than the AppImage file
+					// Do nothing if the thumbnail file is already newer than the AppImage file
 					return
 				}
 			}
 		}
-	}
-
-	if *quietPtr == false {
-		sendDesktopNotification(ai.path, "Integrated")
 	}
 
 	ai.extractDirIconAsThumbnail() // Do not run with "go" as it would interfere with writeDesktopFile

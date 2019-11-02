@@ -30,6 +30,7 @@ func inotifyWatch(path string) {
 	log.Println("inotify: Watching", path)
 
 	var done bool
+
 	for {
 		select {
 		case event, ok := <-watcher.Events():
@@ -44,17 +45,16 @@ func inotifyWatch(path string) {
 				return
 			}
 
-			// log.Println(event.Body.Name)
-			log.Println("inotify:", event.Body.Op)
+			// log.Println("inotify:", event.Body.Op, event.Body.Name)
 
 			if event.Body.Op&fsnotify.Write == fsnotify.Write || event.Body.Op&fsnotify.Create == fsnotify.Create {
-				log.Println("inotify: Should check whether to register file:", event.Body.Name)
+				// log.Println("inotify: Should check whether to register file:", event.Body.Name)
 				// We would be interesting in "write complete", file closed
 				// IN_CLOSE https://stackoverflow.com/questions/2895187/which-inotify-event-signals-the-completion-of-a-large-file-operation
 				toBeIntegrated = appendIfMissing(toBeIntegrated, event.Body.Name)
 			}
 			if event.Body.Op&fsnotify.Remove == fsnotify.Remove || event.Body.Op&fsnotify.Rename == fsnotify.Rename {
-				log.Println("inotify: Should check whether to unregister file:", event.Body.Name)
+				// log.Println("inotify: Should check whether to unregister file:", event.Body.Name)
 				// May want to check filesystem whether it was integrated at all before doing anything
 				toBeUnintegrated = appendIfMissing(toBeUnintegrated, event.Body.Name)
 			}

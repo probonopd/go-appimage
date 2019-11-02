@@ -129,6 +129,7 @@ func main() {
 	// /opt
 	// /usr/local/bin
 
+	// FIXME: Use XDG translated names for Downloads and Desktop; blocked by https://github.com/adrg/xdg/issues/1 or https://github.com/OpenPeeDeeP/xdg/issues/6
 	watchedDirectories := []string{
 		home + "/Downloads",
 		home + "/Desktop",
