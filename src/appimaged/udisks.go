@@ -16,11 +16,12 @@ me@host:~/go/src/github.com/probonopd/appimage/src/appimaged$ ./appimaged 2>&1  
 2019/11/03 18:34:58 udisks: XXXXX map[1:@o "/org/gtk/Private/RemoteVolumeMonitor" 2:"org.gtk.Private.RemoteVolumeMonitor" 3:"MountRemoved" 7:":1.51" 8:@g "ss(ssssssbsassa{sv})"] [org.gtk.vfs.UDisks2VolumeMonitor 0x55ec0dfab100 [0x55ec0dfab100 KINGSTON . GThemedIcon drive-harddisk-usb drive-harddisk drive . GThemedIcon drive-harddisk-usb-symbolic drive-harddisk-symbolic drive-symbolic drive-harddisk-usb drive-harddisk drive  file:///media/me/KINGSTON true  [] gvfs.time_detected_usec.1572802480269453 map[]]]
 
 Verified on
-* Raspbian 10
-* Xbuntu 18.04.2 LTS
+* Raspbian 10 (2019)
+* Xbuntu 18.04.2 LTS (2018)
+* Deepin 15.11 (2019)
 
 Known NOT to work on
-* neon-useredition-20190321-0530-amd64.iso
+* neon-useredition-20190321-0530-amd64.iso (2019) - there we seemingly need to use Solid instead
 
 However it seems to be related to the Virtual filesystem for the GNOME desktop
 ("gfvs", "GNOME VFS") rather than XDG unfortunately, and
@@ -64,7 +65,7 @@ https://github.com/KDE/solid/tree/master/src/solid/devices/backends
 
 Wouldn't it make sense for XDG to standardize MountAdded, MountRemoved
 dbus messages that would be broadcast everyone interested (so that one doesn't
-need to "eavesdrop"), independent of whether the GNOME desktop is used?
+need to "eavesdrop"), independent of whether the GNOME or the KDE or another desktop is used?
 
 */
 
