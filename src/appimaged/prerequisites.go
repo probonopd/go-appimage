@@ -72,7 +72,7 @@ func checkToolAvailable(toolname string) bool {
 func stopSystemdService(servicename string) {
 	cmd := exec.Command("systemctl", "--user", "stop", servicename+".service")
 	if err := cmd.Run(); err != nil {
-		printError(cmd.String(), err)
+		printError(cmd.String(), err) // Needs Go 1.13
 	} else {
 		*cleanPtr = true // Clean up pre-existing desktop files from the other AppImage system integration daemon
 	}

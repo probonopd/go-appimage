@@ -108,7 +108,12 @@ func main() {
 // Periodically move desktop files from their temporary location
 // into the menu, so that the menu does not get rebuilt all the time
 func moveDesktopFiles() {
-	// log.Println("main: Ticktock")
+	// log.Println("main: xxxxxxxxxxxxxxx Ticktock")
+
+	// log.Println(watchedDirectories)
+	// for _, w := range watchedDirectories {
+	// 	log.Println(w.Path)
+	// }
 
 	for _, path := range toBeIntegrated {
 		ai := newAppImage(path)
@@ -169,6 +174,16 @@ func printError(context string, e error) {
 }
 
 func watchDirectories() {
+
+	// Unwatch everything we were watching before,
+	// prevent from trying to watch the same multiple times
+	// Results in:
+	// panic: close of closed channel
+	// for _, w := range watchedDirectories {
+	// 	log.Println("stop watching", w.Path)
+	// 	w.Close()
+	// }
+	// watchedDirectories = nil
 
 	// Register AppImages from well-known locations
 	// https://github.com/AppImage/appimaged#monitored-directories

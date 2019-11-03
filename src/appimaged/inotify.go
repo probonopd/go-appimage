@@ -6,6 +6,12 @@ package main
 // Super block root watch is designed to solve the scalability issues with inotify recursive watches.
 // The fanotify super block watch patch set is meant to fill this gap in functionality and add the functionality of a root watch.
 // It was merged to kernel v5.1-rc1.
+//
+// We should find a way to do with inotify since
+// normal users can only have 128 watched directories
+// (subdirectories seemingly count separately)
+// me@host:~$ cat /proc/sys/fs/inotify/max_user_instances
+// 128
 
 import (
 	"log"
@@ -18,6 +24,7 @@ import (
 // and how would this improve performance?
 
 func inotifyWatch(path string) {
+
 	watcher, err := recwatch.NewRecWatcher(path, true)
 	printError("inotify, probably already watching", err)
 	defer watcher.Close()

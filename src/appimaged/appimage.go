@@ -309,6 +309,8 @@ func saveToPngFile(filePath string, m image.Image) error {
 func (ai AppImage) determineImageType() int {
 	log.Println(ai.path)
 	f, err := os.Open(ai.path)
+	defer f.Close()
+
 	// printError("appimage", err)
 	if err != nil {
 		return -1 // If we were not able to open the file, then we report that it is not an AppImage
@@ -330,7 +332,6 @@ func (ai AppImage) determineImageType() int {
 		return 1
 	}
 
-	f.Close()
 	return -1
 }
 
@@ -445,6 +446,7 @@ func (ai AppImage) integrateOrUnintegrate() {
 
 func ioReader(file string) io.ReaderAt {
 	r, err := os.Open(file)
+	defer r.Close()
 	printError("appimage: elf:", err)
 	return r
 }
