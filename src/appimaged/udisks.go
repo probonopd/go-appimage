@@ -59,6 +59,9 @@ Why such a storm of messages?
 So it seems that despite mentions of "freedesktop" and "UDisks2", org.kde.Solid.Device
 is responsible for these kinds of messages on KDE.
 
+Apparently KDE Solid can use different backends, only one of which is UDisks2.
+https://github.com/KDE/solid/tree/master/src/solid/devices/backends
+
 Wouldn't it make sense for XDG to standardize MountAdded, MountRemoved
 dbus messages that would be broadcast everyone interested (so that one doesn't
 need to "eavesdrop"), independent of whether the GNOME desktop is used?
@@ -76,7 +79,7 @@ func monitorUdisks(conn *dbus.Conn) {
 	} else {
 		satisfied = true
 	}
-	e = conn.Object("org.kde.Solid", "/").Call("org.freedesktop.DBus.Introspectable.Introspect", 0).Store(&s)
+	e = conn.Object("org.kde.Solid.Device", "/").Call("org.freedesktop.DBus.Introspectable.Introspect", 0).Store(&s)
 	if e != nil {
 		log.Println("Failed to introspect org.kde.Solid", e)
 	} else {
