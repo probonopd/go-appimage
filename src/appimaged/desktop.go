@@ -8,13 +8,13 @@ import (
 	"log"
 	"os/exec"
 
-	"golang.org/x/sys/unix"
-
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"golang.org/x/sys/unix"
 
 	"github.com/adrg/xdg"
 	"gopkg.in/ini.v1"
@@ -96,19 +96,44 @@ func writeDesktopFile(ai AppImage) {
 	// Actions
 
 	var actions []string
-	// If the AppImage is writeable (= the user can remove it), then add a "Move to Trash" action
-	os.MkdirAll(xdg.DataHome+"/Trash/files/", 755)
+
+	// Add "Move to Trash" action
+	// if the AppImage is writeable (= the user can remove it)
+	//
+	// FIXME: The current implementation is desktop specfific and breaks
+	// if the user uses the same home directory with multiple desktops.
+	// Why isn't there a XDG standard tool or dbus call to move files to the Trash?
+	// According to http://xahlee.info/linux/linux_trash_location.html:
+	// Where is the trash directory?
+	// ~/.local/share/Trash/ → on your local file system.
+	// /root/.local/share/Trash/ → if you are root, on your local file system.
+	// /media/PENDRIVE/.Trash-1000/ → on a USB drive.
+
 	if isWritable(ai.path) {
 		actions = append(actions, "Remove")
 		cfg.Section("Desktop Action Remove").Key("Name").SetValue("Move to Trash")
-		cfg.Section("Desktop Action Remove").Key("Exec").SetValue("mv '" + ai.path + "' " + xdg.DataHome + "/Trash/files/")
+		if isCommandAvailable("gio") {
+			// A command line tool to move files to the Trash. However, GNOME-specific
+			cfg.Section("Desktop Action Remove").Key("Exec").SetValue("gio trash '" + ai.path + "'")
+		} else if isCommandAvailable("kioclient") {
+			// Of course KDE has its own facility for doing the exact same thing
+			cfg.Section("Desktop Action Remove").Key("Exec").SetValue("kioclient move '" + ai.path + "' trash:/")
+		}
 	}
 
+	// Add "Update" action
 	// TODO: Find usable (latest version of) AppImageUpdate and/or AppImageUpdater in a more fancy way
 	if isCommandAvailable("AppImageUpdate") {
 		actions = append(actions, "Update")
 		cfg.Section("Desktop Action Update").Key("Name").SetValue("Update")
 		cfg.Section("Desktop Action Update").Key("Exec").SetValue("AppImageUpdate '" + ai.path + "'")
+	}
+
+	// Add "Open Containing Folder" action
+	if isCommandAvailable("xdg-open") {
+		actions = append(actions, "Show")
+		cfg.Section("Desktop Action Update").Key("Name").SetValue("Open Containing Folder")
+		cfg.Section("Desktop Action Update").Key("Exec").SetValue("xdg-open '" + filepath.Clean(ai.path+"/../") + "'")
 	}
 
 	as := ";"
