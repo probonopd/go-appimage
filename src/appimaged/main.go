@@ -30,6 +30,7 @@ var quit = make(chan struct{})
 var overwritePtr = flag.Bool("o", false, "Overwrite existing desktop integration")
 var cleanPtr = flag.Bool("c", false, "Clean pre-existing desktop files")
 var notifPtr = flag.Bool("n", false, "Send desktop notifications")
+var noZeroconfPtr = flag.Bool("nz", false, "Do not announce this service on the network using Zeroconf")
 
 var toBeIntegrated []string
 var toBeUnintegrated []string
@@ -79,7 +80,9 @@ func main() {
 
 	watchDirectories()
 
-	go registerZeroconfService()
+	if *noZeroconfPtr == false {
+		go registerZeroconfService()
+	}
 	go browseZeroconfServices()
 
 	// Use dbus to find out about AppImages to be handled
