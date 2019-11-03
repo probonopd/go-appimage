@@ -161,6 +161,11 @@ func writeDesktopFile(ai AppImage) {
 		actions = append(actions, "FirejailPrivate")
 		cfg.Section("Desktop Action FirejailPrivate").Key("Name").SetValue("Run in Private Firejail Sandbox")
 		cfg.Section("Desktop Action FirejailPrivate").Key("Exec").SetValue("firejail --env=DESKTOPINTEGRATION=appimaged --noprofile --private --appimage '" + ai.path + "'")
+
+		actions = append(actions, "FirejailOverlayTmpfs")
+		cfg.Section("Desktop Action FirejailOverlayTmpfs").Key("Name").SetValue("Run in Firejail with Temporary Overlay Filesystem")
+		cfg.Section("Desktop Action FirejailOverlayTmpfs").Key("Exec").SetValue("firejail --env=DESKTOPINTEGRATION=appimaged --noprofile --overlay-tmpfs --appimage '" + ai.path + "'")
+
 	}
 
 	as := ""
