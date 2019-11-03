@@ -69,7 +69,7 @@ func monitorUdisks(conn *dbus.Conn) {
 
 	// Check whether UDisks2VolumeMonitor is available, exit otherwise
 	var s string
-	bool satisfied := false
+	satisfied := false
 	e := conn.Object("org.gtk.vfs.UDisks2VolumeMonitor", "/").Call("org.freedesktop.DBus.Introspectable.Introspect", 0).Store(&s)
 	if e != nil {
 		log.Println("Failed to introspect org.gtk.vfs.UDisks2VolumeMonitor", e)
@@ -82,7 +82,7 @@ func monitorUdisks(conn *dbus.Conn) {
 	} else {
 		satisfied = true
 	}
-	
+
 	if satisfied == false {
 		os.Exit(1)
 	}
@@ -92,7 +92,7 @@ func monitorUdisks(conn *dbus.Conn) {
 		// "interface='org.gtk.Private.RemoteVolumeMonitor'",
 		"member='MountAdded'",   // org.gtk.Private.RemoteVolumeMonitor
 		"member='MountRemoved'", // org.gtk.Private.RemoteVolumeMonitor
-		"member='setupDone'", // org.kde.Solid.Device
+		"member='setupDone'",    // org.kde.Solid.Device
 	}
 	var flag uint = 0
 
