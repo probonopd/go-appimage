@@ -37,7 +37,7 @@ If for whatever reason you would like to build from source:
 
 ```
 sudo apt-get -y install gcc 
-go get github.com/probonopd/appimage/src/appimaged || true
+go get -v github.com/probonopd/appimage/src/appimaged || true
 if [ -z $GOPATH ] ; then export GOPATH=$HOME/go ; fi
 rm -rf $GOPATH/src/github.com/purpleidea/mgmt/vendor/gopkg.in/fsnotify.v1/
 go get github.com/probonopd/appimage/src/appimaged 
