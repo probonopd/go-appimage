@@ -27,8 +27,7 @@ func monitorUdisks(conn *dbus.Conn) {
 	log.Println("monitor: Monitoring DBus session bus")
 
 	for v := range c {
-		// log.Println("udisks:", v.Headers)
-		// log.Println("udisks:", v.Body)
+		log.Println("udisks:", v.Headers, v.Body)
 		if v.Headers[3].Value() == "Hello" || v.Headers[3].Value() == "RemoveMatch" {
 			log.Println("udisks: XXXXX", v.Headers[3])
 			watchDirectories()

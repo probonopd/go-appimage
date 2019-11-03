@@ -48,6 +48,7 @@ func main() {
 	log.Println("main: xdg.DataHome =", xdg.DataHome)
 
 	checkPrerequisites()
+	deleteDesktopFilesWithNonExistingTargets()
 
 	flag.Parse()
 	log.Println("Overwrite:", *overwritePtr)
@@ -239,5 +240,7 @@ func watchDirectories() {
 			return
 		}
 	}
+
+	deleteDesktopFilesWithNonExistingTargets()
 
 }

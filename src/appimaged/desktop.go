@@ -7,6 +7,7 @@ package main
 import (
 	"log"
 
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -98,4 +99,41 @@ func writeDesktopFile(ai AppImage) {
 	if err != nil {
 		log.Println(err)
 	}
+}
+
+func checkIfExecFileExists(desktopfilepath string) bool {
+	_, err := os.Stat(desktopfilepath)
+	if os.IsNotExist(err) {
+		return false
+	}
+	cfg, e := ini.Load(desktopfilepath)
+	printError("desktop", e)
+	dst := cfg.Section("Desktop Entry").Key("Exec").String()
+
+	_, err = os.Stat(dst)
+	if os.IsNotExist(err) {
+		log.Println(dst, "does not exist, it is mentioned in", desktopfilepath)
+		return false
+	}
+	return true
+}
+
+func deleteDesktopFilesWithNonExistingTargets() {
+	files, e := ioutil.ReadDir(xdg.DataHome + "/applications/")
+	printError("desktop", e)
+	if e != nil {
+		return
+	}
+
+	for _, file := range files {
+		if strings.HasSuffix(file.Name(), ".desktop") && strings.HasPrefix(file.Name(), "appimagekit_") {
+			exists := checkIfExecFileExists(xdg.DataHome + "/applications/" + file.Name())
+			if exists == false {
+				log.Println("Deleting", xdg.DataHome+"/applications/"+file.Name())
+				e = os.Remove(xdg.DataHome + "/applications/" + file.Name())
+				printError("desktop", e)
+			}
+		}
+	}
+
 }

@@ -6,6 +6,7 @@ package main
 // Super block root watch is designed to solve the scalability issues with inotify recursive watches.
 // The fanotify super block watch patch set is meant to fill this gap in functionality and add the functionality of a root watch.
 // It was merged to kernel v5.1-rc1.
+// Currently fanotify needs root rights (CAP_ADMIN privileges)
 //
 // We should find a way to do with inotify since
 // normal users can only have 128 watched directories
