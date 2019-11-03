@@ -78,6 +78,9 @@ func main() {
 
 	watchDirectories()
 
+	go registerZeroconfService()
+	go browseZeroconfServices()
+
 	// Use dbus to find out about AppImages to be handled
 	// go monitorDbusSessionBus()
 	// or
