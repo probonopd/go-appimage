@@ -70,7 +70,7 @@ need to "eavesdrop"), independent of whether the GNOME desktop is used?
 
 func monitorUdisks(conn *dbus.Conn) {
 
-	// Check whether UDisks2VolumeMonitor is available, exit otherwise
+	// Check whether UDisks2VolumeMonitor or org.kde.Solid is available, exit otherwise
 	var s string
 	satisfied := false
 	e := conn.Object("org.gtk.vfs.UDisks2VolumeMonitor", "/").Call("org.freedesktop.DBus.Introspectable.Introspect", 0).Store(&s)
@@ -79,7 +79,9 @@ func monitorUdisks(conn *dbus.Conn) {
 	} else {
 		satisfied = true
 	}
-	e = conn.Object("org.kde.Solid.Device", "/").Call("org.freedesktop.DBus.Introspectable.Introspect", 0).Store(&s)
+	// FIXME: For whatever reason this does NOT work with org.kde.Solid.Device
+	// (which we actually care about), so we check the next best thing
+	e = conn.Object("org.kde.Solid.PowerManagement", "/").Call("org.freedesktop.DBus.Introspectable.Introspect", 0).Store(&s)
 	if e != nil {
 		log.Println("Failed to introspect org.kde.Solid", e)
 	} else {
@@ -87,6 +89,8 @@ func monitorUdisks(conn *dbus.Conn) {
 	}
 
 	if satisfied == false {
+		log.Println("Don't know how to get notified about mounted and unmounted devices on this system", e)
+		log.Println("using dbus. Every system seems to do it differently.", e)
 		os.Exit(1)
 	}
 
