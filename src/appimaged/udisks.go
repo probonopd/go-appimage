@@ -100,6 +100,7 @@ func monitorUdisks(conn *dbus.Conn) {
 		"member='MountAdded'",   // org.gtk.Private.RemoteVolumeMonitor
 		"member='MountRemoved'", // org.gtk.Private.RemoteVolumeMonitor
 		"member='setupDone'",    // org.kde.Solid.Device
+		"member='teardownDone'", // org.kde.Solid.Device
 	}
 	var flag uint = 0
 
