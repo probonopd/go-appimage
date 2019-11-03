@@ -19,6 +19,9 @@ Verified on
 * Raspbian 10
 * Xbuntu 18.04.2 LTS
 
+Known NOT to work on
+* neon-useredition-20190321-0530-amd64.iso
+
 However it seems to be related to the Virtual filesystem for the GNOME desktop
 ("gfvs", "GNOME VFS") rather than XDG unfortunately, and
 sure enough it seems to be a Red Hat thing
