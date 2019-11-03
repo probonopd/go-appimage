@@ -36,11 +36,12 @@ func registerZeroconfService() {
 
 	<-sig
 
-	log.Println("zeroconf: Shutting down")
+	log.Println("zeroconf: Shutting down...")
 
 	// FIXME: ...and then nothing happens,
 	// so we are forcing it... but this feels wrong
 	service.Shutdown()
+	log.Println("zeroconf: Shut down")
 	os.Exit(0)
 }
 

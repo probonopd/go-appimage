@@ -39,6 +39,7 @@ var conn *dbus.Conn
 func main() {
 
 	conn, err := dbus.SessionBus()
+	defer conn.Close()
 	if err != nil {
 		log.Println(os.Stderr, "Failed to connect to session bus:", err)
 		return

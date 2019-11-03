@@ -71,6 +71,7 @@ func monitorDbusSessionBus(conn *dbus.Conn) {
 
 	c := make(chan *dbus.Message, 10)
 	conn.Eavesdrop(c)
+
 	log.Println("monitor: Monitoring DBus session bus")
 
 	// Note:
