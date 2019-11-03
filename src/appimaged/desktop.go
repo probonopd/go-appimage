@@ -53,7 +53,7 @@ func writeDesktopFile(ai AppImage) {
 
 	// FIXME: KDE seems to have a problem when the AppImage is on a partition of which the disklabel contains "_"?
 	// Then the desktop file won't run the application
-	cfg.Section("Desktop Entry").Key("Exec").SetValue(ai.path) // KDE does not accept, even if desktop-file-validate allows ("\"" + ai.path + "\"")
+	cfg.Section("Desktop Entry").Key("Exec").SetValue("'" + ai.path + "'") // KDE does not accept, even if desktop-file-validate allows ("\"" + ai.path + "\"")
 	// cfg.Section("Desktop Entry").Key("TryExec").SetValue(ai.path) // KDE does not accept, even if desktop-file-validate allows ("\"" + ai.path + "\"")
 	cfg.Section("Desktop Entry").Key("Type").SetValue("Application")
 	// Construct the Name entry based on the actual filename
@@ -110,14 +110,14 @@ func writeDesktopFile(ai AppImage) {
 	// /media/PENDRIVE/.Trash-1000/ → on a USB drive.
 
 	if isWritable(ai.path) {
-		actions = append(actions, "Remove")
-		cfg.Section("Desktop Action Remove").Key("Name").SetValue("Move to Trash")
+		actions = append(actions, "Trash")
+		cfg.Section("Desktop Action Trash").Key("Name").SetValue("Move to Trash")
 		if isCommandAvailable("gio") {
 			// A command line tool to move files to the Trash. However, GNOME-specific
-			cfg.Section("Desktop Action Remove").Key("Exec").SetValue("gio trash '" + ai.path + "'")
+			cfg.Section("Desktop Action Trash").Key("Exec").SetValue("gio trash '" + ai.path + "'")
 		} else if isCommandAvailable("kioclient") {
 			// Of course KDE has its own facility for doing the exact same thing
-			cfg.Section("Desktop Action Remove").Key("Exec").SetValue("kioclient move '" + ai.path + "' trash:/")
+			cfg.Section("Desktop Action Trash").Key("Exec").SetValue("kioclient move '" + ai.path + "' trash:/")
 		}
 	}
 
@@ -137,6 +137,7 @@ func writeDesktopFile(ai AppImage) {
 	}
 
 	/*
+	   # For testing Firejail:
 	   # The simplest and most straightforward way to get the most recent version
 	   # of Firejail running on a less than recent OS; don't do this at home kids
 	   FILE=$(wget -q "http://dl-cdn.alpinelinux.org/alpine/edge/main/x86_64/" -O - | grep musl-1 | head -n 1 | cut -d '"' -f 2)
@@ -149,6 +150,8 @@ func writeDesktopFile(ai AppImage) {
 	*/
 
 	// Add "Run in Firejail" action
+	// TODO: Based on what the AppImage author has specified, run AppImages by default
+	// with the matching subsets of rights, e.g., without network access
 	if isCommandAvailable("firejail") {
 		actions = append(actions, "Firejail")
 		cfg.Section("Desktop Action Firejail").Key("Name").SetValue("Run in Firejail")
@@ -165,7 +168,6 @@ func writeDesktopFile(ai AppImage) {
 		actions = append(actions, "FirejailOverlayTmpfs")
 		cfg.Section("Desktop Action FirejailOverlayTmpfs").Key("Name").SetValue("Run in Firejail with Temporary Overlay Filesystem")
 		cfg.Section("Desktop Action FirejailOverlayTmpfs").Key("Exec").SetValue("firejail --env=DESKTOPINTEGRATION=appimaged --noprofile --overlay-tmpfs --appimage '" + ai.path + "'")
-
 	}
 
 	as := ""
