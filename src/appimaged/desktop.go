@@ -6,6 +6,9 @@ package main
 
 import (
 	"log"
+	"os/exec"
+
+	"golang.org/x/sys/unix"
 
 	"io/ioutil"
 	"os"
@@ -90,6 +93,30 @@ func writeDesktopFile(ai AppImage) {
 	cfg.Section("Desktop Entry").Key("Comment").SetValue(ai.path)
 	cfg.Section("Desktop Entry").Key("X-AppImage-Identifier").SetValue(ai.md5)
 
+	// Actions
+
+	var actions []string
+	// If the AppImage is writeable (= the user can remove it), then add a "Move to Trash" action
+	os.MkdirAll(xdg.DataHome+"/Trash/files/", 755)
+	if isWritable(ai.path) {
+		actions = append(actions, "Remove")
+		cfg.Section("Desktop Action Remove").Key("Name").SetValue("Move to Trash")
+		cfg.Section("Desktop Action Remove").Key("Exec").SetValue("mv '" + ai.path + "' " + xdg.DataHome + "/Trash/files/")
+	}
+
+	// TODO: Find usable (latest version of) AppImageUpdate and/or AppImageUpdater in a more fancy way
+	if isCommandAvailable("AppImageUpdate") {
+		actions = append(actions, "Update")
+		cfg.Section("Desktop Action Update").Key("Name").SetValue("Update")
+		cfg.Section("Desktop Action Update").Key("Exec").SetValue("AppImageUpdate '" + ai.path + "'")
+	}
+
+	as := ";"
+	for _, action := range actions {
+		as = as + action + ";"
+	}
+	cfg.Section("Desktop Entry").Key("Actions").SetValue(as)
+
 	log.Println("desktop: Saving to", desktopcachedir+filename)
 	err = cfg.SaveTo(desktopcachedir + filename)
 	if err != nil {
@@ -136,4 +163,18 @@ func deleteDesktopFilesWithNonExistingTargets() {
 		}
 	}
 
+}
+
+// Return true if a path to a file is writable
+func isWritable(path string) bool {
+	return unix.Access(path, unix.W_OK) == nil
+}
+
+// Return true if a file is on the $PATH
+func isCommandAvailable(name string) bool {
+	cmd := exec.Command("/bin/sh", "-c", "command -v "+name)
+	if err := cmd.Run(); err != nil {
+		return false
+	}
+	return true
 }

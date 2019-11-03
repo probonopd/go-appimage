@@ -60,6 +60,8 @@ Why such a storm of messages?
 So it seems that despite mentions of "freedesktop" and "UDisks2", org.kde.Solid.Device
 is responsible for these kinds of messages on KDE.
 
+Solid is a device integration framework. It provides a way of querying and
+interacting with hardware independently of the underlying operating system.
 Apparently KDE Solid can use different backends, only one of which is UDisks2.
 https://github.com/KDE/solid/tree/master/src/solid/devices/backends
 
