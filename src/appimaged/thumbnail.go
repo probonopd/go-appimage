@@ -132,7 +132,7 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	}
 	if issvg.Is(buf) {
 		log.Println("thumbnail: .DirIcon in", ai.path, "is an SVG, this is discouraged. Costly converting it now")
-		err = convertToPng(thumbnailcachedir + "/.DirIccon")
+		err = convertToPng(thumbnailcachedir + "/.DirIcon")
 		printError("thumbnail", err)
 	}
 
