@@ -39,6 +39,16 @@ var conn *dbus.Conn
 
 func main() {
 
+	// As quickly as possible go there if we are invoked with the "appwrap" command
+	if len(os.Args) > 1 {
+		if os.Args[1] == "appwrap" {
+			appwrap()
+			os.Exit(0)
+		}
+	}
+
+	flag.Parse()
+
 	conn, err := dbus.SessionBus()
 	defer conn.Close()
 	if err != nil {
@@ -49,10 +59,16 @@ func main() {
 	log.Println("main: Running from", here())
 	log.Println("main: xdg.DataHome =", xdg.DataHome)
 
+	conn, err = dbus.SessionBus()
+	defer conn.Close()
+	if err != nil {
+		log.Println(os.Stderr, "Failed to connect to session bus:", err)
+		return
+	}
+
 	checkPrerequisites()
 	deleteDesktopFilesWithNonExistingTargets()
 
-	flag.Parse()
 	log.Println("Overwrite:", *overwritePtr)
 	log.Println("Clean:", *overwritePtr)
 
