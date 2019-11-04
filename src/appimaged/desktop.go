@@ -119,6 +119,15 @@ func writeDesktopFile(ai AppImage) {
 			// Of course KDE has its own facility for doing the exact same thing
 			cfg.Section("Desktop Action Trash").Key("Exec").SetValue("kioclient move '" + ai.path + "' trash:/")
 		}
+
+		actions = append(actions, "OpenPortableHome")
+		cfg.Section("Desktop Action OpenPortableHome").Key("Name").SetValue("Open Portable Home in File Manager")
+		cfg.Section("Desktop Action OpenPortableHome").Key("Exec").SetValue("xdg-open '" + ai.path + ".home'")
+
+		actions = append(actions, "CreatePortableHome")
+		cfg.Section("Desktop Action CreatePortableHome").Key("Name").SetValue("Create Portable Home")
+		cfg.Section("Desktop Action CreatePortableHome").Key("Exec").SetValue("mkdir -p '" + ai.path + ".home'")
+
 	}
 
 	// Add "Update" action
