@@ -50,7 +50,9 @@ func inotifyWatch(path string) {
 					continue
 				}
 
-				log.Println("inotify:", event.Op, event.Name)
+				if *verbosePtr == true {
+					log.Println("inotify:", event.Op, event.Name)
+				}
 
 				if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Create == fsnotify.Create {
 					// log.Println("inotify: Should check whether to register file:", event.Name)

@@ -154,6 +154,8 @@ func calculateElfSize(filepath string) int64 {
 	defer C.free(unsafe.Pointer(cstr))
 	C.puts(cstr)
 	total := int64(C.calc(cstr))
-	log.Println("elfsize: offset:", total, filepath)
+	if *verbosePtr == true {
+		log.Println("elfsize: offset:", total, filepath)
+	}
 	return total
 }

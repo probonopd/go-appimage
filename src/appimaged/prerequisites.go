@@ -17,8 +17,11 @@ func checkPrerequisites() {
 
 	// Check if the tools that we need are available and warn if they are not
 	// TODO: Elaborate checks whether the tools have the functionality we need (offset, ZISOFS)
-	isCommandAvailable("unsquashfs")
-	isCommandAvailable("bsdtar")
+	if isCommandAvailable("unsquashfs") == false || isCommandAvailable("bsdtar") == false {
+		println("Required helper tools are missing.")
+		println("Please make sure that recent versions of unsquashfs and bsdtar are on the $PATH")
+		os.Exit(1)
+	}
 
 	// Stop any other AppImage system integration daemon
 	// so that they won't interfere with each other
@@ -92,6 +95,8 @@ func isCommandAvailable(name string) bool {
 	return true
 }
 
+// ensureRunningFromLiveSystem checks if we are running on one of the supported Live systems
+// and exits the process if we are not
 func ensureRunningFromLiveSystem() {
 	keywords := []string{"casper", "live", "Live", ".iso"}
 	b, _ := ioutil.ReadFile("/proc/cmdline")

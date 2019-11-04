@@ -156,13 +156,15 @@ func (ai AppImage) determineImageType() int {
 // TODO: Instead of magic string, could probably use something like []byte{'\r', '\n'} or []byte("AI")
 func checkMagicAtOffset(f *os.File, magic string, offset int64) bool {
 	_, err := f.Seek(offset, 0) // Go to offset
-	printError("checkMagicAtOffset", err)
+	printError("checkMagicAtOffset: "+f.Name(), err)
 	b := make([]byte, len(magic)/2) // Read bytes
 	n, err := f.Read(b)
-	printError("checkMagicAtOffset", err)
+	printError("checkMagicAtOffset: "+f.Name(), err)
 	hexmagic := hex.EncodeToString(b[:n])
 	if hexmagic == magic {
-		log.Printf("checkMagicAtOffset: %v: Magic 0x%x at offset %v\n", f.Name(), string(b[:n]), offset)
+		if *verbosePtr == true {
+			log.Printf("checkMagicAtOffset: %v: Magic 0x%x at offset %v\n", f.Name(), string(b[:n]), offset)
+		}
 		return true
 	}
 	return false

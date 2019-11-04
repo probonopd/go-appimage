@@ -35,7 +35,7 @@ func sendDesktopNotification(title string, body string) {
 		// When this happens, then also the eavesdropping on UDisks2 etc. messages does no longer work.
 		// Which means we are no longer functional, and have to exit.
 		os.Exit(111)
-		// FIXME: What to do instead?
+		// FIXME: What to do instead? Any help appreciated.
 	}
 
 }

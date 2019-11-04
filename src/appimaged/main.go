@@ -27,6 +27,7 @@ import (
 
 var quit = make(chan struct{})
 
+var verbosePtr = flag.Bool("v", false, "Print verbose log messages")
 var overwritePtr = flag.Bool("o", false, "Overwrite existing desktop integration")
 var cleanPtr = flag.Bool("c", false, "Clean pre-existing desktop files")
 var notifPtr = flag.Bool("n", false, "Send desktop notifications")
@@ -87,22 +88,13 @@ func main() {
 	// as per https://github.com/AppImage/AppImageSpec/blob/master/draft.md#desktop-integration
 	os.Setenv("DESKTOPINTEGRATION", "go-appimaged")
 
-	// Maybe not needed? At least on Xubuntu it seems to work without this
 	// Try to register ourselves as a thumbnailer for AppImages, in the hope that
 	// DBus notifications will be generated for AppImages as thumbnail-able files
 	// FIXME: Currently getting: No such interface 'org.freedesktop.thumbnails' on object at path /org/freedesktop/thumbnails/Manager1
-	// conn, err := dbus.SessionBus()
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// obj := conn.Object("org.freedesktop.thumbnails.Manager1", "/org/freedesktop/thumbnails/Manager1")
-	// call := obj.Call("org.freedesktop.thumbnails.Manager1", 0, "", uint32(0),
-	// 	"Register", "DBP_DBUS_THUMB_OBJECT", "file", "application/vnd.appimage", []string{},
-	// 	map[string]dbus.Variant{}, int32(5000))
-	// if call.Err != nil {
-	// 	println(call.Err.Error())
-	// }
+	// Maybe not needed? At least on Xubuntu it seems to work without this
+	// but perhaps it is why KDE ignores our nice thumbnails
 
+	// React to partitions being mounted and unmounted
 	go monitorUdisks()
 
 	watchDirectories()
@@ -122,7 +114,7 @@ func main() {
 	}
 
 	// Ticker to periodically move desktop files into system
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(2 * time.Second)
 	quit := make(chan struct{})
 
 	go func() {
@@ -177,18 +169,6 @@ func moveDesktopFiles() {
 		err = os.Rename(desktopcachedir+"/"+file.Name(), xdg.DataHome+"/applications/"+file.Name())
 		printError("main", err)
 	}
-
-	// Use desktop-file-install instead?
-
-	// var filenames []string
-	// for _, file := range files {
-	// 	filenames = append(filenames, file.Name())
-	// }
-	// cmd := "desktop-file-install"
-	// if err := exec.Command(cmd, filenames...).Run(); err != nil {
-	// 	printError("main: desktop-file-install", err)
-	// }
-
 }
 
 // Returns the location of the executable
@@ -243,12 +223,13 @@ func watchDirectories() {
 	// TODO: Maybe we don't want to walk subdirectories?
 	// filepath.Walk is handy but scans subfolders too, by default, which might not be what you want.
 	// The Go stdlib also provides ioutil.ReadDir
-	println("Registering AppImages in well-known locations and their subdirectories...")
+	log.Println("Registering AppImages in well-known locations and their subdirectories...")
 
 	watchDirectoriesReally(watchedDirectories)
 
 	deleteDesktopFilesWithNonExistingTargets()
-
+	// So this should also catch AppImages which were formerly hidden in some subdirectory
+	// where the whole directory was deleted
 }
 
 func watchDirectoriesReally(watchedDirectories []string) {

@@ -208,8 +208,9 @@ func writeDesktopFile(ai AppImage) {
 		as = as + action + ";"
 	}
 	cfg.Section("Desktop Entry").Key("Actions").SetValue(as)
-
-	log.Println("desktop: Saving to", desktopcachedir+filename)
+	if *verbosePtr == true {
+		log.Println("desktop: Saving to", desktopcachedir+filename)
+	}
 	err = cfg.SaveTo(desktopcachedir + filename)
 	if err != nil {
 		log.Printf("Fail to write file: %v", err)
