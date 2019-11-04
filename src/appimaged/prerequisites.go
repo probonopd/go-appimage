@@ -12,8 +12,8 @@ import (
 func checkPrerequisites() {
 	// Check if the tools that we need are available and warn if they are not
 	// TODO: Elaborate checks whether the tools have the functionality we need (offset, ZISOFS)
-	checkToolAvailable("unsquashfs")
-	checkToolAvailable("bsdtar")
+	isCommandAvailable("unsquashfs")
+	isCommandAvailable("bsdtar")
 
 	// Stop any other AppImage system integration daemon
 	// so that they won't interfere with each other
@@ -59,16 +59,6 @@ func checkPrerequisites() {
 	printError("main:", err)
 }
 
-// Print a warning if a tool is not there
-func checkToolAvailable(toolname string) bool {
-	if _, err := os.Stat(here() + "/" + toolname); os.IsNotExist(err) {
-		log.Println("ERROR: bsdtar is missing in", here()+"/"+toolname)
-		log.Println("You can get it from https://github.com/probonopd/static-tools/releases/tag/continuous")
-		os.Exit(1)
-	}
-	return true
-}
-
 func stopSystemdService(servicename string) {
 	cmd := exec.Command("systemctl", "--user", "stop", servicename+".service")
 	if err := cmd.Run(); err != nil {
@@ -87,4 +77,13 @@ func exitIfBinfmtExists(path string) {
 		println("echo -1 | sudo tee", path)
 		os.Exit(1)
 	}
+}
+
+// Return true if a file is on the $PATH
+func isCommandAvailable(name string) bool {
+	cmd := exec.Command("/bin/sh", "-c", "command -v "+name)
+	if err := cmd.Run(); err != nil {
+		return false
+	}
+	return true
 }

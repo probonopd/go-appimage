@@ -6,7 +6,6 @@ package main
 
 import (
 	"log"
-	"os/exec"
 
 	"io/ioutil"
 	"os"
@@ -259,13 +258,4 @@ func deleteDesktopFilesWithNonExistingTargets() {
 // Return true if a path to a file is writable
 func isWritable(path string) bool {
 	return unix.Access(path, unix.W_OK) == nil
-}
-
-// Return true if a file is on the $PATH
-func isCommandAvailable(name string) bool {
-	cmd := exec.Command("/bin/sh", "-c", "command -v "+name)
-	if err := cmd.Run(); err != nil {
-		return false
-	}
-	return true
 }
