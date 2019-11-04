@@ -131,6 +131,12 @@ func writeDesktopFile(ai AppImage) {
 
 	}
 
+	// Add OpenDesktopFile action
+	// actions = append(actions, "OpenDesktopFile")
+	// cfg.Section("Desktop Action OpenDesktopFile").Key("Name").SetValue("Open Desktop File")
+	// FIXME: This would actually launch the desktop file, not show it in an editor!
+	// cfg.Section("Desktop Action OpenDesktopFile").Key("Exec").SetValue("xdg-open '" + ai.desktopfilepath + "'")
+
 	// Add "Extract" action
 	// TODO: Actually, we could do the extraction ourselves since we have the extraction logic on board anyways
 	// then we could have a better name for the extracted location, and could handle type-1 as well
