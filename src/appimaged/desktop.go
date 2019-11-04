@@ -128,13 +128,18 @@ func writeDesktopFile(ai AppImage) {
 		cfg.Section("Desktop Action CreatePortableHome").Key("Name").SetValue("Create Portable Home")
 		cfg.Section("Desktop Action CreatePortableHome").Key("Exec").SetValue("mkdir -p '" + ai.path + ".home'")
 
-		// TODO: Actually, we could do the extraction ourselves since we have the extraction logic on board anyways
-		// then we could have a better name for the extracted location, and could handle type-1 as well
-		// TODO: Maybe have a dbus action for extracting AppImages that could be invoked?
-		if ai.imagetype > 1 {
-			actions = append(actions, "Extract")
-			cfg.Section("Desktop Action Extract").Key("Name").SetValue("Extract to AppDir")
+	}
+
+	// TODO: Actually, we could do the extraction ourselves since we have the extraction logic on board anyways
+	// then we could have a better name for the extracted location, and could handle type-1 as well
+	// TODO: Maybe have a dbus action for extracting AppImages that could be invoked?
+	if ai.imagetype > 1 {
+		actions = append(actions, "Extract")
+		cfg.Section("Desktop Action Extract").Key("Name").SetValue("Extract to AppDir")
+		if isWritable(ai.path) {
 			cfg.Section("Desktop Action Extract").Key("Exec").SetValue("bash -c \"cd '" + filepath.Clean(ai.path+"/../") + "' && '" + ai.path + "' --appimage-extract" + " && xdg-open '" + filepath.Clean(ai.path+"/../squashfs-root") + "'\"")
+		} else {
+			cfg.Section("Desktop Action Extract").Key("Exec").SetValue("bash -c \"cd ~ && '" + ai.path + "' --appimage-extract" + " && xdg-open ~/squashfs-root\"")
 		}
 	}
 
