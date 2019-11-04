@@ -83,7 +83,9 @@ func (ai AppImage) discoverContents() {
 	} else if ai.imagetype == 2 {
 		cmd = exec.Command(here()+"/unsquashfs", "-f", "-n", "-ll", "-o", strconv.FormatInt(ai.offset, 10), "-d", "'"+ai.path+"'")
 	}
-	log.Printf("cmd: %q\n", cmd)
+	if *verbosePtr == true {
+		log.Printf("cmd: %q\n", cmd)
+	}
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()
@@ -99,8 +101,9 @@ func (ai AppImage) calculateMD5filenamepart() string {
 }
 
 func runCommand(cmd *exec.Cmd) (io.Writer, error) {
-
-	log.Printf("runCommand: %q\n", cmd)
+	if *verbosePtr == true {
+		log.Printf("runCommand: %q\n", cmd)
+	}
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()

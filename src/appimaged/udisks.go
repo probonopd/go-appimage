@@ -130,8 +130,8 @@ func monitorUdisks() {
 	log.Println("monitor: Monitoring DBus session bus")
 
 	for v := range c {
-		log.Println("udisks: XXXXX", v.Headers, v.Body)
-		// log.Println("udisks: XXXXX", v.Headers[3])
+		log.Println("udisks:", v.Headers, v.Body)
+		// log.Println("udisks:", v.Headers[3])
 		watchDirectories()
 	}
 
