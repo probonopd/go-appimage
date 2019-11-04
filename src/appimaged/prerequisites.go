@@ -1,15 +1,20 @@
 package main
 
 import (
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/adrg/xdg"
 )
 
 func checkPrerequisites() {
+
+	ensureRunningFromLiveSystem()
+
 	// Check if the tools that we need are available and warn if they are not
 	// TODO: Elaborate checks whether the tools have the functionality we need (offset, ZISOFS)
 	isCommandAvailable("unsquashfs")
@@ -69,7 +74,6 @@ func stopSystemdService(servicename string) {
 }
 
 func exitIfBinfmtExists(path string) {
-
 	cmd := exec.Command("/bin/sh", "-c", "echo -1 | sudo tee "+path)
 	cmd.Run()
 	if _, err := os.Stat(path); err == nil {
@@ -86,4 +90,21 @@ func isCommandAvailable(name string) bool {
 		return false
 	}
 	return true
+}
+
+func ensureRunningFromLiveSystem() {
+	keywords := []string{"casper", "live", "Live", ".iso"}
+	b, _ := ioutil.ReadFile("/proc/cmdline")
+	str := string(b)
+	found := false
+	for _, k := range keywords {
+		if strings.Contains(str, k) {
+			found = true
+		}
+	}
+	if found == false {
+		println("Not running on one of the supported Live systems.")
+		println("Grab a Ubuntu, Fedora, openSUSE,... Live ISO and try from there.")
+		os.Exit(1)
+	}
 }
