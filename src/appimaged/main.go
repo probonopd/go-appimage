@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -164,10 +165,58 @@ func moveDesktopFiles() {
 	}
 
 	for _, file := range files {
-
-		log.Println("main: Moving", file.Name(), "to", xdg.DataHome+"/applications/")
+		if *verbosePtr == true {
+			log.Println("main: Moving", file.Name(), "to", xdg.DataHome+"/applications/")
+		}
 		err = os.Rename(desktopcachedir+"/"+file.Name(), xdg.DataHome+"/applications/"+file.Name())
 		printError("main", err)
+	}
+	if len(files) > 0 {
+		log.Println("main: Moved", len(files), "desktop files to", xdg.DataHome+"/applications/; use -v to see details")
+
+		// Run the various tools that make sure that the added desktop files really show up in the menu.
+		// Of course, almost no 2 systems are similar.
+		updateMenuCommands := []string{
+			"update-menus", // Needed on Ubuntu MATE so that the menu gets populated
+		}
+		for _, updateMenuCommand := range updateMenuCommands {
+			if isCommandAvailable(updateMenuCommand) {
+				cmd := exec.Command(updateMenuCommand)
+				err := cmd.Run()
+				if err == nil {
+					log.Println("Ran", updateMenuCommand, "command")
+				} else {
+					printError("main: "+updateMenuCommand, err)
+				}
+			}
+
+		}
+
+		// Run update-desktop-database
+		// "Build cache database of MIME types handled by desktop files."
+		if isCommandAvailable("update-desktop-database") {
+			cmd := exec.Command("update-desktop-database", xdg.DataHome+"/applications/")
+			err := cmd.Run()
+			if err == nil {
+				log.Println("Ran", "update-desktop-database "+xdg.DataHome+"/applications/")
+			} else {
+				printError("main", err)
+			}
+		}
+
+		/*
+			// Run xdg-desktop-menu forceupdate
+			// It probably doesn't hurt, although it may not really be needed.
+			if isCommandAvailable("xdg-desktop-menu") {
+				cmd := exec.Command("xdg-desktop-menu", "forceupdate")
+				err := cmd.Run()
+				if err == nil {
+					log.Println("Ran", "xdg-desktop-menu forceupdate")
+				} else {
+					printError("main", err)
+				}
+			}
+		*/
 	}
 }
 
@@ -212,7 +261,9 @@ func watchDirectories() {
 	// FIXME: This breaks when the partition label has "-", see https://github.com/prometheus/procfs/issues/227
 
 	for _, mount := range mounts {
-		log.Println("main: MountPoint", mount.MountPoint)
+		if *verbosePtr == true {
+			log.Println("main: MountPoint", mount.MountPoint)
+		}
 		if strings.HasPrefix(mount.MountPoint, "/sys") == false && // Is /dev needed for openSUSE Live?
 			strings.HasPrefix(mount.MountPoint, "/run") == false &&
 			strings.HasPrefix(mount.MountPoint, "/tmp") == false &&

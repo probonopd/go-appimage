@@ -39,10 +39,13 @@ func checkPrerequisites() {
 		files, err := filepath.Glob(filepath.Join(xdg.DataHome+"/applications/", "appimagekit_*"))
 		printError("main:", err)
 		for _, file := range files {
-			log.Println("Deleting", file)
+			if *verbosePtr == true {
+				log.Println("Deleting", file)
+			}
 			err := os.Remove(file)
 			printError("main:", err)
 		}
+		log.Println("Deleted", len(files), "desktop files from", xdg.DataHome+"/applications/; use -v to see details")
 
 	}
 
