@@ -11,7 +11,6 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,6 +19,7 @@ import (
 	"time"
 
 	"github.com/adrg/xdg"
+	"github.com/go-language-server/uri"
 	issvg "github.com/h2non/go-is-svg"
 	. "github.com/srwiley/oksvg"
 	. "github.com/srwiley/rasterx"
@@ -98,11 +98,7 @@ func (ai AppImage) discoverContents() {
 }
 
 func (ai AppImage) calculateMD5filenamepart() string {
-	result := url.PathEscape(ai.path)
-	result = strings.Replace(result, "%28", "(", -1)
-	result = strings.Replace(result, "%29", ")", -1)
-	result = strings.Replace(result, "%2F", "/", -1)
-	result = "file://" + result
+	result := uri.File(filepath.Clean(ai.path))
 	// log.Println("-->", result)
 	hasher := md5.New()
 	hasher.Write([]byte(result))

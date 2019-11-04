@@ -23,10 +23,10 @@ package main
 import (
 	"fmt"
 	"log"
-	"net/url"
 	"os"
 	"strings"
 
+	"github.com/go-language-server/uri"
 	"github.com/godbus/dbus"
 )
 
@@ -207,12 +207,12 @@ func monitorDbusSessionBus(conn *dbus.Conn) {
 	}
 }
 
-func getFilepath(urlstring string) string {
-	// log.Println(urlstring)
-	s, _ := url.QueryUnescape(urlstring)
-	if s[:7] != "file://" {
-		log.Println("To be imlpemented:", s[:7])
+func getFilepath(uristring string) string {
+	// log.Println(uristring)
+
+	if uristring[:7] != "file://" {
+		log.Println("To be imlpemented:", uristring[:7])
 		return ""
 	}
-	return (s[7:]) // remove leading "file://"
+	return (uri.New(uristring).Filename())
 }
