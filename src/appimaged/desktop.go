@@ -97,19 +97,18 @@ func writeDesktopFile(ai AppImage) {
 
 	var actions []string
 
-	// Add "Move to Trash" action
-	// if the AppImage is writeable (= the user can remove it)
-	//
-	// FIXME: The current implementation is desktop specfific and breaks
-	// if the user uses the same home directory with multiple desktops.
-	// Why isn't there a XDG standard tool or dbus call to move files to the Trash?
-	// According to http://xahlee.info/linux/linux_trash_location.html:
-	// Where is the trash directory?
-	// ~/.local/share/Trash/ → on your local file system.
-	// /root/.local/share/Trash/ → if you are root, on your local file system.
-	// /media/PENDRIVE/.Trash-1000/ → on a USB drive.
-
 	if isWritable(ai.path) {
+		// Add "Move to Trash" action
+		// if the AppImage is writeable (= the user can remove it)
+		//
+		// FIXME: The current implementation is desktop specfific and breaks
+		// if the user uses the same home directory with multiple desktops.
+		// Why isn't there a XDG standard tool or dbus call to move files to the Trash?
+		// According to http://xahlee.info/linux/linux_trash_location.html:
+		// Where is the trash directory?
+		// ~/.local/share/Trash/ → on your local file system.
+		// /root/.local/share/Trash/ → if you are root, on your local file system.
+		// /media/PENDRIVE/.Trash-1000/ → on a USB drive.
 		actions = append(actions, "Trash")
 		cfg.Section("Desktop Action Trash").Key("Name").SetValue("Move to Trash")
 		if isCommandAvailable("gio") {
@@ -120,16 +119,19 @@ func writeDesktopFile(ai AppImage) {
 			cfg.Section("Desktop Action Trash").Key("Exec").SetValue("kioclient move '" + ai.path + "' trash:/")
 		}
 
+		// Add OpenPortableHome action
 		actions = append(actions, "OpenPortableHome")
 		cfg.Section("Desktop Action OpenPortableHome").Key("Name").SetValue("Open Portable Home in File Manager")
 		cfg.Section("Desktop Action OpenPortableHome").Key("Exec").SetValue("xdg-open '" + ai.path + ".home'")
 
+		// Add CreatePortableHome action
 		actions = append(actions, "CreatePortableHome")
 		cfg.Section("Desktop Action CreatePortableHome").Key("Name").SetValue("Create Portable Home")
 		cfg.Section("Desktop Action CreatePortableHome").Key("Exec").SetValue("mkdir -p '" + ai.path + ".home'")
 
 	}
 
+	// Add "Extract" action
 	// TODO: Actually, we could do the extraction ourselves since we have the extraction logic on board anyways
 	// then we could have a better name for the extracted location, and could handle type-1 as well
 	// TODO: Maybe have a dbus action for extracting AppImages that could be invoked?
