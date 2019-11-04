@@ -49,22 +49,27 @@ func main() {
 
 	flag.Parse()
 
-	conn, err := dbus.SessionBus()
-	defer conn.Close()
+	var err error
+	// Catch for young players:
+	// conn, err := dbus.SessionBus() would not work here,
+	// https://stackoverflow.com/a/34195389
+	conn, err = dbus.SessionBus()
+	// defer conn.Close()
 	if err != nil {
-		log.Println(os.Stderr, "Failed to connect to session bus:", err)
-		return
+		log.Println("main: Failed to connect to session bus:", err)
+		os.Exit(1)
+	}
+	if conn == nil {
+		log.Println("ERROR: notification: Could not get conn")
+		os.Exit(1)
+	}
+
+	if *notifPtr == true {
+		sendDesktopNotification("Starting", here())
 	}
 
 	log.Println("main: Running from", here())
 	log.Println("main: xdg.DataHome =", xdg.DataHome)
-
-	conn, err = dbus.SessionBus()
-	defer conn.Close()
-	if err != nil {
-		log.Println(os.Stderr, "Failed to connect to session bus:", err)
-		return
-	}
 
 	checkPrerequisites()
 	deleteDesktopFilesWithNonExistingTargets()
@@ -92,7 +97,7 @@ func main() {
 	// 	println(call.Err.Error())
 	// }
 
-	go monitorUdisks(conn)
+	go monitorUdisks()
 
 	watchDirectories()
 
@@ -106,7 +111,9 @@ func main() {
 	// or
 	// use inotify to find out about AppImages to be handled
 
-	// sendDesktopNotification(conn, "watcher", "Started")
+	if *notifPtr == true {
+		sendDesktopNotification("watcher", "Started")
+	}
 
 	// Ticker to periodically move desktop files into system
 	ticker := time.NewTicker(5 * time.Second)
@@ -162,9 +169,7 @@ func moveDesktopFiles() {
 
 		log.Println("main: Moving", file.Name(), "to", xdg.DataHome+"/applications/")
 		err = os.Rename(desktopcachedir+"/"+file.Name(), xdg.DataHome+"/applications/"+file.Name())
-		if err != nil {
-			log.Println(err)
-		}
+		printError("main", err)
 	}
 
 	// Use desktop-file-install instead?
@@ -199,24 +204,17 @@ func printError(context string, e error) {
 
 func watchDirectories() {
 
-	// Unwatch everything we were watching before,
-	// prevent from trying to watch the same multiple times
-	// Results in:
-	// panic: close of closed channel
-	// for _, w := range watchedDirectories {
-	// 	log.Println("stop watching", w.Path)
-	// 	w.Close()
-	// }
-	// watchedDirectories = nil
-
 	// Register AppImages from well-known locations
 	// https://github.com/AppImage/appimaged#monitored-directories
 	home, _ := os.UserHomeDir()
-	// FIXME: Use XDG translated names for Downloads and Desktop; blocked by https://github.com/adrg/xdg/issues/1 or https://github.com/OpenPeeDeeP/xdg/issues/6
 
+	os.MkdirAll(home+"/Applications", 0755)
+
+	// FIXME: Use XDG translated names for Downloads and Desktop; blocked by
+	// https://github.com/adrg/xdg/issues/1 or https://github.com/OpenPeeDeeP/xdg/issues/6
 	watchedDirectories := []string{
-		home + "/Downloads",
-		home + "/Desktop",
+		home + "/Downloads", // TODO: XDG localized version
+		home + "/Desktop",   // TODO: XDG localized version
 		home + "/.local/bin",
 		home + "/bin",
 		home + "/Applications",
@@ -228,7 +226,7 @@ func watchDirectories() {
 	// FIXME: This breaks when the partition label has "-", see https://github.com/prometheus/procfs/issues/227
 
 	for _, mount := range mounts {
-		log.Println(mount.MountPoint)
+		log.Println("main: MountPoint", mount.MountPoint)
 		if strings.HasPrefix(mount.MountPoint, "/sys") == false && // Is /dev needed for openSUSE Live?
 			strings.HasPrefix(mount.MountPoint, "/run") == false &&
 			strings.HasPrefix(mount.MountPoint, "/tmp") == false &&
@@ -241,6 +239,13 @@ func watchDirectories() {
 	// The Go stdlib also provides ioutil.ReadDir
 	println("Registering AppImages in well-known locations and their subdirectories...")
 
+	watchDirectoriesReally(watchedDirectories)
+
+	deleteDesktopFilesWithNonExistingTargets()
+
+}
+
+func watchDirectoriesReally(watchedDirectories []string) {
 	for _, v := range watchedDirectories {
 		err := filepath.Walk(v, func(path string, info os.FileInfo, err error) error {
 
@@ -257,12 +262,6 @@ func watchDirectories() {
 
 			return nil
 		})
-		if err != nil {
-			log.Printf("error walking the path %q: %v\n", v, err)
-			return
-		}
+		printError("main: watchDirectoriesReally", err)
 	}
-
-	deleteDesktopFilesWithNonExistingTargets()
-
 }

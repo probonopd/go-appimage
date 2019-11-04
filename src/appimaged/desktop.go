@@ -216,9 +216,7 @@ func writeDesktopFile(ai AppImage) {
 		log.Printf("Fail to write file: %v", err)
 	}
 	err = os.Chmod(desktopcachedir+filename, 0755)
-	if err != nil {
-		log.Println(err)
-	}
+	printError("desktop", err)
 }
 
 func checkIfExecFileExists(desktopfilepath string) bool {

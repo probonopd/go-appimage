@@ -2,14 +2,13 @@ package main
 
 import (
 	"C"
-	"bufio"
+
 	"bytes"
 	"crypto/md5"
 	"encoding/hex"
-	"image"
-	"image/png"
+
 	"io"
-	"io/ioutil"
+
 	"log"
 	"os"
 	"os/exec"
@@ -20,10 +19,6 @@ import (
 
 	"github.com/adrg/xdg"
 	"github.com/go-language-server/uri"
-	issvg "github.com/h2non/go-is-svg"
-	. "github.com/srwiley/oksvg"
-	. "github.com/srwiley/rasterx"
-	"gopkg.in/ini.v1"
 )
 
 // Handles AppImage files.
@@ -56,7 +51,7 @@ func newAppImage(path string) AppImage {
 		ai.imagetype = -1
 		return ai
 	}
-
+	ai.uri = strings.TrimSpace(string(uri.File(filepath.Clean(ai.path))))
 	ai.md5 = ai.calculateMD5filenamepart() // Need this also for non-existing AppImages for removal
 	ai.desktopfilename = "appimagekit_" + ai.md5 + ".desktop"
 	ai.desktopfilepath = xdg.DataHome + "/applications/" + "appimagekit_" + ai.md5 + ".desktop"
@@ -98,10 +93,8 @@ func (ai AppImage) discoverContents() {
 }
 
 func (ai AppImage) calculateMD5filenamepart() string {
-	result := uri.File(filepath.Clean(ai.path))
-	// log.Println("-->", result)
 	hasher := md5.New()
-	hasher.Write([]byte(result))
+	hasher.Write([]byte(ai.uri))
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
@@ -116,194 +109,10 @@ func runCommand(cmd *exec.Cmd) (io.Writer, error) {
 	return cmd.Stdout, err
 }
 
-func (ai AppImage) extractDirIconAsThumbnail() {
-	log.Println("appimage: extract DirIcon as thumbnail")
-	if ai.imagetype <= 0 {
-		return
-	}
-
-	//cmd := exec.Command("")
-
-	// Write out the icon to a temporary location
-	thumbnailcachedir := xdg.CacheHome + "/thumbnails/" + ai.md5
-
-	if ai.imagetype == 1 {
-		err := os.MkdirAll(thumbnailcachedir, os.ModePerm)
-		printError("appimage: thumbnailcachedir", err)
-		cmd := exec.Command(here()+"/bsdtar", "-C", thumbnailcachedir, "-xf", ai.path, ".DirIcon")
-		runCommand(cmd)
-	} else if ai.imagetype == 2 {
-		// TODO: first list contents of the squashfs, then determine what to extract
-		cmd := exec.Command(here()+"/unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, ".DirIcon")
-		runCommand(cmd)
-	}
-
-	// What we have just extracted may well have been a symlink
-	// hence we try to resolve it
-	fileInfo, err := ioutil.ReadDir(thumbnailcachedir)
-	for _, file := range fileInfo {
-		log.Println(file.Name())
-		originFile, err := os.Readlink(thumbnailcachedir + "/" + file.Name())
-		// If we could resolve the symlink, then extract its parent
-		// and throw the symlink away
-		if err == nil {
-			if ai.imagetype == 1 {
-				log.Println("TODO: Not yet implemented for type-1: We have a symlink, extract the original file")
-			} else if ai.imagetype == 2 {
-				cmd := exec.Command(here()+"/unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, originFile)
-				runCommand(cmd)
-			}
-			err = os.RemoveAll(thumbnailcachedir + "/.DirIcon")                              // Remove the symlink
-			err = os.Rename(thumbnailcachedir+"/"+originFile, thumbnailcachedir+"/.DirIcon") // Put the real file there instead
-			printError("appimage", err)
-			// TODO: Rinse and repeat: May we still have a symlink at this point?
-		}
-	}
-
-	// Workaround for electron-builder not generating .DirIcon
-	// We may still not have an icon. For example, AppImages made by electron-builder
-	// are lacking .DirIcon files as of Fall 2019; here we have to parse the desktop
-	// file, and try to extract the value of Icon= with the suffix ".png" from the AppImage
-	if Exists(thumbnailcachedir+"/.DirIcon") == false && ai.imagetype == 2 {
-		log.Println(".DirIcon extraction failed. Is it missing? Trying to figure out alternative")
-		cmd := exec.Command(here()+"/unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, "*.desktop")
-		runCommand(cmd)
-		files, _ := ioutil.ReadDir(thumbnailcachedir)
-		for _, file := range files {
-			if filepath.Ext(thumbnailcachedir+file.Name()) == ".desktop" {
-				log.Println("Determine iconname from desktop file:", thumbnailcachedir+"/"+file.Name())
-				cfg, err := ini.Load(thumbnailcachedir + "/" + file.Name())
-				if err == nil {
-					section, _ := cfg.GetSection("Desktop Entry")
-					iconkey, _ := section.GetKey("Icon")
-					iconvalue := iconkey.Value() + ".png" // We are just assuming ".png" here
-					log.Println("iconname from desktop file:", iconvalue)
-					printError("appimage: thumbnailcachedir", err)
-					cmd := exec.Command(here()+"/unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, iconvalue)
-					runCommand(cmd)
-					err = os.Rename(thumbnailcachedir+"/"+iconvalue, thumbnailcachedir+"/.DirIcon")
-					printError("appimage", err)
-					err = os.RemoveAll(thumbnailcachedir + "/" + file.Name())
-					printError("appimage", err)
-				}
-			}
-		}
-
-		// Workaround for electron-builder not generating .DirIcon
-		// Also for the fallback:
-		// What we have just extracted may well have been a symlink (in the case of electron-builder, it is)
-		// hence we try to resolve it
-		fileInfo, err = ioutil.ReadDir(thumbnailcachedir)
-		for _, file := range fileInfo {
-			log.Println(file.Name())
-			originFile, err := os.Readlink(thumbnailcachedir + "/" + file.Name())
-			// If we could resolve the symlink, then extract its parent
-			// and throw the symlink away
-			if err == nil {
-				if ai.imagetype == 1 {
-					log.Println("TODO: Not yet implemented for type-1: We have a symlink, extract the original file")
-				} else if ai.imagetype == 2 {
-					cmd := exec.Command(here()+"/unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, originFile)
-					runCommand(cmd)
-				}
-				err = os.RemoveAll(thumbnailcachedir + "/.DirIcon")                              // Remove the symlink
-				err = os.Rename(thumbnailcachedir+"/"+originFile, thumbnailcachedir+"/.DirIcon") // Put the real file there instead
-				printError("appimage", err)
-				// TODO: Rinse and repeat: May we still have a symlink at this point?
-			}
-		}
-	}
-
-	// Check whether we have actually extracted an SVG and if so convert it
-
-	// f, err := os.Open(thumbnailcachedir + "/.DirIcon")
-	// printError("appimage", err)
-	// if checkMagicAtOffset(f, "13780787113102610", 0) {
-	// 	log.Println(thumbnailcachedir + "/.DirIcon is a PNG")
-	// }
-	// f.Close()
-
-	buf, err := ioutil.ReadFile(thumbnailcachedir + "/.DirIcon")
-	if os.IsNotExist(err) {
-		log.Printf("Could not extract icon, use default icon instead: %s\n", thumbnailcachedir+"/.DirIcon")
-		data, err := Asset("data/appimage.png")
-		printError("appimage", err)
-		err = os.MkdirAll(thumbnailcachedir, 0755)
-		printError("appimage", err)
-		err = ioutil.WriteFile(thumbnailcachedir+"/.DirIcon", data, 0644)
-		printError("appimage", err)
-	} else if err != nil {
-		log.Printf("Error: %s\n", err)
-	}
-	if issvg.Is(buf) {
-		log.Println(thumbnailcachedir + "/.DirIcon is an SVG, this is discouraged")
-		err = convertToPng(thumbnailcachedir + "/.DirIcon")
-		printError("appimage", err)
-	}
-
-	home, _ := os.UserHomeDir()
-	err = os.MkdirAll(home+"/.thumbnails/normal/", os.ModePerm)
-	printError("appimage", err)
-	err = os.Rename(thumbnailcachedir+"/.DirIcon", ai.thumbnailfilepath)
-	printError("appimage", err)
-	err = os.RemoveAll(thumbnailcachedir)
-	printError("appimage", err)
-
-	// In Xfce, the new thumbnail is not shown in the file manager until we touch the file
-	// In fact, touching it from within this program makes the thumbnail not work at all
-	// TODO: Read XDG Thumbnail spec regarding this
-	// The following all does not work
-	// time.Sleep(2 * time.Second)
-	// now := time.Now()
-	// err = os.Chtimes(ai.path, now, now)
-	// printError("appimage", err)
-	// cmd = exec.Command("touch", ai.thumbnailfilepath)
-}
-
-// Convert a given file into a PNG; its dependencies add about 2 MB to the executable
-func convertToPng(filePath string) error {
-	// Strange colors: https://github.com/srwiley/oksvg/issues/15
-	icon, err := ReadIcon(filePath, WarnErrorMode)
-	if err != nil {
-		return err
-	}
-	w, h := int(icon.ViewBox.W), int(icon.ViewBox.H)
-	img := image.NewRGBA(image.Rect(0, 0, w, h))
-	scannerGV := NewScannerGV(w, h, img, img.Bounds())
-	raster := NewDasher(w, h, scannerGV)
-	icon.Draw(raster, 1.0)
-	err = saveToPngFile(filePath, img)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func saveToPngFile(filePath string, m image.Image) error {
-	// Create the file
-	f, err := os.Create(filePath)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	// Create Writer from file
-	b := bufio.NewWriter(f)
-	// Write the image into the buffer
-	err = png.Encode(b, m)
-	if err != nil {
-		return err
-	}
-	err = b.Flush()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // Check whether we have an AppImage at all.
 // Return image type, or -1 if it is not an AppImage
 func (ai AppImage) determineImageType() int {
-	log.Println(ai.path)
+	// log.Println("appimage: ", ai.path)
 	f, err := os.Open(ai.path)
 	defer f.Close()
 
@@ -311,7 +120,19 @@ func (ai AppImage) determineImageType() int {
 	if err != nil {
 		return -1 // If we were not able to open the file, then we report that it is not an AppImage
 	}
-	if info, err := os.Stat(ai.path); err == nil && info.IsDir() {
+
+	info, err := os.Stat(ai.path)
+
+	if err != nil {
+		return -1
+	}
+
+	if err == nil && info.IsDir() {
+		return -1
+	}
+
+	// Very small files cannot be AppImages, so return fast
+	if err == nil && info.Size() < 10*1024 {
 		return -1
 	}
 
@@ -389,7 +210,7 @@ func (ai AppImage) _integrate() {
 	writeDesktopFile(ai) // Do not run with "go" as it would interfere with extractDirIconAsThumbnail
 
 	if *notifPtr == true {
-		sendDesktopNotification(conn, ai.path, "Integrated")
+		sendDesktopNotification(ai.path, "Integrated")
 	}
 
 	// For performance reasons, we stop working immediately
@@ -426,7 +247,7 @@ func (ai AppImage) _removeIntegration() {
 	if err == nil {
 		log.Println("appimage: Deleted", ai.desktopfilepath)
 		if *notifPtr == true {
-			sendDesktopNotification(conn, ai.path, "Integration removed")
+			sendDesktopNotification(ai.path, "Integration removed")
 		}
 
 	}

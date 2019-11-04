@@ -71,7 +71,18 @@ need to "eavesdrop"), independent of whether the GNOME or the KDE or another des
 
 */
 
-func monitorUdisks(conn *dbus.Conn) {
+func monitorUdisks() {
+
+	if conn == nil {
+		log.Println("ERROR: notification: Could not get conn") // FIXME. Why don't I get conn here?
+		os.Exit(1)
+	}
+
+	obj := conn.Object("org.freedesktop.Notifications", "/org/freedesktop/Notifications")
+	if obj == nil {
+		log.Println("ERROR: notification: obj is nil")
+		os.Exit(1)
+	}
 
 	// Check whether UDisks2VolumeMonitor or org.kde.Solid is available, exit otherwise
 	var s string
@@ -110,7 +121,7 @@ func monitorUdisks(conn *dbus.Conn) {
 	call := conn.BusObject().Call("org.freedesktop.DBus.Monitoring.BecomeMonitor", 0, rules, flag)
 	if call.Err != nil {
 		log.Println("Failed to become monitor:", call.Err)
-		return
+		os.Exit(1)
 	}
 
 	c := make(chan *dbus.Message, 10)

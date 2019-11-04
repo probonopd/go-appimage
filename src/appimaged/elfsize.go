@@ -138,7 +138,7 @@ int calc(char *fname)
 {
 	ssize_t ret;
 	int fd;
-    fprintf(stderr, "File %s \n", fname);
+    // fprintf(stderr, "File %s \n", fname);
 	long unsigned int size = get_elf_size(fname);
 	// fprintf(stderr, "Estimated ELF size on disk: %lu bytes \n", size);
 	return size;

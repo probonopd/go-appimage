@@ -50,7 +50,7 @@ func removeDuplicatesUnordered(elements []string) []string {
 // system bus handles system-wide stuff (e.g. USB stick plugged in).
 // TODO: Watch system bus, too.
 
-func monitorDbusSessionBus(conn *dbus.Conn) {
+func monitorDbusSessionBus() {
 
 	var rules = []string{
 		// "path_namespace='/'", // Everything
@@ -132,7 +132,7 @@ func monitorDbusSessionBus(conn *dbus.Conn) {
 		if v.Headers[3].String() == "\"FilesAdded\"" {
 			log.Println("monitor: FilesAdded: Not implemented yet")
 			log.Println("The trouble is that we don't know the path of the added file, only its directory!")
-			log.Println(v.Body[0])
+			log.Println("monitor:", v.Body[0])
 		}
 		if v.Headers[3].String() == "\"FilesRemoved\"" {
 			log.Println("monitor: FilesRemoved: Not implemented yet")

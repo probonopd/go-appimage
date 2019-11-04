@@ -1,4 +1,6 @@
 // appwrapper executes applications and presents errors to the GUI as notifications
+// TODO: Enable appimaged for DBus Activation so that the running instance can wrap
+// the apps, so that we don't need to run another appimaged process for each app
 package main
 
 import (
@@ -72,6 +74,6 @@ func sendErrorDesktopNotification(title string, body string) {
 	// If 0, the notification never expires.
 
 	if call.Err != nil {
-		panic(call.Err)
+		log.Println("ERROR: notification:", call.Err)
 	}
 }
