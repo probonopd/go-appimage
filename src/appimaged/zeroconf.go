@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -74,4 +75,59 @@ func browseZeroconfServices() {
 
 	<-ctx.Done()
 
+}
+
+// checkIfConnectedToNetwork returns true if connected to a network
+func checkIfConnectedToNetwork() bool {
+	var interfaces []net.Interface
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return false
+	}
+	for _, ifi := range ifaces {
+		if (ifi.Flags & net.FlagUp) == 0 {
+			continue
+		}
+		if (ifi.Flags & net.FlagMulticast) > 0 {
+			interfaces = append(interfaces, ifi)
+		}
+	}
+
+	var AddrIPv4 []net.IP
+	var AddrIPv6 []net.IP
+	for _, iface := range interfaces {
+		v4, v6 := addrsForInterface(&iface)
+		AddrIPv4 = append(AddrIPv4, v4...)
+		AddrIPv6 = append(AddrIPv6, v6...)
+	}
+
+	if AddrIPv4 == nil && AddrIPv6 == nil {
+		return false
+	} else {
+		return true
+	}
+
+}
+
+func addrsForInterface(iface *net.Interface) ([]net.IP, []net.IP) {
+	var v4, v6, v6local []net.IP
+	addrs, _ := iface.Addrs()
+	for _, address := range addrs {
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				v4 = append(v4, ipnet.IP)
+			} else {
+				switch ip := ipnet.IP.To16(); ip != nil {
+				case ip.IsGlobalUnicast():
+					v6 = append(v6, ipnet.IP)
+				case ip.IsLinkLocalUnicast():
+					v6local = append(v6local, ipnet.IP)
+				}
+			}
+		}
+	}
+	if len(v6) == 0 {
+		v6 = v6local
+	}
+	return v4, v6
 }

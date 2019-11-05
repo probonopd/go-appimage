@@ -101,7 +101,9 @@ func main() {
 	watchDirectories()
 
 	if *noZeroconfPtr == false {
-		go registerZeroconfService()
+		if checkIfConnectedToNetwork() == true {
+			go registerZeroconfService()
+		}
 	}
 	go browseZeroconfServices()
 
