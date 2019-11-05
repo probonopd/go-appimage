@@ -21,6 +21,7 @@ import (
 	"log"
 	"os"
 
+	helpers "github.com/probonopd/appimage/internal/helpers"
 	"gopkg.in/fsnotify.v1"
 )
 
@@ -30,7 +31,7 @@ import (
 // Watch a directory using inotify
 func inotifyWatch(path string) {
 	watcher, err := fsnotify.NewWatcher()
-	printError("inotify, probably already watching", err)
+	helpers.LogError("inotify, probably already watching", err)
 
 	if err == nil {
 

@@ -19,6 +19,7 @@ import (
 
 	"github.com/adrg/xdg"
 	"github.com/go-language-server/uri"
+	helpers "github.com/probonopd/appimage/internal/helpers"
 )
 
 // Handles AppImage files.
@@ -79,9 +80,9 @@ func (ai AppImage) discoverContents() {
 	// to resolve symlinks, and to determine which files to extract in addition to the desktop file and icon
 	cmd := exec.Command("")
 	if ai.imagetype == 1 {
-		cmd = exec.Command(here()+"/bsdtar", "-t", "'"+ai.path+"'")
+		cmd = exec.Command("bsdtar", "-t", "'"+ai.path+"'")
 	} else if ai.imagetype == 2 {
-		cmd = exec.Command(here()+"/unsquashfs", "-f", "-n", "-ll", "-o", strconv.FormatInt(ai.offset, 10), "-d", "'"+ai.path+"'")
+		cmd = exec.Command("unsquashfs", "-f", "-n", "-ll", "-o", strconv.FormatInt(ai.offset, 10), "-d", "'"+ai.path+"'")
 	}
 	if *verbosePtr == true {
 		log.Printf("cmd: %q\n", cmd)
@@ -89,7 +90,7 @@ func (ai AppImage) discoverContents() {
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()
-	printError("appimage: list files:", err)
+	helpers.LogError("appimage: list files:", err)
 	ai.rawcontents = out.String()
 
 }
@@ -159,10 +160,10 @@ func (ai AppImage) determineImageType() int {
 // TODO: Instead of magic string, could probably use something like []byte{'\r', '\n'} or []byte("AI")
 func checkMagicAtOffset(f *os.File, magic string, offset int64) bool {
 	_, err := f.Seek(offset, 0) // Go to offset
-	printError("checkMagicAtOffset: "+f.Name(), err)
+	helpers.LogError("checkMagicAtOffset: "+f.Name(), err)
 	b := make([]byte, len(magic)/2) // Read bytes
 	n, err := f.Read(b)
-	printError("checkMagicAtOffset: "+f.Name(), err)
+	helpers.LogError("checkMagicAtOffset: "+f.Name(), err)
 	hexmagic := hex.EncodeToString(b[:n])
 	if hexmagic == magic {
 		if *verbosePtr == true {
@@ -269,7 +270,7 @@ func (ai AppImage) integrateOrUnintegrate() {
 func ioReader(file string) io.ReaderAt {
 	r, err := os.Open(file)
 	defer r.Close()
-	printError("appimage: elf:", err)
+	helpers.LogError("appimage: elf:", err)
 	return r
 }
 

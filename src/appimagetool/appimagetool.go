@@ -1,7 +1,13 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+
+	"github.com/probonopd/appimage/internal/helpers"
 )
 
 // https://blog.kowalczyk.info/article/vEja/embedding-build-number-in-go-executable.html
@@ -13,41 +19,69 @@ var (
 	buildTime string // when the executable was built
 )
 
+var flgVersion bool
+
 func main() {
 
-	// Always show version, but exit immediately if only the version number was requested
+	// Parse command line arguments
+	flag.BoolVar(&flgVersion, "version", false, "Show version number")
+	flag.Parse()
 
+	// Always show version, but exit immediately if only the version number was requested
 	if commit != "" {
 		fmt.Printf("Build on %s from sha1 %s\n", buildTime, commit)
 	} else {
 		fmt.Println("Unsupported local developer build")
 	}
+	if flgVersion {
+		os.Exit(0)
+	}
 
-	fmt.Println("Nothing implemented yet")
-
-	// Check for needed files on $PATH which we have prepended with the location of this tool
-	// file
-	// mksquashfs
-	// desktop-file-validate
-	// appstreamcli(?)
-	// gpg2(?)
+	// Check for needed files on $PATH
+	tools := []string{"file", "mksquashfs", "desktop-file-validate", "appstreamcli"}
+	for _, t := range tools {
+		if helpers.IsCommandAvailable(t) == false {
+			fmt.Println("Required helper tool", t, "missing")
+			os.Exit(1)
+		}
+	}
 
 	// Check if first argument is present, exit otherwise
-	// "SOURCE is missing"
+	if len(os.Args) < 2 {
+		os.Stderr.WriteString("Please specify an AppDir to be converted to an AppImage")
+		os.Exit(1)
+	}
 
-	// Check if is directory, then assume we want to turn an AppDir into an AppImage
-	// else if it is a file, then check if it is an AppImage and if yes, extract it
+	// Check if is directory, then assume we want to convert an AppDir into an AppImage
+	firstArg, _ := filepath.EvalSymlinks(os.Args[1])
+	if info, err := os.Stat(firstArg); err == nil && info.IsDir() {
+		GenerateAppImage(firstArg)
+	} else {
+		// TODO: If it is a file, then check if it is an AppImage and if yes, extract it
+		os.Stderr.WriteString("Supplied argument is not a directory")
+		os.Exit(1)
+	}
+}
+
+// GenerateAppImage converts an AppDir into an AppImage
+func GenerateAppImage(appdir string) {
 
 	// Get VERSION environment variable
+	// os.Getenv("VERSION")
 
 	// Guess update information
 
-	// Check if git is on the path, if yes "git rev-parse --short HEAD"
-
-	// if (version_env != NULL) {
-	// "NOTE: Using the output of 'git rev-parse --short HEAD' as the version"
-	// "      Please set the $VERSION environment variable if this is not intended"
-	// }
+	// Check if $VERSION is empty and git is on the path, if yes "git rev-parse --short HEAD"
+	version := ""
+	version = os.Getenv("VERSION")
+	if version == "" && helpers.IsCommandAvailable("git") == true {
+		version, err := exec.Command("git", "rev-parse", "--short", "HEAD", appdir).Output()
+		helpers.PrintError("git rev-parse", err)
+		if err == nil {
+			fmt.Println("NOTE: Using", version, "from 'git rev-parse --short HEAD' as the version")
+			fmt.Println("      Please set the $VERSION environment variable if this is not intended")
+		}
+	}
 
 	// Check if *.desktop file is present in source AppDir
 	// find_first_matching_file_nonrecursive(source, "*.desktop");
@@ -173,4 +207,5 @@ func main() {
 	// "central directory of available AppImages, by opening a pull request"
 	// "at https://github.com/AppImage/appimage.github.io"
 
+	fmt.Println("Nothing implemented yet")
 }

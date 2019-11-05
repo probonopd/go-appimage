@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	helpers "github.com/probonopd/appimage/internal/helpers"
+
 	"github.com/adrg/xdg"
 	"github.com/godbus/dbus"
 	"github.com/prometheus/procfs"
@@ -67,15 +69,12 @@ func main() {
 	}
 
 	if *notifPtr == true {
-		sendDesktopNotification("Starting", here())
+		sendDesktopNotification("Starting", helpers.Here())
 	}
 
-	log.Println("main: Running from", here())
+	log.Println("main: Running from", helpers.Here())
 
-	// The directory we run from is added to the $PATH so that we find helper
-	// binaries there, too
-	os.Setenv("PATH", here()+":"+os.Getenv("PATH"))
-	log.Println("main: PATH:", os.Getenv("PATH"))
+	helpers.AddHereToPath()
 
 	log.Println("main: xdg.DataHome =", xdg.DataHome)
 
@@ -173,7 +172,7 @@ func moveDesktopFiles() {
 			log.Println("main: Moving", file.Name(), "to", xdg.DataHome+"/applications/")
 		}
 		err = os.Rename(desktopcachedir+"/"+file.Name(), xdg.DataHome+"/applications/"+file.Name())
-		printError("main", err)
+		helpers.LogError("main", err)
 	}
 	if len(files) > 0 {
 		log.Println("main: Moved", len(files), "desktop files to", xdg.DataHome+"/applications/; use -v to see details")
@@ -184,13 +183,13 @@ func moveDesktopFiles() {
 			"update-menus", // Needed on Ubuntu MATE so that the menu gets populated
 		}
 		for _, updateMenuCommand := range updateMenuCommands {
-			if isCommandAvailable(updateMenuCommand) {
+			if helpers.IsCommandAvailable(updateMenuCommand) {
 				cmd := exec.Command(updateMenuCommand)
 				err := cmd.Run()
 				if err == nil {
 					log.Println("Ran", updateMenuCommand, "command")
 				} else {
-					printError("main: "+updateMenuCommand, err)
+					helpers.LogError("main: "+updateMenuCommand, err)
 				}
 			}
 
@@ -198,13 +197,13 @@ func moveDesktopFiles() {
 
 		// Run update-desktop-database
 		// "Build cache database of MIME types handled by desktop files."
-		if isCommandAvailable("update-desktop-database") {
+		if helpers.IsCommandAvailable("update-desktop-database") {
 			cmd := exec.Command("update-desktop-database", xdg.DataHome+"/applications/")
 			err := cmd.Run()
 			if err == nil {
 				log.Println("Ran", "update-desktop-database "+xdg.DataHome+"/applications/")
 			} else {
-				printError("main", err)
+				helpers.LogError("main", err)
 			}
 		}
 
@@ -221,23 +220,6 @@ func moveDesktopFiles() {
 				}
 			}
 		*/
-	}
-}
-
-// Returns the location of the executable
-func here() string {
-	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
-	if err != nil {
-		log.Println(err)
-		return ""
-	}
-	return (dir)
-}
-
-// Print error, prefixed by a string that explains the context
-func printError(context string, e error) {
-	if e != nil {
-		log.Println("ERROR", context+":", e)
 	}
 }
 
@@ -304,6 +286,6 @@ func watchDirectoriesReally(watchedDirectories []string) {
 
 			return nil
 		})
-		printError("main: watchDirectoriesReally", err)
+		helpers.LogError("main: watchDirectoriesReally", err)
 	}
 }

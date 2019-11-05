@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/adrg/xdg"
+	helpers "github.com/probonopd/appimage/internal/helpers"
 )
 
 func checkPrerequisites() {
@@ -17,7 +18,7 @@ func checkPrerequisites() {
 
 	// Check if the tools that we need are available and warn if they are not
 	// TODO: Elaborate checks whether the tools have the functionality we need (offset, ZISOFS)
-	if isCommandAvailable("unsquashfs") == false || isCommandAvailable("bsdtar") == false {
+	if helpers.IsCommandAvailable("unsquashfs") == false || helpers.IsCommandAvailable("bsdtar") == false {
 		println("Required helper tools are missing.")
 		println("Please make sure that recent versions of unsquashfs and bsdtar are on the $PATH")
 		os.Exit(1)
@@ -36,13 +37,13 @@ func checkPrerequisites() {
 	// This is useful for debugging
 	if *cleanPtr == true {
 		files, err := filepath.Glob(filepath.Join(xdg.DataHome+"/applications/", "appimagekit_*"))
-		printError("main:", err)
+		helpers.LogError("main:", err)
 		for _, file := range files {
 			if *verbosePtr == true {
 				log.Println("Deleting", file)
 			}
 			err := os.Remove(file)
-			printError("main:", err)
+			helpers.LogError("main:", err)
 		}
 		log.Println("Deleted", len(files), "desktop files from", xdg.DataHome+"/applications/; use -v to see details")
 
@@ -52,27 +53,27 @@ func checkPrerequisites() {
 	// but luckily it starts working right away without
 	// the desktop needing to be restarted
 	err := os.MkdirAll(xdg.DataHome+"/applications/", os.ModePerm)
-	printError("main:", err)
+	helpers.LogError("main:", err)
 	err = os.MkdirAll(xdg.CacheHome+"/thumbnails/normal", os.ModePerm)
-	printError("main:", err)
+	helpers.LogError("main:", err)
 	home, _ := os.UserHomeDir()
 	err = os.MkdirAll(home+"/.cache/applications/", os.ModePerm)
-	printError("main:", err)
+	helpers.LogError("main:", err)
 
 	// Create $HOME/.local/share/appimagekit/no_desktopintegration
 	// so that AppImages know they should not do desktop integration themselves
 	err = os.MkdirAll(xdg.DataHome+"/appimagekit/", os.ModePerm)
-	printError("main:", err)
+	helpers.LogError("main:", err)
 	f, err := os.Create(xdg.DataHome + "/appimagekit/no_desktopintegration")
-	printError("main:", err)
+	helpers.LogError("main:", err)
 	f.Close()
-	printError("main:", err)
+	helpers.LogError("main:", err)
 }
 
 func stopSystemdService(servicename string) {
 	cmd := exec.Command("systemctl", "--user", "stop", servicename+".service")
 	if err := cmd.Run(); err != nil {
-		printError(cmd.String(), err) // Needs Go 1.13
+		helpers.LogError(cmd.String(), err) // Needs Go 1.13
 	} else {
 		*cleanPtr = true // Clean up pre-existing desktop files from the other AppImage system integration daemon
 	}
@@ -86,15 +87,6 @@ func exitIfBinfmtExists(path string) {
 		println("echo -1 | sudo tee", path)
 		os.Exit(1)
 	}
-}
-
-// Return true if a file is on the $PATH
-func isCommandAvailable(name string) bool {
-	cmd := exec.Command("/bin/sh", "-c", "command -v "+name)
-	if err := cmd.Run(); err != nil {
-		return false
-	}
-	return true
 }
 
 // ensureRunningFromLiveSystem checks if we are running on one of the supported Live systems

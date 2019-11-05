@@ -16,6 +16,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/adrg/xdg"
+	helpers "github.com/probonopd/appimage/internal/helpers"
 	"gopkg.in/ini.v1"
 )
 
@@ -112,10 +113,10 @@ func writeDesktopFile(ai AppImage) {
 		// /media/PENDRIVE/.Trash-1000/ → on a USB drive.
 		actions = append(actions, "Trash")
 		cfg.Section("Desktop Action Trash").Key("Name").SetValue("Move to Trash")
-		if isCommandAvailable("gio") {
+		if helpers.IsCommandAvailable("gio") {
 			// A command line tool to move files to the Trash. However, GNOME-specific
 			cfg.Section("Desktop Action Trash").Key("Exec").SetValue("gio trash '" + ai.path + "'")
-		} else if isCommandAvailable("kioclient") {
+		} else if helpers.IsCommandAvailable("kioclient") {
 			// Of course KDE has its own facility for doing the exact same thing
 			cfg.Section("Desktop Action Trash").Key("Exec").SetValue("kioclient move '" + ai.path + "' trash:/")
 		}
@@ -156,14 +157,14 @@ func writeDesktopFile(ai AppImage) {
 
 	// Add "Update" action
 	// TODO: Find usable (latest version of) AppImageUpdate and/or AppImageUpdater in a more fancy way
-	if isCommandAvailable("AppImageUpdate") {
+	if helpers.IsCommandAvailable("AppImageUpdate") {
 		actions = append(actions, "Update")
 		cfg.Section("Desktop Action Update").Key("Name").SetValue("Update")
 		cfg.Section("Desktop Action Update").Key("Exec").SetValue("AppImageUpdate '" + ai.path + "'")
 	}
 
 	// Add "Open Containing Folder" action
-	if isCommandAvailable("xdg-open") {
+	if helpers.IsCommandAvailable("xdg-open") {
 		actions = append(actions, "Show")
 		cfg.Section("Desktop Action Show").Key("Name").SetValue("Open Containing Folder")
 		cfg.Section("Desktop Action Show").Key("Exec").SetValue("xdg-open '" + filepath.Clean(ai.path+"/../") + "'")
@@ -185,7 +186,7 @@ func writeDesktopFile(ai AppImage) {
 	// Add "Run in Firejail" action
 	// TODO: Based on what the AppImage author has specified, run AppImages by default
 	// with the matching subsets of rights, e.g., without network access
-	if isCommandAvailable("firejail") {
+	if helpers.IsCommandAvailable("firejail") {
 		actions = append(actions, "Firejail")
 		cfg.Section("Desktop Action Firejail").Key("Name").SetValue("Run in Firejail")
 		cfg.Section("Desktop Action Firejail").Key("Exec").SetValue("firejail --env=DESKTOPINTEGRATION=appimaged --noprofile --appimage '" + ai.path + "'")
@@ -216,7 +217,7 @@ func writeDesktopFile(ai AppImage) {
 		log.Printf("Fail to write file: %v", err)
 	}
 	err = os.Chmod(desktopcachedir+filename, 0755)
-	printError("desktop", err)
+	helpers.LogError("desktop", err)
 }
 
 func checkIfExecFileExists(desktopfilepath string) bool {
@@ -225,7 +226,7 @@ func checkIfExecFileExists(desktopfilepath string) bool {
 		return false
 	}
 	cfg, e := ini.Load(desktopfilepath)
-	printError("desktop", e)
+	helpers.LogError("desktop", e)
 	dst := cfg.Section("Desktop Entry").Key("Exec").String()
 
 	_, err = os.Stat(dst)
@@ -238,7 +239,7 @@ func checkIfExecFileExists(desktopfilepath string) bool {
 
 func deleteDesktopFilesWithNonExistingTargets() {
 	files, e := ioutil.ReadDir(xdg.DataHome + "/applications/")
-	printError("desktop", e)
+	helpers.LogError("desktop", e)
 	if e != nil {
 		return
 	}
@@ -249,7 +250,7 @@ func deleteDesktopFilesWithNonExistingTargets() {
 			if exists == false {
 				log.Println("Deleting", xdg.DataHome+"/applications/"+file.Name())
 				e = os.Remove(xdg.DataHome + "/applications/" + file.Name())
-				printError("desktop", e)
+				helpers.LogError("desktop", e)
 			}
 		}
 	}

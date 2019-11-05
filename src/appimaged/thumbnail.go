@@ -13,6 +13,7 @@ import (
 
 	"github.com/adrg/xdg"
 	issvg "github.com/h2non/go-is-svg"
+	helpers "github.com/probonopd/appimage/internal/helpers"
 	"github.com/sabhiram/png-embed" // For embedding metadata into PNG
 	. "github.com/srwiley/oksvg"
 	. "github.com/srwiley/rasterx"
@@ -33,12 +34,12 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 
 	if ai.imagetype == 1 {
 		err := os.MkdirAll(thumbnailcachedir, os.ModePerm)
-		printError("thumbnail: thumbnailcachedir", err)
-		cmd := exec.Command(here()+"/bsdtar", "-C", thumbnailcachedir, "-xf", ai.path, ".DirIcon")
+		helpers.LogError("thumbnail: thumbnailcachedir", err)
+		cmd := exec.Command("bsdtar", "-C", thumbnailcachedir, "-xf", ai.path, ".DirIcon")
 		runCommand(cmd)
 	} else if ai.imagetype == 2 {
 		// TODO: first list contents of the squashfs, then determine what to extract
-		cmd := exec.Command(here()+"/unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, ".DirIcon")
+		cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, ".DirIcon")
 		runCommand(cmd)
 	}
 
@@ -54,12 +55,12 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 			if ai.imagetype == 1 {
 				log.Println("TODO: Not yet implemented for type-1: We have a symlink, extract the original file")
 			} else if ai.imagetype == 2 {
-				cmd := exec.Command(here()+"/unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, originFile)
+				cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, originFile)
 				runCommand(cmd)
 			}
 			err = os.RemoveAll(thumbnailcachedir + "/.DirIcon")                              // Remove the symlink
 			err = os.Rename(thumbnailcachedir+"/"+originFile, thumbnailcachedir+"/.DirIcon") // Put the real file there instead
-			printError("appimage", err)
+			helpers.LogError("appimage", err)
 			// TODO: Rinse and repeat: May we still have a symlink at this point?
 		}
 	}
@@ -70,7 +71,7 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	// file, and try to extract the value of Icon= with the suffix ".png" from the AppImage
 	if Exists(thumbnailcachedir+"/.DirIcon") == false && ai.imagetype == 2 {
 		log.Println(".DirIcon extraction failed. Is it missing? Trying to figure out alternative")
-		cmd := exec.Command(here()+"/unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, "*.desktop")
+		cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, "*.desktop")
 		runCommand(cmd)
 		files, _ := ioutil.ReadDir(thumbnailcachedir)
 		for _, file := range files {
@@ -82,13 +83,13 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 					iconkey, _ := section.GetKey("Icon")
 					iconvalue := iconkey.Value() + ".png" // We are just assuming ".png" here
 					log.Println("iconname from desktop file:", iconvalue)
-					printError("thumbnail: thumbnailcachedir", err)
-					cmd := exec.Command(here()+"/unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, iconvalue)
+					helpers.LogError("thumbnail: thumbnailcachedir", err)
+					cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, iconvalue)
 					runCommand(cmd)
 					err = os.Rename(thumbnailcachedir+"/"+iconvalue, thumbnailcachedir+"/.DirIcon")
-					printError("thumbnail", err)
+					helpers.LogError("thumbnail", err)
 					err = os.RemoveAll(thumbnailcachedir + "/" + file.Name())
-					printError("thumbnail", err)
+					helpers.LogError("thumbnail", err)
 				}
 			}
 		}
@@ -107,12 +108,12 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 				if ai.imagetype == 1 {
 					log.Println("TODO: Not yet implemented for type-1: We have a symlink, extract the original file")
 				} else if ai.imagetype == 2 {
-					cmd := exec.Command(here()+"/unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, originFile)
+					cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, originFile)
 					runCommand(cmd)
 				}
 				err = os.RemoveAll(thumbnailcachedir + "/.DirIcon")                              // Remove the symlink
 				err = os.Rename(thumbnailcachedir+"/"+originFile, thumbnailcachedir+"/.DirIcon") // Put the real file there instead
-				printError("appimage", err)
+				helpers.LogError("appimage", err)
 				// TODO: Rinse and repeat: May we still have a symlink at this point?
 			}
 		}
@@ -122,24 +123,24 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	if os.IsNotExist(err) {
 		log.Printf("Could not extract icon, use default icon instead: %s\n", thumbnailcachedir+"/.DirIcon")
 		data, err := Asset("data/appimage.png")
-		printError("thumbnail", err)
+		helpers.LogError("thumbnail", err)
 		err = os.MkdirAll(thumbnailcachedir, 0755)
-		printError("thumbnail", err)
+		helpers.LogError("thumbnail", err)
 		err = ioutil.WriteFile(thumbnailcachedir+"/.DirIcon", data, 0644)
-		printError("thumbnail", err)
+		helpers.LogError("thumbnail", err)
 	} else if err != nil {
 		log.Printf("Error: %s\n", err)
 	}
 	if issvg.Is(buf) {
 		log.Println("thumbnail: .DirIcon in", ai.path, "is an SVG, this is discouraged. Costly converting it now")
 		err = convertToPng(thumbnailcachedir + "/.DirIcon")
-		printError("thumbnail", err)
+		helpers.LogError("thumbnail", err)
 	}
 
 	// Before we proceed, delete empty files. Otherwise the following operations can crash
 	// TODO: Better check if it is a PNG indeed
 	fi, err := os.Stat(thumbnailcachedir + "/.DirIcon")
-	printError("thumbnail", err)
+	helpers.LogError("thumbnail", err)
 	if err != nil {
 		return
 	} else if fi.Size() == 0 {
@@ -170,13 +171,13 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 		log.Println("thumbnail: FIXME: Remove pre-existing Thumb::MTime", content["Thumb::MTime"], "in", ai.path) // FIXME; pngembed does not seem to overwrite pre-existing values, is it a bug there?
 		// log.Println(content["Thumb::MTime"])
 	}
-	printError("thumbnail "+thumbnailcachedir+"/.DirIcon", err)
+	helpers.LogError("thumbnail "+thumbnailcachedir+"/.DirIcon", err)
 	data, err := pngembed.EmbedFile(thumbnailcachedir+"/.DirIcon", "Thumb::URI", ai.uri)
 	// TODO: Thumb::MTime
-	printError("thumbnail", err)
+	helpers.LogError("thumbnail", err)
 	if err == nil {
 		err = ioutil.WriteFile(thumbnailcachedir+"/.DirIcon", data, 600)
-		printError("thumbnail", err)
+		helpers.LogError("thumbnail", err)
 	}
 
 	// Set thumbnail permissions to 0600 as mandated by
@@ -188,12 +189,12 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	// where they are (hopefully) picked up by the desktop environment
 	home, _ := os.UserHomeDir()
 	err = os.MkdirAll(home+"/.thumbnails/normal/", os.ModePerm)
-	printError("thumbnail", err)
+	helpers.LogError("thumbnail", err)
 	log.Println("thumbnail: Moving", thumbnailcachedir+"/.DirIcon", "to", ai.thumbnailfilepath)
 	err = os.Rename(thumbnailcachedir+"/.DirIcon", ai.thumbnailfilepath)
-	printError("thumbnail", err)
+	helpers.LogError("thumbnail", err)
 	err = os.RemoveAll(thumbnailcachedir)
-	printError("thumbnail", err)
+	helpers.LogError("thumbnail", err)
 
 	// In Xfce, the new thumbnail is not shown in the file manager until we touch the file
 	// In fact, touching it from within this program makes the thumbnail not work at all
