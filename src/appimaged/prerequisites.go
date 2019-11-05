@@ -25,7 +25,6 @@ func checkPrerequisites() {
 
 	// Stop any other AppImage system integration daemon
 	// so that they won't interfere with each other
-	stopSystemdService("appimaged")
 	stopSystemdService("appimagelauncherd")
 	stopSystemdService("appimagelauncherfs")
 

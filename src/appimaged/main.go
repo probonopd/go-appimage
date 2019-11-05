@@ -100,6 +100,8 @@ func main() {
 
 	watchDirectories()
 
+	// TODO: Also react to network interfaces
+	// and network connections coming and going
 	if *noZeroconfPtr == false {
 		if checkIfConnectedToNetwork() == true {
 			go registerZeroconfService()
