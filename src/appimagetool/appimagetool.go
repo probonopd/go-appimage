@@ -301,7 +301,7 @@ func GenerateAppImage(appdir string) {
 			fmt.Println("You can get one from https://github.com/settings/tokens")
 		} else {
 			parts := strings.Split(os.Getenv("TRAVIS_REPO_SLUG"), "/")
-			channel := "latest"
+			channel := "continuous" // FIXME: Under what circumstances do we need "latest" here?
 			updateinformation = "gh-releases-zsync|" + parts[0] + "|" + parts[1] + "|" + channel + "|" + name + "-" + "*-" + arch + ".AppImage.zsync"
 			fmt.Println("Calculated updateinformation:", updateinformation)
 		}
