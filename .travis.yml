@@ -11,7 +11,7 @@ git:
 script:
   - unset GOARCH GOBIN GOEXE GOHOSTARCH GOHOSTOS GOOS GORACE GOROOT GOTOOLDIR CC GOGCCFLAGS CGO_ENABLED
   - export GOPATH=$HOME/go
-  - export COMMIT=$TRAVIS_BUILD_NUMBER $TRAVIS_JOB_WEB_URL on $(date +'%Y-%m-%d_%T')
+  - export COMMIT="${TRAVIS_BUILD_NUMBER} ${TRAVIS_JOB_WEB_URL} on $(date +'%Y-%m-%d_%T')"
   - export VERSION=$TRAVIS_BUILD_NUMBER
   - if [ "aarch64" == "$TRAVIS_ARCH" ] ; then export ARCH=arm64 ; fi
   - if [ "amd64" == "$TRAVIS_ARCH" ] ; then export ARCH=amd64 ; fi
