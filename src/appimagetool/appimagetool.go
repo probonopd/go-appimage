@@ -13,11 +13,10 @@ import (
 
 // https://blog.kowalczyk.info/article/vEja/embedding-build-number-in-go-executable.html
 // The build script needs to set those using
-// now=$(date +'%Y-%m-%d_%T')
-// go build -ldflags "-X main.commit=$(git rev-parse HEAD) -X main.buildTime=$now"
+// export COMMIT=$TRAVIS_BUILD_NUMBER $TRAVIS_JOB_WEB_URL on $(date +'%Y-%m-%d_%T')
+// go build -ldflags "-X main.commit=$COMMIT"
 var (
 	commit    string // sha1 revision used to build the program
-	buildTime string // when the executable was built
 )
 
 var flgVersion bool
@@ -30,7 +29,7 @@ func main() {
 
 	// Always show version, but exit immediately if only the version number was requested
 	if commit != "" {
-		fmt.Printf(filepath.Base(os.Args[0]), "built on %s from sha1 %s\n", buildTime, commit)
+		fmt.Printf(filepath.Base(os.Args[0]), "%s\n", commit)
 	} else {
 		fmt.Println("Unsupported local", filepath.Base(os.Args[0]), "developer build")
 	}
