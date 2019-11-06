@@ -29,7 +29,6 @@ script:
   - go get github.com/probonopd/appimage/src/appimagetool
   - go build -trimpath -ldflags="-s -w -X main.commit=$(git rev-parse HEAD) -X main.buildTime=$now" github.com/probonopd/appimage/src/appimagetool
   - upx -9 appimagetool
-  - ./appimagetool
   - go get github.com/probonopd/appimage/src/zsyncmake
   - go build -trimpath -ldflags="-s -w -X main.commit=$(git rev-parse HEAD) -X main.buildTime=$now" github.com/probonopd/appimage/src/zsyncmake
   - upx -9 zsyncmake
