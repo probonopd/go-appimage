@@ -48,7 +48,7 @@ script:
   - if [ $(go env GOHOSTARCH) == "arm64" ] ; then upx -9 ./appimaged ; fi
   - if [ $(go env GOHOSTARCH) == "arm64" ] ; then mv ./appimaged appimaged-arm ; fi
   # Eat our own dogfood, use appimagetool to make AppImages
-  - unset $ARCH # It contains "amd64" which we cannot use since we need "x86_64"
+  - unset ARCH # It contains "amd64" which we cannot use since we need "x86_64"
   - |
     if [ $(go env GOHOSTARCH) == "amd64" ] ; then
     # appimagetool
