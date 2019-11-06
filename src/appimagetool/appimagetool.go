@@ -345,7 +345,7 @@ func GenerateAppImage(appdir string) {
 		os.Stderr.WriteString("Could not determine offset and length of .upd_info in runtime, exiting\n")
 		os.Exit(1)
 	}
-	fmt.Println("Embedded .upd-info section length:", uioffset)
+	fmt.Println("Embedded .upd-info section offset:", uioffset)
 	fmt.Println("Embedded .upd-info section length:", uilength)
 
 	// Exit if updateinformation exceeds available space
@@ -370,7 +370,8 @@ func GenerateAppImage(appdir string) {
 		os.Stderr.WriteString("Could not find section .upd_info in runtime, exiting\n")
 		os.Exit(1)
 	}
-	fmt.Println("Embedded .upd-info section:", string(uidata))
+	fmt.Println("Embedded .upd-info section now contains:")
+	fmt.Println(string(uidata))
 
 	// TODO: calculate and embed MD5 digest
 	// https://github.com/AppImage/AppImageKit/blob/801e789390d0e6848aef4a5802cd52da7f4abafb/src/appimagetool.c#L961
