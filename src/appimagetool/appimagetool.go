@@ -293,7 +293,7 @@ func GenerateAppImage(appdir string) {
 	//     TRAVIS_PULL_REQUEST
 	if os.Getenv("TRAVIS_REPO_SLUG") != "" {
 		fmt.Println("Running on Travis CI")
-		if os.Getenv("TRAVIS_PULL_REQUEST") != "" {
+		if os.Getenv("TRAVIS_PULL_REQUEST") != "false" {
 			fmt.Println("Will not calculate update information for GitHub because this is a pull request")
 		} else if os.Getenv("GITHUB_TOKEN") == "" {
 			fmt.Println("Will not calculate update information for GitHub because $GITHUB_TOKEN is missing")
@@ -376,8 +376,10 @@ func GenerateAppImage(appdir string) {
 	//  Can we make it much simpler to use? Check how goreleaser does it.
 
 	// If updateinformation was provided, then we also generate the zsync file (after having signed the AppImage)
-	opts := zsync.Options{0, "", filepath.Base(target)}
-	zsync.ZsyncMake(target, opts)
+	if updateinformation != "" {
+		opts := zsync.Options{0, "", filepath.Base(target)}
+		zsync.ZsyncMake(target, opts)
+	}
 
 	fmt.Println("Success")
 	fmt.Println("")
