@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -41,6 +42,11 @@ var toBeUnintegrated []string
 
 var conn *dbus.Conn
 
+// https://blog.kowalczyk.info/article/vEja/embedding-build-number-in-go-executable.html
+// The build script needs to set, e.g.,
+// go build -ldflags "-X main.commit=$TRAVIS_BUILD_NUMBER"
+var commit string
+
 func main() {
 
 	// As quickly as possible go there if we are invoked with the "appwrap" command
@@ -52,6 +58,13 @@ func main() {
 	}
 
 	flag.Parse()
+
+	// Always show version
+	if commit != "" {
+		fmt.Printf("%s %s\n", filepath.Base(os.Args[0]), commit)
+	} else {
+		fmt.Println("Unsupported local", filepath.Base(os.Args[0]), "developer build")
+	}
 
 	var err error
 	// Catch for young players:
