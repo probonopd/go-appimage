@@ -31,8 +31,17 @@ func LogError(context string, e error) {
 	}
 }
 
-// Here returns the location of the executable based on os.Args[0]
+// Here returns the location of the executable based on /proc/self/exe
+// This will only work on Linux. For AppImages, it will resolve to the
+// inside of an AppImage
 func Here() string {
+	fi, _ := os.Readlink("/proc/self/exe")
+	return filepath.Dir(fi)
+}
+
+// Here returns the location of the executable based on os.Args[0]
+// For AppImages, it will resolve to the outside of an AppImage
+func HereArgs0() string {
 	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
 	if err != nil {
 		log.Println(err)
