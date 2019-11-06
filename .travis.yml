@@ -99,7 +99,8 @@ script:
 
 after_success:
   - wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh
-  - bash upload.sh appimaged-* appimagetool-* *.AppImage* || true
+  - if [ $(go env GOHOSTARCH) == "amd64" ] ; then ; bash upload.sh appimaged-* appimagetool-* ; fi
+  - if [ $(go env GOHOSTARCH) != "amd64" ] ; then ; bash upload.sh appimaged-* appimagetool-* *.AppImage* ; fi
 
 branches:
   except:
