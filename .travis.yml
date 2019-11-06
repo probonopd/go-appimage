@@ -70,6 +70,10 @@ script:
     Terminal=true
     EOF
     PATH=./appimagetool.AppDir/usr/bin/:$PATH ARCH=x86_64 appimagetool ./appimagetool.AppDir
+    fi
+  # Recursively eat our own dogfood, use the appimagetool AppImage to make AppImages
+  - |
+    if [ $(go env GOHOSTARCH) == "amd64" ] ; then
     # appimaged
     mkdir -p appimaged.AppDir/usr/bin
     ( cd appimaged.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/bsdtar )
@@ -89,7 +93,7 @@ script:
     Terminal=true
     NoDisplay=true
     EOF
-    PATH=./appimaged.AppDir/usr/bin/:$PATH ARCH=x86_64 appimaged ./appimaged.AppDir
+    ./appimagetool-*-x86_64.AppImage ./appimaged.AppDir
     fi
 
 after_success:
