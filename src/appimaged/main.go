@@ -49,9 +49,9 @@ var commit string
 
 func main() {
 
-	// As quickly as possible go there if we are invoked with the "appwrap" command
+	// As quickly as possible go there if we are invoked with the "wrap" command
 	if len(os.Args) > 1 {
-		if os.Args[1] == "appwrap" {
+		if os.Args[1] == "wrap" {
 			appwrap()
 			os.Exit(0)
 		}
