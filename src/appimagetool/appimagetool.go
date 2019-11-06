@@ -166,7 +166,7 @@ func GenerateAppImage(appdir string) {
 		}
 	} else {
 		archs = helpers.AppendIfMissing(archs, os.Getenv("ARCH"))
-			fmt.Println("Architecture from $ARCH:", res)
+			fmt.Println("Architecture from $ARCH:", os.Getenv("ARCH"))
 	}
 
 	if len(archs) != 1 {
