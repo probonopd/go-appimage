@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -29,9 +30,9 @@ func main() {
 
 	// Always show version, but exit immediately if only the version number was requested
 	if commit != "" {
-		fmt.Printf("Build on %s from sha1 %s\n", buildTime, commit)
+		fmt.Printf(filepath.Base(os.Args[0]), "built on %s from sha1 %s\n", buildTime, commit)
 	} else {
-		fmt.Println("Unsupported local developer build")
+		fmt.Println("Unsupported local", filepath.Base(os.Args[0]), "developer build")
 	}
 	if flgVersion {
 		os.Exit(0)
@@ -48,7 +49,7 @@ func main() {
 
 	// Check if first argument is present, exit otherwise
 	if len(os.Args) < 2 {
-		os.Stderr.WriteString("Please specify an AppDir to be converted to an AppImage")
+		os.Stderr.WriteString("Please specify an AppDir to be converted to an AppImage \n")
 		os.Exit(1)
 	}
 
@@ -58,7 +59,7 @@ func main() {
 		GenerateAppImage(firstArg)
 	} else {
 		// TODO: If it is a file, then check if it is an AppImage and if yes, extract it
-		os.Stderr.WriteString("Supplied argument is not a directory")
+		os.Stderr.WriteString("Supplied argument is not a directory \n")
 		os.Exit(1)
 	}
 }
@@ -66,17 +67,14 @@ func main() {
 // GenerateAppImage converts an AppDir into an AppImage
 func GenerateAppImage(appdir string) {
 
-	// Get VERSION environment variable
-	// os.Getenv("VERSION")
-
 	// Guess update information
-
 	// Check if $VERSION is empty and git is on the path, if yes "git rev-parse --short HEAD"
 	version := ""
 	version = os.Getenv("VERSION")
 	if version == "" && helpers.IsCommandAvailable("git") == true {
 		version, err := exec.Command("git", "rev-parse", "--short", "HEAD", appdir).Output()
-		helpers.PrintError("git rev-parse", err)
+		os.Stderr.WriteString("Could not determine version automatically, please supply the application version as $VERSION " + filepath.Base(os.Args[0]) + " ... \n")
+		// os.Exit(1) ////////////// Temporarily disabled for debugging
 		if err == nil {
 			fmt.Println("NOTE: Using", version, "from 'git rev-parse --short HEAD' as the version")
 			fmt.Println("      Please set the $VERSION environment variable if this is not intended")
@@ -87,15 +85,29 @@ func GenerateAppImage(appdir string) {
 	// find_first_matching_file_nonrecursive(source, "*.desktop");
 
 	// If no desktop file found, exit
-	// "Desktop file not found, aborting"
+	n := len(helpers.FilesWithSuffixInDirectory(appdir, ".desktop"))
+	if n < 1 {
+		os.Stderr.WriteString("No top-level desktop file found in" + appdir + ", aborting\n")
+		os.Exit(1)
+	}
 
-	// if(g_find_program_in_path ("desktop-file-validate")) {
-	//    if(validate_desktop_file(desktop_file) != 0){
-	//        fprintf(stderr, "ERROR: Desktop file contains errors. Please fix them. Please see\n");
-	//        fprintf(stderr, "       https://standards.freedesktop.org/desktop-entry-spec/1.0/n");
-	//        die("       for more information.");
-	//    }
-	// }
+	// If more than one desktop files found, exit
+	if n > 1 {
+		os.Stderr.WriteString("Multiple top-level desktop files found in" + appdir + ", aborting\n")
+		os.Exit(1)
+	}
+
+	desktopfile := helpers.FilesWithSuffixInDirectory(appdir, ".desktop")[0]
+
+	// Validate_desktop_file
+	cmd := exec.Command("desktop-file-validate", desktopfile)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		helpers.PrintError("desktop-file-validate", err)
+		fmt.Printf("%s", string(out))
+		os.Stderr.WriteString("ERROR: Desktop file contains errors. Please fix them. Please see https://standards.freedesktop.org/desktop-entry-spec/1.0\n")
+		os.Exit(1)
+	}
 
 	// /Read information from .desktop file
 

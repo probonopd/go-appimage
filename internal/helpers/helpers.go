@@ -1,10 +1,12 @@
 package helpers
 
 import (
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 // PrintError prints error, prefixed by a string that explains the context
@@ -47,4 +49,20 @@ func IsCommandAvailable(name string) bool {
 		return false
 	}
 	return true
+}
+
+// FilesWithSuffixInDirectory returns the files in a given directory with the given filename extension, and err
+func FilesWithSuffixInDirectory(directory string, extension string) []string {
+	var foundfiles []string
+	files, err := ioutil.ReadDir(directory)
+	if err != nil {
+		return foundfiles
+	}
+
+	for _, file := range files {
+		if strings.HasSuffix(file.Name(), extension) {
+			foundfiles = append(foundfiles, directory+"/"+file.Name())
+		}
+	}
+	return foundfiles
 }
