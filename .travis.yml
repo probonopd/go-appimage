@@ -1,8 +1,6 @@
 dist: xenial
 language: none
 
-# Not clear from https://blog.travis-ci.com/2019-10-07-multi-cpu-architecture-support
-# whether this works in this way. How can we access the architecture within build scripts?
 arch:
   - amd64
   - arm64
@@ -13,6 +11,7 @@ git:
 script:
   - unset GOARCH GOBIN GOEXE GOHOSTARCH GOHOSTOS GOOS GORACE GOROOT GOTOOLDIR CC GOGCCFLAGS CGO_ENABLED
   - export GOPATH=$HOME/go
+  - export now=$(date +'%Y-%m-%d_%T')
   - if [ "aarch64" == "$TRAVIS_ARCH" ] ; then export ARCH=arm64 ; fi
   - if [ "amd64" == "$TRAVIS_ARCH" ] ; then export ARCH=amd64 ; fi
   - wget -q https://dl.google.com/go/go1.13.4.linux-$ARCH.tar.gz
