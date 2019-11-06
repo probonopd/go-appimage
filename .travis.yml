@@ -11,7 +11,8 @@ git:
 script:
   - unset GOARCH GOBIN GOEXE GOHOSTARCH GOHOSTOS GOOS GORACE GOROOT GOTOOLDIR CC GOGCCFLAGS CGO_ENABLED
   - export GOPATH=$HOME/go
-  - export now=$(date +'%Y-%m-%d_%T')
+  - export COMMIT=$TRAVIS_BUILD_NUMBER $TRAVIS_JOB_WEB_URL on $(date +'%Y-%m-%d_%T')
+  - export VERSION=$TRAVIS_BUILD_NUMBER
   - if [ "aarch64" == "$TRAVIS_ARCH" ] ; then export ARCH=arm64 ; fi
   - if [ "amd64" == "$TRAVIS_ARCH" ] ; then export ARCH=amd64 ; fi
   - wget -q https://dl.google.com/go/go1.13.4.linux-$ARCH.tar.gz
@@ -26,22 +27,22 @@ script:
   - sudo apt-get -y install psmisc dbus-x11 # killall, dbus-launch
   - export GO111MODULE=off
   - go get github.com/probonopd/appimage/src/appimagetool
-  - go build -trimpath -ldflags="-s -w -X main.commit=$(git rev-parse HEAD) -X main.buildTime=$now" github.com/probonopd/appimage/src/appimagetool
+  - go build -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/appimage/src/appimagetool
   - upx -9 appimagetool
   - go get github.com/probonopd/appimage/src/zsyncmake
-  - go build -trimpath -ldflags="-s -w -X main.commit=$(git rev-parse HEAD) -X main.buildTime=$now" github.com/probonopd/appimage/src/zsyncmake
+  - go build -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/appimage/src/zsyncmake
   - upx -9 zsyncmake
   - ./zsyncmake || true
   - go get github.com/probonopd/appimage/src/appimaged
   # mkdir -p $GOPATH/src/github.com/purpleidea/mgmt/vendor/gopkg.in/ # https://github.com/purpleidea/mgmt/issues/561
   # rm -rf $GOPATH/src/github.com/purpleidea/mgmt/vendor/gopkg.in/fsnotify.v1 # https://github.com/purpleidea/mgmt/issues/561
-  - go build -trimpath -ldflags="-s -w -X main.commit=$(git rev-parse HEAD) -X main.buildTime=$now" github.com/probonopd/appimage/src/appimaged
+  - go build -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/appimage/src/appimaged
   - upx -9 appimaged
   - mv ./appimaged appimaged-$(go env GOHOSTARCH)
-  - if [ $(go env GOHOSTARCH) == "amd64" ] ; then env CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -trimpath -ldflags="-s -w -X main.commit=$(git rev-parse HEAD) -X main.buildTime=$now" github.com/probonopd/appimage/src/appimaged ; fi
+  - if [ $(go env GOHOSTARCH) == "amd64" ] ; then env CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/appimage/src/appimaged ; fi
   - if [ $(go env GOHOSTARCH) == "amd64" ] ; then upx -9 ./appimaged ; fi
   - if [ $(go env GOHOSTARCH) == "amd64" ] ; then mv ./appimaged appimaged-386 ; fi
-  - if [ $(go env GOHOSTARCH) == "arm64" ] ; then env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=5 go build -trimpath -ldflags="-s -w -X main.commit=$(git rev-parse HEAD) -X main.buildTime=$now" github.com/probonopd/appimage/src/appimaged ; fi
+  - if [ $(go env GOHOSTARCH) == "arm64" ] ; then env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=5 go build -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/appimage/src/appimaged ; fi
   - if [ $(go env GOHOSTARCH) == "arm64" ] ; then upx -9 ./appimaged ; fi
   - if [ $(go env GOHOSTARCH) == "arm64" ] ; then mv ./appimaged appimaged-arm ; fi
 
