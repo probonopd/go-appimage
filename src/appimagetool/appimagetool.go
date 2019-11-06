@@ -38,7 +38,7 @@ func main() {
 	}
 
 	// Check for needed files on $PATH
-	tools := []string{"file", "mksquashfs", "desktop-file-validate", "appstreamcli"}
+	tools := []string{"file", "mksquashfs", "desktop-file-validate"}
 	for _, t := range tools {
 		if helpers.IsCommandAvailable(t) == false {
 			fmt.Println("Required helper tool", t, "missing")
@@ -217,6 +217,10 @@ func GenerateAppImage(appdir string) {
 		fmt.Println("         http://output.jsbin.com/qoqukof")
 	} else {
 		fmt.Println("Trying to validate AppStream information with the appstreamcli tool")
+			if helpers.IsCommandAvailable("appstreamcli") == false {
+				fmt.Println("Required helper tool appstreamcli missing")
+				os.Exit(1)
+		}
 		err = helpers.ValidateAppStreamMetainfoFile(appdir)
 		if err != nil {
 			fmt.Println("In case of questions regarding the validation, please refer to https://github.com/ximion/appstream")
