@@ -24,6 +24,11 @@ func checkPrerequisites() {
 		os.Exit(1)
 	}
 
+	// Check whether we have a sufficient version of unsquashfs for -offset
+	if helpers.CheckIfSquashfsVersionSufficient("unsquashfs") == false {
+		os.Exit(1)
+	}
+
 	// Stop any other AppImage system integration daemon
 	// so that they won't interfere with each other
 	stopSystemdService("appimagelauncherd")

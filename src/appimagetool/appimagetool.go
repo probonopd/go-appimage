@@ -1,23 +1,24 @@
 package main
 
 import (
+	"debug/elf"
 	"flag"
 	"fmt"
-
+	"github.com/agriardyan/go-zsyncmake/zsync"
+	"github.com/probonopd/appimage/internal/helpers"
+	"gopkg.in/ini.v1"
 	"os"
 	"os/exec"
 	"path/filepath"
-
-	"github.com/probonopd/appimage/internal/helpers"
+	"strconv"
+	"strings"
 )
 
 // https://blog.kowalczyk.info/article/vEja/embedding-build-number-in-go-executable.html
 // The build script needs to set those using
-// export COMMIT=$TRAVIS_BUILD_NUMBER $TRAVIS_JOB_WEB_URL on $(date +'%Y-%m-%d_%T')
+// export COMMIT="${TRAVIS_BUILD_NUMBER} ${TRAVIS_JOB_WEB_URL} on $(date +'%Y-%m-%d_%T')"
 // go build -ldflags "-X main.commit=$COMMIT"
-var (
-	commit    string // sha1 revision used to build the program
-)
+var commit string
 
 var flgVersion bool
 
@@ -33,7 +34,7 @@ func main() {
 	} else {
 		fmt.Println("Unsupported local", filepath.Base(os.Args[0]), "developer build")
 	}
-	if flgVersion {
+	if flgVersion == true {
 		os.Exit(0)
 	}
 
@@ -44,6 +45,11 @@ func main() {
 			fmt.Println("Required helper tool", t, "missing")
 			os.Exit(1)
 		}
+	}
+
+	// Check whether we have a sufficient version of mksquashfs for -offset
+	if helpers.CheckIfSquashfsVersionSufficient("mksquashfs") == false {
+		os.Exit(1)
 	}
 
 	// Check if first argument is present, exit otherwise
@@ -73,7 +79,7 @@ func GenerateAppImage(appdir string) {
 	if version == "" && helpers.IsCommandAvailable("git") == true {
 		version, err := exec.Command("git", "rev-parse", "--short", "HEAD", appdir).Output()
 		os.Stderr.WriteString("Could not determine version automatically, please supply the application version as $VERSION " + filepath.Base(os.Args[0]) + " ... \n")
-		// os.Exit(1) ////////////// Temporarily disabled for debugging
+		os.Exit(1) ////////////// Temporarily disabled for debugging
 		if err == nil {
 			fmt.Println("NOTE: Using", version, "from 'git rev-parse --short HEAD' as the version")
 			fmt.Println("      Please set the $VERSION environment variable if this is not intended")
@@ -86,7 +92,7 @@ func GenerateAppImage(appdir string) {
 	// If no desktop file found, exit
 	n := len(helpers.FilesWithSuffixInDirectory(appdir, ".desktop"))
 	if n < 1 {
-		os.Stderr.WriteString("No top-level desktop file found in" + appdir + ", aborting\n")
+		os.Stderr.WriteString("No top-level desktop file found in " + appdir + ", aborting\n")
 		os.Exit(1)
 	}
 
@@ -98,125 +104,270 @@ func GenerateAppImage(appdir string) {
 
 	desktopfile := helpers.FilesWithSuffixInDirectory(appdir, ".desktop")[0]
 
-	// Validate_desktop_file
-	cmd := exec.Command("desktop-file-validate", desktopfile)
-	out, err := cmd.CombinedOutput()
+	err := helpers.ValidateDesktopFile(desktopfile)
+	helpers.PrintError("ValidateDesktopFile", err)
 	if err != nil {
-		helpers.PrintError("desktop-file-validate", err)
-		fmt.Printf("%s", string(out))
-		os.Stderr.WriteString("ERROR: Desktop file contains errors. Please fix them. Please see https://standards.freedesktop.org/desktop-entry-spec/1.0\n")
 		os.Exit(1)
 	}
 
-	// /Read information from .desktop file
+	// Read information from .desktop file
 
-	// ".desktop file is missing a Categories= key"
+	// Check for presence of "Categories=" key and abort otherwise
+	d, err := ini.Load(desktopfile)
+	helpers.PrintError("ini.load", err)
+	neededKeys := []string{"Categories", "Name", "Exec", "Type", "Icon"}
+	for _, k := range neededKeys {
+		if d.Section("Desktop Entry").HasKey(k) == false {
+			os.Stderr.WriteString(".desktop file is missing a '" + k + "'= key\n")
+			os.Exit(1)
+		}
+	}
 
-	// Read "Name");
-	// replace " ", "_");
+	val, _ := d.Section("Desktop Entry").GetKey("Icon")
+	iconname := val.String()
+	if strings.Contains(iconname, "/") {
+		os.Stderr.WriteString("Desktop file contains Icon= entry with a path, aborting\n")
+		os.Exit(1)
+	}
+
+	if strings.Contains(filepath.Base(iconname), ".") {
+		os.Stderr.WriteString("Desktop file contains Icon= entry with '.', aborting\n")
+		os.Exit(1)
+	}
+
+	// Read "Name=" key and convert spaces into underscores
+	val, _ = d.Section("Desktop Entry").GetKey("Name")
+	name := strings.Replace(val.String(), " ", "_", 999)
+	fmt.Println(name)
 
 	// Determine the architecture
-	// getenv("ARCH")
-
 	// If no $ARCH variable is set check all .so that we can find to determine the architecture
-	// find_arch(source, "*.so.*", archs);
-	// "Unable to guess the architecture of the AppDir source directory"
-	// or
-	// "More than one architectures were found of the AppDir source directory"
-	// "A valid architecture with the ARCH environmental variable should be provided\ne.g. ARCH=x86_64 %s", argv[0]),
+	var archs []string
+	if os.Getenv("ARCH") == "" {
+		err := filepath.Walk(appdir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				helpers.PrintError("Determine architecture", err)
+			} else if info.IsDir() == false && strings.Contains(info.Name(), ".so.") {
+				fmt.Println("TODO: Check architecture in", info.Name())
+				e, err := elf.Open(path)
+				helpers.PrintError("Determine architecture", err)
+				defer e.Close()
+			}
+			return nil
+		})
+		helpers.PrintError("Determine architecture", err)
+	} else {
+		archs = append(archs, os.Getenv("ARCH"))
+	}
+	if len(archs) != 1 {
+		os.Stderr.WriteString("Could not determine architecture automatically, please supply it as $ARCH " + filepath.Base(os.Args[0]) + " ... \n")
+		os.Exit(1)
+	}
+	arch := archs[0]
 
-	// set VERSION in desktop file and save it
-	// g_key_file_set_string(kf, G_KEY_FILE_DESKTOP_GROUP, "X-AppImage-Version", version_env);
+	// Set VERSION in desktop file and save it
+	d, err = ini.Load(desktopfile)
+	ini.PrettyFormat = false
+	helpers.PrintError("ini.load", err)
+	d.Section("Desktop Entry").Key("X-AppImage-Version").SetValue(version)
+	err = d.SaveTo(desktopfile)
+	helpers.PrintError("Save desktop file", err)
 
-	// "Could not save modified desktop file"
+	// Construct target AppImage filename
+	target := name + "-" + version + "-" + arch + ".AppImage"
+	fmt.Println(target)
 
-	// if (version_env != NULL) {
-	// sprintf(dest_path, "%s-%s-%s.AppImage", app_name_for_filename, version_env, arch);
+	var iconfile string
 
-	// Read Icon= and find pngs with that name
-	// in top-level directory
-	// and as a fallback elsewhere, check their sizes, prefer 256x256
+	// Check if we find a png matching the Icon= key in the top-level directory of the AppDir
+	// We insist on a png because otherwise we need to costly convert it to png at integration time
+	// since thumbails need to be in png format
+	if helpers.CheckIfFileExists(appdir+"/"+iconname+".png") == true {
+		iconfile = appdir + "/" + iconname + ".png"
+	} else {
+		os.Stderr.WriteString("Could not find icon file at " + appdir + "/" + iconname + ".png" + ", exiting\n")
+		fmt.Println("TODO: As a fallback, search in usr/share/icons/hicolor/256x256 and copy from there")
+		os.Exit(1)
+	}
+	fmt.Println(iconfile)
+
+	fmt.Println("TODO: Check validity and size of png")
 
 	// "Deleting pre-existing .DirIcon"
+	if helpers.CheckIfFileExists(appdir+"/.DirIcon") == true {
+		fmt.Println("Deleting pre-existing .DirIcon")
+		os.Remove(appdir + "/.DirIcon")
+	}
 
 	// "Copying .DirIcon in place based on information from desktop file"
+	err = helpers.CopyFile(iconfile, appdir+"/.DirIcon")
+	if err != nil {
+		helpers.PrintError("Copy .DirIcon", err)
+		os.Exit(1)
+	}
 
-	// /Check if AppStream upstream metadata is present in source AppDir
-	// "/usr/share/metainfo/" + replacestr(".desktop", ".appdata.xml");
+	// Check if AppStream upstream metadata is present in source AppDir
+	// If yes, use ximion's appstreamcli to make sure that desktop file and appdata match together and are valid
+	appstreamfile := appdir + "/usr/share/metainfo/" + filepath.Base(desktopfile) + ".appdata.xml"
+	if helpers.CheckIfFileExists(appstreamfile) == false {
+		fmt.Println("WARNING: AppStream upstream metadata is missing, please consider creating it in")
+		fmt.Println("         " + appdir + "/usr/share/metainfo/" + filepath.Base(desktopfile) + ".appdata.xml")
+		fmt.Println("         Please see https://www.freedesktop.org/software/appstream/docs/chap-Quickstart.html#sect-Quickstart-DesktopApps")
+		fmt.Println("         for more information or use the generator at")
+		fmt.Println("         http://output.jsbin.com/qoqukof")
+	} else {
+		fmt.Println("Trying to validate AppStream information with the appstreamcli tool")
+		err = helpers.ValidateAppStreamMetainfoFile(appdir)
+		if err != nil {
+			fmt.Println("In case of questions regarding the validation, please refer to https://github.com/ximion/appstream")
+			os.Exit(1)
+		}
+	}
 
-	// "WARNING: AppStream upstream metadata is missing, please consider creating it\n");
-	// "         in usr/share/metainfo/%s\n", application_id);
-	// "         Please see https://www.freedesktop.org/software/appstream/docs/chap-Quickstart.html#sect-Quickstart-DesktopApps\n");
-	// "         for more information or use the generator at http://output.jsbin.com/qoqukof.\n");
-
-	// /Use ximion's appstreamcli to make sure that desktop file and appdata match together
-	// "Trying to validate AppStream information with the appstreamcli tool"
-	// "In case of issues, please refer to https://github.com/ximion/appstream"
-	// "appstreamcli validate-tree %s"
+	runtimedir := filepath.Clean(helpers.Here() + "/../share/AppImageKit/runtime/")
+	if _, err := os.Stat(runtimedir); os.IsNotExist(err) {
+		runtimedir = helpers.Here()
+	}
+	runtimefilepath := runtimedir + "/runtime_x86_64"
+	if helpers.CheckIfFileExists(runtimefilepath) == false {
+		os.Stderr.WriteString("Cannot find " + runtimefilepath + ", exiting\n")
+		fmt.Println("It should have been bundled, but you can get it from https://github.com/AppImage/AppImageKit/releases/continuous")
+		// TODO: Download it from there?
+		os.Exit(1)
+	}
 
 	// Find out the size of the binary runtime
-	// offset =
+	fi, err := os.Stat(runtimefilepath)
+	if err != nil {
+		helpers.PrintError("runtime", err)
+		os.Exit(1)
+	}
+	offset := fi.Size()
 
 	// "mksquashfs", source, destination, "-offset", offset, "-comp", "gzip", "-root-owned", "-noappend"
+	cmd := exec.Command("mksquashfs", appdir, target, "-offset", strconv.FormatInt(offset, 10), "-comp", "gzip", "-root-owned", "-noappend")
+	fmt.Println(cmd.String())
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		helpers.PrintError("mksquashfs", err)
+		fmt.Printf("%s", string(out))
+		os.Exit(1)
+	}
 
 	// Embed the binary runtime into the squashfs
-	// "Embedding ELF..."
+	fmt.Println("Embedding ELF...")
 
-	// "Marking the AppImage as executable...
+	err = helpers.WriteFileIntoOtherFileAtOffset(runtimefilepath, target, 0)
+	if err != nil {
+		helpers.PrintError("Embedding runtime", err)
+		fmt.Printf("%s", string(out))
+		os.Exit(1)
+	}
+
+	fmt.Println("Marking the AppImage as executable...")
+	os.Chmod(target, 0755)
 
 	// Construct update information
+	var updateinformation string
 
-	// If the user has not provided update information but we know this is a Travis CI build,
+	// If we know this is a Travis CI build,
 	// then fill in update information based on TRAVIS_REPO_SLUG
 	//     https://docs.travis-ci.com/user/environment-variables/#Default-Environment-Variables
 	//     TRAVIS_COMMIT: The commit that the current build is testing.
 	//     TRAVIS_REPO_SLUG: The slug (in form: owner_name/repo_name) of the repository currently being built.
 	//     TRAVIS_TAG: If the current build is for a git tag, this variable is set to the tag’s name.
 	//     TRAVIS_PULL_REQUEST
+	if os.Getenv("TRAVIS_REPO_SLUG") != "" {
+		fmt.Println("Running on Travis CI")
+		if os.Getenv("TRAVIS_PULL_REQUEST") != "" {
+			fmt.Println("Will not calculate update information for GitHub because this is a pull request")
+		} else if os.Getenv("GITHUB_TOKEN") == "" {
+			fmt.Println("Will not calculate update information for GitHub because $GITHUB_TOKEN is missing")
+			fmt.Println("please set it in the Travis CI Repository Settings for this project.")
+			fmt.Println("You can get one from https://github.com/settings/tokens")
+		} else {
+			parts := strings.Split(os.Getenv("TRAVIS_REPO_SLUG"), "/")
+			channel := "latest"
+			updateinformation = "gh-releases-zsync|" + parts[0] + "|" + parts[1] + "|" + channel + "|" + name + "-" + "*-" + arch + ".AppImage.zsync"
+			fmt.Println("Calculated updateinformation:", updateinformation)
+		}
+	}
 
-	// $GITHUB_TOKEN missing
-	// "Will not guess update information since $GITHUB_TOKEN is missing"
-
-	// If the user has not provided update information but we know this is a GitLab CI build
+	// If we know this is a GitLab CI build
 	// do nothing at the moment but print some nice message
 	// https://docs.gitlab.com/ee/ci/variables/#predefined-variables-environment-variables
 	// CI_PROJECT_URL
 	// "CI_COMMIT_REF_NAME"); The branch or tag name for which project is built
 	// "CI_JOB_NAME"); The name of the job as defined in .gitlab-ci.yml
+	if os.Getenv("CI_COMMIT_REF_NAME") != "" {
+		fmt.Println("Running on GitLab CI")
+		fmt.Println("Will not calculate update information for GitLab because GitLab does not support HTTP range requests yet")
+	}
 
-	// If updateinformation was provided, then we check and embed it
-
+	// TODO: If updateinformation was provided, then we check and embed it
+	// but questionable whether we should have users do this since it is complex and prone to error
 	// if(!g_str_has_prefix(updateinformation,"zsync|"))
 	// if(!g_str_has_prefix(updateinformation,"bintray-zsync|"))
 	// if(!g_str_has_prefix(updateinformation,"gh-releases-zsync|"))
 	// die("The provided updateinformation is not in a recognized format");
 
 	// Find offset and length of updateinformation
+	uidata, err := helpers.GetSectionData(target, ".upd_info")
+	helpers.PrintError("GetSectionData for '.upd_info'", err)
+	if err != nil {
+		os.Stderr.WriteString("Could not find section .upd_info in runtime, exiting\n")
+		os.Exit(1)
+	}
+	fmt.Println("Embedded .upd-info section before embedding updateinformation:")
+	fmt.Println(uidata)
 
-	// Section  ".upd_info"
-	// unsigned long ui_offset =
-	// unsigned long ui_length =
-	// "Could not find section .upd_info in runtime"
-	// "Could not determine offset for updateinformation"
+	uioffset, uilength, err := helpers.GetSectionOffsetAndLength(target, ".upd_info")
+	helpers.PrintError("GetSectionData for '.upd_info'", err)
+	if err != nil {
+		os.Stderr.WriteString("Could not determine offset and length of .upd_info in runtime, exiting\n")
+		os.Exit(1)
+	}
+	fmt.Println("Embedded .upd-info section length:", uioffset)
+	fmt.Println("Embedded .upd-info section length:", uilength)
 
 	// Exit if updateinformation exceeds available space
-	// "updateinformation does not fit into segment, aborting"
+	if len(updateinformation) > len(uidata) {
+		os.Stderr.WriteString("updateinformation does not fit into .upd_info segment, exiting\n")
+		os.Exit(1)
+	}
+
+	fmt.Println("Writing updateinformation into .upd_info segment...", uilength)
 
 	// Seek file to ui_offset and write it there
+	helpers.WriteStringIntoOtherFileAtOffset(updateinformation,target,uioffset)
+	helpers.PrintError("GetSectionData for '.upd_info'", err)
+	if err != nil {
+		os.Stderr.WriteString("Could write into .upd_info segment, exiting\n")
+		os.Exit(1)
+	}
+
+	uidata, err = helpers.GetSectionData(target, ".upd_info")
+	helpers.PrintError("GetSectionData for '.upd_info'", err)
+	if err != nil {
+		os.Stderr.WriteString("Could not find section .upd_info in runtime, exiting\n")
+		os.Exit(1)
+	}
+	fmt.Println("Embedded .upd-info section:", string(uidata))
 
 	// TODO: calculate and embed MD5 digest
 	// https://github.com/AppImage/AppImageKit/blob/801e789390d0e6848aef4a5802cd52da7f4abafb/src/appimagetool.c#L961
 	// Blocked by https://github.com/AppImage/AppImageSpec/issues/29
 
-	// TODO: Signing. It is pretty convoluted and hardly anyone is using it. Drop it?
+	// TODO: Signing. It is pretty convoluted and hardly anyone is using it.
+	//  Can we make it much simpler to use? Check how goreleaser does it.
 
 	// If updateinformation was provided, then we also generate the zsync file (after having signed the AppImage)
+	opts := zsync.Options{0, "", filepath.Base(target)}
+	zsync.ZsyncMake(target, opts)
 
-	// "Success"
-	// ""
-	// "Please consider submitting your AppImage to AppImageHub, the crowd-sourced"
-	// "central directory of available AppImages, by opening a pull request"
-	// "at https://github.com/AppImage/appimage.github.io"
-
-	fmt.Println("Nothing implemented yet")
+	fmt.Println("Success")
+	fmt.Println("")
+	fmt.Println("Please consider submitting your AppImage to AppImageHub, the crowd-sourced")
+	fmt.Println("central directory of available AppImages, by opening a pull request")
+	fmt.Println("at https://github.com/AppImage/appimage.github.io")
 }

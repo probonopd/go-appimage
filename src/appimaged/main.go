@@ -79,7 +79,7 @@ func main() {
 	log.Println("main: xdg.DataHome =", xdg.DataHome)
 
 	checkPrerequisites()
-	deleteDesktopFilesWithNonExistingTargets()
+	helpers.DeleteDesktopFilesWithNonExistingTargets()
 
 	log.Println("Overwrite:", *overwritePtr)
 	log.Println("Clean:", *overwritePtr)
@@ -99,8 +99,8 @@ func main() {
 
 	watchDirectories()
 
-	// TODO: Also react to network interfaces
-	// and network connections coming and going
+	// TODO: Also react to network interfaces and network connections coming and going,
+	// refer to the official NetworkManager dbus specification: https://developer.gnome.org/NetworkManager/1.16/spec.html
 	if *noZeroconfPtr == false {
 		if checkIfConnectedToNetwork() == true {
 			go registerZeroconfService()
@@ -257,22 +257,22 @@ func watchDirectories() {
 			watchedDirectories = appendIfMissing(watchedDirectories, mount.MountPoint+"/Applications")
 		}
 	}
-	// TODO: Maybe we don't want to walk subdirectories?
-	// filepath.Walk is handy but scans subfolders too, by default, which might not be what you want.
-	// The Go stdlib also provides ioutil.ReadDir
+
 	log.Println("Registering AppImages in well-known locations and their subdirectories...")
 
 	watchDirectoriesReally(watchedDirectories)
 
-	deleteDesktopFilesWithNonExistingTargets()
+	helpers.DeleteDesktopFilesWithNonExistingTargets()
 	// So this should also catch AppImages which were formerly hidden in some subdirectory
 	// where the whole directory was deleted
 }
 
 func watchDirectoriesReally(watchedDirectories []string) {
 	for _, v := range watchedDirectories {
+		// TODO: Maybe we don't want to walk subdirectories?
+		// filepath.Walk is handy but scans subfolders too, by default, which might not be what you want.
+		// The Go stdlib also provides ioutil.ReadDir
 		err := filepath.Walk(v, func(path string, info os.FileInfo, err error) error {
-
 			if err != nil {
 				// log.Printf("%v\n", err)
 			} else if info.IsDir() == true {
@@ -283,7 +283,6 @@ func watchDirectoriesReally(watchedDirectories []string) {
 					go ai.integrateOrUnintegrate()
 				}
 			}
-
 			return nil
 		})
 		helpers.LogError("main: watchDirectoriesReally", err)
