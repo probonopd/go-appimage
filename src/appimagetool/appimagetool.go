@@ -30,7 +30,7 @@ func main() {
 
 	// Always show version, but exit immediately if only the version number was requested
 	if commit != "" {
-		fmt.Printf(filepath.Base(os.Args[0]), "%s\n", commit)
+		fmt.Printf("%s %s\n", filepath.Base(os.Args[0]), commit)
 	} else {
 		fmt.Println("Unsupported local", filepath.Base(os.Args[0]), "developer build")
 	}

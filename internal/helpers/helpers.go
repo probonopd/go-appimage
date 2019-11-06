@@ -188,7 +188,8 @@ func CopyFile(src string, dst string) error {
 func CheckIfSquashfsVersionSufficient(toolname string) bool {
 	cmd := exec.Command(toolname, "-version")
 	out, err := cmd.CombinedOutput()
-	if err != nil {
+	// Interestingly unsquashfs 4.4 does not return with 0, unlike mksquashfs 4.3
+	if strings.Contains(string(out), "version") == false {
 		PrintError(toolname, err)
 		fmt.Printf("%s", string(out))
 		return false
