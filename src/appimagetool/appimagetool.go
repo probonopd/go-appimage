@@ -37,6 +37,9 @@ func main() {
 		os.Exit(0)
 	}
 
+	// Add the location of the executable to the $PATH
+	helpers.AddHereToPath()
+
 	// Check for needed files on $PATH
 	tools := []string{"file", "mksquashfs", "desktop-file-validate"}
 	for _, t := range tools {
