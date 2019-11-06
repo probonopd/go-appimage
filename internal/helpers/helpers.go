@@ -283,6 +283,7 @@ func GetSectionData(filepath string, name string) ([]byte, error) {
 // GetSectionOffsetAndLength returns the offset and length of an ELF section and error
 func GetSectionOffsetAndLength(filepath string, name string) (uint64, uint64, error) {
 	r, err := os.Open(filepath)
+	defer r.Close()
 	f, err := elf.NewFile(r)
 	if err != nil {
 		return 0, 0, err
@@ -292,4 +293,35 @@ func GetSectionOffsetAndLength(filepath string, name string) (uint64, uint64, er
 		return 0, 0, nil
 	}
 	return section.Offset, section.Size, nil
+}
+
+func GetElfArchitecture(filepath string) (string, error) {
+	r, err := os.Open(filepath)
+	defer r.Close()
+	f, err := elf.NewFile(r)
+	if err != nil {
+		return "", err
+	}
+	arch := f.Machine.String()
+	// Why does everyone name architectures differently?
+	switch arch {
+	case "EM_X86_64":
+		arch = "x86_64"
+	case "EM_386":
+		arch = "i686"
+	case "EM_ARM":
+		arch = "armhf"
+	case "EM_AARCH64":
+		arch = "aarch64"
+	}
+	return arch, nil
+}
+
+func AppendIfMissing(slice []string, s string) []string {
+	for _, ele := range slice {
+		if ele == s {
+			return slice
+		}
+	}
+	return append(slice, s)
 }

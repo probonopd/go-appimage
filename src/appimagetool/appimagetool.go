@@ -1,7 +1,7 @@
 package main
 
 import (
-	"debug/elf"
+
 	"flag"
 	"fmt"
 	"github.com/agriardyan/go-zsyncmake/zsync"
@@ -147,17 +147,18 @@ func GenerateAppImage(appdir string) {
 			if err != nil {
 				helpers.PrintError("Determine architecture", err)
 			} else if info.IsDir() == false && strings.Contains(info.Name(), ".so.") {
-				fmt.Println("TODO: Check architecture in", info.Name())
-				e, err := elf.Open(path)
+				arch, err := helpers.GetElfArchitecture(path)
 				helpers.PrintError("Determine architecture", err)
-				defer e.Close()
+				fmt.Println("Architecture of", info.Name(), arch)
+				archs = helpers.AppendIfMissing(archs, arch)
 			}
 			return nil
 		})
 		helpers.PrintError("Determine architecture", err)
 	} else {
-		archs = append(archs, os.Getenv("ARCH"))
+		archs = helpers.AppendIfMissing(archs, os.Getenv("ARCH"))
 	}
+
 	if len(archs) != 1 {
 		os.Stderr.WriteString("Could not determine architecture automatically, please supply it as $ARCH " + filepath.Base(os.Args[0]) + " ... \n")
 		os.Exit(1)
@@ -227,7 +228,7 @@ func GenerateAppImage(appdir string) {
 	if _, err := os.Stat(runtimedir); os.IsNotExist(err) {
 		runtimedir = helpers.Here()
 	}
-	runtimefilepath := runtimedir + "/runtime_x86_64"
+	runtimefilepath := runtimedir + "/runtime_" + arch
 	if helpers.CheckIfFileExists(runtimefilepath) == false {
 		os.Stderr.WriteString("Cannot find " + runtimefilepath + ", exiting\n")
 		fmt.Println("It should have been bundled, but you can get it from https://github.com/AppImage/AppImageKit/releases/continuous")
