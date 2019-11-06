@@ -267,7 +267,7 @@ func watchDirectories() {
 			strings.HasPrefix(mount.MountPoint, "/run") == false &&
 			strings.HasPrefix(mount.MountPoint, "/tmp") == false &&
 			strings.HasPrefix(mount.MountPoint, "/proc") == false {
-			watchedDirectories = helpers.appendIfMissing(watchedDirectories, mount.MountPoint+"/Applications")
+			watchedDirectories = helpers.AppendIfMissing(watchedDirectories, mount.MountPoint+"/Applications")
 		}
 	}
 
