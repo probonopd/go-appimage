@@ -232,7 +232,7 @@ func GenerateAppImage(appdir string) {
 	if _, err := os.Stat(runtimedir); os.IsNotExist(err) {
 		runtimedir = helpers.Here()
 	}
-	runtimefilepath := runtimedir + "/runtime_" + arch
+	runtimefilepath := runtimedir + "/runtime-" + arch
 	if helpers.CheckIfFileExists(runtimefilepath) == false {
 		os.Stderr.WriteString("Cannot find " + runtimefilepath + ", exiting\n")
 		fmt.Println("It should have been bundled, but you can get it from https://github.com/AppImage/AppImageKit/releases/continuous")
