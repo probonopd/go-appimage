@@ -56,7 +56,6 @@ script:
     ( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/mksquashfs )
     ( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/AppImage/AppImageKit/releases/download/continuous/runtime-x86_64 )
     chmod +x appimagetool.AppDir/usr/bin/*
-    # cp appimagetool.AppDir/usr/bin/runtime-x86_64 .
     cp appimagetool-amd64 appimagetool.AppDir/usr/bin/appimagetool
     ( cd appimagetool.AppDir/ ; ln -s usr/bin/appimagetool AppRun)
     cp data/appimage.png appimagetool.AppDir/
@@ -71,6 +70,26 @@ script:
     Terminal=true
     EOF
     PATH=./appimagetool.AppDir/usr/bin/:$PATH ARCH=x86_64 appimagetool ./appimagetool.AppDir
+    # appimaged
+    mkdir -p appimaged.AppDir/usr/bin
+    ( cd appimaged.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/bsdtar )
+    ( cd appimaged.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/unsquashfs )
+    chmod +x appimaged.AppDir/usr/bin/*
+    cp appimaged-amd64 appimaged.AppDir/usr/bin/appimaged
+    ( cd appimaged.AppDir/ ; ln -s usr/bin/appimaged AppRun)
+    cp data/appimage.png appimaged.AppDir/
+    cat > appimaged.AppDir/appimaged.desktop <<\EOF
+    [Desktop Entry]
+    Type=Application
+    Name=appimaged
+    Exec=appimaged
+    Comment=Optional daemon that integrates AppImages into the system
+    Icon=appimage
+    Categories=Utility;
+    Terminal=true
+    NoDisplay=true
+    EOF
+    PATH=./appimaged.AppDir/usr/bin/:$PATH ARCH=x86_64 appimaged ./appimaged.AppDir
     fi
 
 after_success:
