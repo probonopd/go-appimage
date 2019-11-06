@@ -149,6 +149,7 @@ func GenerateAppImage(appdir string) {
 		res, err := helpers.GetElfArchitecture(appdir+"/AppRun")
 		if err == nil {
 			archs = helpers.AppendIfMissing(archs, res)
+			fmt.Println("Architecture from AppRun:", res)
 		} else {
 		err := filepath.Walk(appdir, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
@@ -165,6 +166,7 @@ func GenerateAppImage(appdir string) {
 		}
 	} else {
 		archs = helpers.AppendIfMissing(archs, os.Getenv("ARCH"))
+			fmt.Println("Architecture from $ARCH:", res)
 	}
 
 	if len(archs) != 1 {
