@@ -146,6 +146,10 @@ func GenerateAppImage(appdir string) {
 	// If no $ARCH variable is set check all .so that we can find to determine the architecture
 	var archs []string
 	if os.Getenv("ARCH") == "" {
+		res, err := helpers.GetElfArchitecture(appdir+"/AppRun")
+		if err == nil {
+			archs = helpers.AppendIfMissing(archs, res)
+		} else {
 		err := filepath.Walk(appdir, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				helpers.PrintError("Determine architecture", err)
@@ -158,6 +162,7 @@ func GenerateAppImage(appdir string) {
 			return nil
 		})
 		helpers.PrintError("Determine architecture", err)
+		}
 	} else {
 		archs = helpers.AppendIfMissing(archs, os.Getenv("ARCH"))
 	}
