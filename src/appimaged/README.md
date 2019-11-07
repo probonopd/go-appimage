@@ -35,6 +35,7 @@ Implemented
 * If Firejail is on the $PATH, various options for running applications sandboxed via the context menu
 * If AppImageUpdate is on the $PATH, updating applications via the context menu
 * Opening the containing folder via the context menu
+* Extracting AppImages via the context menu
 * Announces itself on the local network using Zeroconf (more to come)
 
 Envisioned
