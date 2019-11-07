@@ -99,7 +99,10 @@ func writeDesktopFile(ai AppImage) {
 	*/
 	cfg.Section("Desktop Entry").Key("Comment").SetValue(ai.path)
 	cfg.Section("Desktop Entry").Key("X-AppImage-Identifier").SetValue(ai.md5)
-
+	ui := ai.updateinformation
+	if ui != "" {
+		cfg.Section("Desktop Entry").Key(helpers.UpdateInformationKey).SetValue("\"" + ui + "\"")
+	}
 	// Actions
 
 	var actions []string

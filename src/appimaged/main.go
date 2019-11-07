@@ -107,17 +107,6 @@ func main() {
 	// as per https://github.com/AppImage/AppImageSpec/blob/master/draft.md#desktop-integration
 	os.Setenv("DESKTOPINTEGRATION", "go-appimaged")
 
-	// Try to register ourselves as a thumbnailer for AppImages, in the hope that
-	// DBus notifications will be generated for AppImages as thumbnail-able files
-	// FIXME: Currently getting: No such interface 'org.freedesktop.thumbnails' on object at path /org/freedesktop/thumbnails/Manager1
-	// Maybe not needed? At least on Xubuntu it seems to work without this
-	// but perhaps it is why KDE ignores our nice thumbnails
-
-	// React to partitions being mounted and unmounted
-	go monitorUdisks()
-
-	watchDirectories()
-
 	// TODO: Also react to network interfaces and network connections coming and going,
 	// refer to the official NetworkManager dbus specification:
 	// https://developer.gnome.org/NetworkManager/1.16/spec.html
@@ -140,6 +129,17 @@ func main() {
 		// go SubscribeMQTT(MQTTclient, "gh-releases-zsync|AppImage|AppImageKit|continuous|appimagetool-x86_64.AppImage.zsync")
 
 	}
+
+	// Try to register ourselves as a thumbnailer for AppImages, in the hope that
+	// DBus notifications will be generated for AppImages as thumbnail-able files
+	// FIXME: Currently getting: No such interface 'org.freedesktop.thumbnails' on object at path /org/freedesktop/thumbnails/Manager1
+	// Maybe not needed? At least on Xubuntu it seems to work without this
+	// but perhaps it is why KDE ignores our nice thumbnails
+
+	// React to partitions being mounted and unmounted
+	go monitorUdisks()
+
+	watchDirectories()
 
 	// Use dbus to find out about AppImages to be handled
 	// go monitorDbusSessionBus()

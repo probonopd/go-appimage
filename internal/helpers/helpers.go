@@ -21,6 +21,7 @@ import (
 // This key in the desktop files written by us describes where the AppImage is in the filesystem.
 // We need this because we rewrite Exec= to include things like wrap and Firejail
 const ExecLocationKey = "X-ExecLocation"
+const UpdateInformationKey = "X-AppImage-UpdateInformation"
 
 // PrintError prints error, prefixed by a string that explains the context
 func PrintError(context string, e error) {
@@ -140,6 +141,32 @@ func DeleteDesktopFilesWithNonExistingTargets() {
 			}
 		}
 	}
+}
+
+// GetValuesForAllDesktopFiles gets the values for a given key from all desktop files
+// in xdg.DataHome + "/applications/"
+func GetValuesForAllDesktopFiles(key string) []string {
+	var results []string
+	files, e := ioutil.ReadDir(xdg.DataHome + "/applications/")
+	LogError("GetValuesForAllDesktopFiles", e)
+	if e != nil {
+		return results
+	}
+
+	for _, file := range files {
+		if strings.HasSuffix(file.Name(), ".desktop") {
+			exists := CheckIfExecFileExists(xdg.DataHome + "/applications/" + file.Name())
+			if exists == true {
+				cfg, e := ini.Load(xdg.DataHome + "/applications/" + file.Name())
+				LogError("GetValuesForAllDesktopFiles", e)
+				dst := cfg.Section("Desktop Entry").Key(key).String()
+				if dst != "" {
+					results = append(results, dst)
+				}
+			}
+		}
+	}
+	return results
 }
 
 // ValidateDesktopFile validates a desktop file using the desktop-file-validate tool on the $PATH
@@ -309,6 +336,7 @@ func GetSectionOffsetAndLength(filepath string, name string) (uint64, uint64, er
 	return section.Offset, section.Size, nil
 }
 
+// GetElfArchitecture returns the architecture of a file, and err
 func GetElfArchitecture(filepath string) (string, error) {
 	r, err := os.Open(filepath)
 	defer r.Close()

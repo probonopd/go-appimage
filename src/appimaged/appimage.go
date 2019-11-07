@@ -215,6 +215,11 @@ func (ai AppImage) _integrate() {
 				diff := desktopFileInfo.ModTime().Sub(appImageInfo.ModTime())
 				if diff > (time.Duration(0) * time.Second) {
 					// Do nothing if the desktop file is already newer than the AppImage file
+					// but subscribe
+					ui := ai.updateinformation
+					if ui != "" {
+						SubscribeMQTT(MQTTclient, ui)
+					}
 					return
 				}
 			}
