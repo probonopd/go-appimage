@@ -5,8 +5,9 @@ package main
 // but eventually may be rewritten to do things natively in Go.
 
 import (
+	"bytes"
+	"io/ioutil"
 	"log"
-
 	"os"
 	"path/filepath"
 	"strings"
@@ -47,14 +48,18 @@ func writeDesktopFile(ai AppImage) {
 	// 	fmt.Printf("Fail to read file: %v", err)
 	// 	os.Exit(1)
 	// }
+	// BLOCKED: To do this in a halfway decent way, we need to improve
+	// ai.ExtractFile() so that it resolves symlinks!
 
 	cfg := ini.Empty()
-	ini.PrettyFormat=false
+
+	ini.PrettyFormat = false
 
 	// FIXME: KDE seems to have a problem when the AppImage is on a partition of which the disklabel contains "_"?
 	// Then the desktop file won't run the application
 
-	cfg.Section("Desktop Entry").Key("Exec").SetValue(os.Args[0] + " wrap '" + ai.path + "'")
+	cfg.Section("Desktop Entry").Key("Exec").SetValue(os.Args[0] + " wrap \"" + ai.path + "\"")
+	cfg.Section("Desktop Entry").Key(ExecLocationKey).SetValue(ai.path)
 
 	// cfg.Section("Desktop Entry").Key("TryExec").SetValue(ai.path) // KDE does not accept, even if desktop-file-validate allows ("\"" + ai.path + "\"")
 	cfg.Section("Desktop Entry").Key("Type").SetValue("Application")
@@ -115,21 +120,21 @@ func writeDesktopFile(ai AppImage) {
 		cfg.Section("Desktop Action Trash").Key("Name").SetValue("Move to Trash")
 		if helpers.IsCommandAvailable("gio") {
 			// A command line tool to move files to the Trash. However, GNOME-specific
-			cfg.Section("Desktop Action Trash").Key("Exec").SetValue("gio trash '" + ai.path + "'")
+			cfg.Section("Desktop Action Trash").Key("Exec").SetValue("gio trash \"" + ai.path + "\"")
 		} else if helpers.IsCommandAvailable("kioclient") {
 			// Of course KDE has its own facility for doing the exact same thing
-			cfg.Section("Desktop Action Trash").Key("Exec").SetValue("kioclient move '" + ai.path + "' trash:/")
+			cfg.Section("Desktop Action Trash").Key("Exec").SetValue("kioclient move \"" + ai.path + "\" trash:/")
 		}
 
 		// Add OpenPortableHome action
 		actions = append(actions, "OpenPortableHome")
 		cfg.Section("Desktop Action OpenPortableHome").Key("Name").SetValue("Open Portable Home in File Manager")
-		cfg.Section("Desktop Action OpenPortableHome").Key("Exec").SetValue("xdg-open '" + ai.path + ".home'")
+		cfg.Section("Desktop Action OpenPortableHome").Key("Exec").SetValue("xdg-open \"" + ai.path + ".home\"")
 
 		// Add CreatePortableHome action
 		actions = append(actions, "CreatePortableHome")
 		cfg.Section("Desktop Action CreatePortableHome").Key("Name").SetValue("Create Portable Home")
-		cfg.Section("Desktop Action CreatePortableHome").Key("Exec").SetValue("mkdir -p '" + ai.path + ".home'")
+		cfg.Section("Desktop Action CreatePortableHome").Key("Exec").SetValue("mkdir -p \"" + ai.path + ".home\"")
 
 	}
 
@@ -160,14 +165,14 @@ func writeDesktopFile(ai AppImage) {
 	if helpers.IsCommandAvailable("AppImageUpdate") {
 		actions = append(actions, "Update")
 		cfg.Section("Desktop Action Update").Key("Name").SetValue("Update")
-		cfg.Section("Desktop Action Update").Key("Exec").SetValue("AppImageUpdate '" + ai.path + "'")
+		cfg.Section("Desktop Action Update").Key("Exec").SetValue("AppImageUpdate \"" + ai.path + "\"")
 	}
 
 	// Add "Open Containing Folder" action
 	if helpers.IsCommandAvailable("xdg-open") {
 		actions = append(actions, "Show")
 		cfg.Section("Desktop Action Show").Key("Name").SetValue("Open Containing Folder")
-		cfg.Section("Desktop Action Show").Key("Exec").SetValue("xdg-open '" + filepath.Clean(ai.path+"/../") + "'")
+		cfg.Section("Desktop Action Show").Key("Exec").SetValue("xdg-open \"" + filepath.Clean(ai.path+"/../") + "\"")
 	}
 
 	/*
@@ -189,19 +194,19 @@ func writeDesktopFile(ai AppImage) {
 	if helpers.IsCommandAvailable("firejail") {
 		actions = append(actions, "Firejail")
 		cfg.Section("Desktop Action Firejail").Key("Name").SetValue("Run in Firejail")
-		cfg.Section("Desktop Action Firejail").Key("Exec").SetValue("firejail --env=DESKTOPINTEGRATION=appimaged --noprofile --appimage '" + ai.path + "'")
+		cfg.Section("Desktop Action Firejail").Key("Exec").SetValue("firejail --env=DESKTOPINTEGRATION=appimaged --noprofile --appimage \"" + ai.path + "\"")
 
 		actions = append(actions, "FirejailNoNetwork")
 		cfg.Section("Desktop Action FirejailNoNetwork").Key("Name").SetValue("Run in Firejail Without Network Access")
-		cfg.Section("Desktop Action FirejailNoNetwork").Key("Exec").SetValue("firejail --env=DESKTOPINTEGRATION=appimaged --noprofile --net=none --appimage '" + ai.path + "'")
+		cfg.Section("Desktop Action FirejailNoNetwork").Key("Exec").SetValue("firejail --env=DESKTOPINTEGRATION=appimaged --noprofile --net=none --appimage \"" + ai.path + "\"")
 
 		actions = append(actions, "FirejailPrivate")
 		cfg.Section("Desktop Action FirejailPrivate").Key("Name").SetValue("Run in Private Firejail Sandbox")
-		cfg.Section("Desktop Action FirejailPrivate").Key("Exec").SetValue("firejail --env=DESKTOPINTEGRATION=appimaged --noprofile --private --appimage '" + ai.path + "'")
+		cfg.Section("Desktop Action FirejailPrivate").Key("Exec").SetValue("firejail --env=DESKTOPINTEGRATION=appimaged --noprofile --private --appimage \"" + ai.path + "\"")
 
 		actions = append(actions, "FirejailOverlayTmpfs")
 		cfg.Section("Desktop Action FirejailOverlayTmpfs").Key("Name").SetValue("Run in Firejail with Temporary Overlay Filesystem")
-		cfg.Section("Desktop Action FirejailOverlayTmpfs").Key("Exec").SetValue("firejail --env=DESKTOPINTEGRATION=appimaged --noprofile --overlay-tmpfs --appimage '" + ai.path + "'")
+		cfg.Section("Desktop Action FirejailOverlayTmpfs").Key("Exec").SetValue("firejail --env=DESKTOPINTEGRATION=appimaged --noprofile --overlay-tmpfs --appimage \"" + ai.path + "\"")
 	}
 
 	as := ""
@@ -209,18 +214,41 @@ func writeDesktopFile(ai AppImage) {
 		as = as + action + ";"
 	}
 	cfg.Section("Desktop Entry").Key("Actions").SetValue(as)
+
 	if *verbosePtr == true {
-		log.Println("desktop: Saving to", desktopcachedir+filename)
+		log.Println("desktop: Saving to", desktopcachedir+"/"+filename)
 	}
-	err = cfg.SaveTo(desktopcachedir + filename)
+	err = cfg.SaveTo(desktopcachedir + "/" + filename)
 	if err != nil {
 		log.Printf("Fail to write file: %v", err)
 	}
-	err = os.Chmod(desktopcachedir+filename, 0755)
-	helpers.LogError("desktop", err)
+
+	err = fixDesktopFile(desktopcachedir + "/" + filename)
+	if err != nil {
+		helpers.PrintError("desktop", err)
+		os.Exit(1)
+	}
 }
 
 // Return true if a path to a file is writable
 func isWritable(path string) bool {
 	return unix.Access(path, unix.W_OK) == nil
+}
+
+// Really ugly workaround for
+// https://github.com/go-ini/ini/issues/90
+func fixDesktopFile(path string) error {
+	input, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	var output []byte
+	if bytes.Contains(input, []byte("=`")) {
+		output = bytes.Replace(input, []byte("=`"), []byte("="), -1)
+		output = bytes.Replace(output, []byte("`\n"), []byte("\n"), -1)
+	}
+	if err = ioutil.WriteFile(path, output, 0755); err != nil {
+		return err
+	}
+	return nil
 }

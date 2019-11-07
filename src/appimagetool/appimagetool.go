@@ -1,17 +1,17 @@
 package main
 
 import (
-
 	"flag"
 	"fmt"
-	"github.com/agriardyan/go-zsyncmake/zsync"
-	"github.com/probonopd/appimage/internal/helpers"
-	"gopkg.in/ini.v1"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/agriardyan/go-zsyncmake/zsync"
+	"github.com/probonopd/appimage/internal/helpers"
+	"gopkg.in/ini.v1"
 )
 
 // https://blog.kowalczyk.info/article/vEja/embedding-build-number-in-go-executable.html
@@ -146,27 +146,27 @@ func GenerateAppImage(appdir string) {
 	// If no $ARCH variable is set check all .so that we can find to determine the architecture
 	var archs []string
 	if os.Getenv("ARCH") == "" {
-		res, err := helpers.GetElfArchitecture(appdir+"/AppRun")
+		res, err := helpers.GetElfArchitecture(appdir + "/AppRun")
 		if err == nil {
 			archs = helpers.AppendIfMissing(archs, res)
 			fmt.Println("Architecture from AppRun:", res)
 		} else {
-		err := filepath.Walk(appdir, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				helpers.PrintError("Determine architecture", err)
-			} else if info.IsDir() == false && strings.Contains(info.Name(), ".so.") {
-				arch, err := helpers.GetElfArchitecture(path)
-				helpers.PrintError("Determine architecture", err)
-				fmt.Println("Architecture of", info.Name(), arch)
-				archs = helpers.AppendIfMissing(archs, arch)
-			}
-			return nil
-		})
-		helpers.PrintError("Determine architecture", err)
+			err := filepath.Walk(appdir, func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					helpers.PrintError("Determine architecture", err)
+				} else if info.IsDir() == false && strings.Contains(info.Name(), ".so.") {
+					arch, err := helpers.GetElfArchitecture(path)
+					helpers.PrintError("Determine architecture", err)
+					fmt.Println("Architecture of", info.Name(), arch)
+					archs = helpers.AppendIfMissing(archs, arch)
+				}
+				return nil
+			})
+			helpers.PrintError("Determine architecture", err)
 		}
 	} else {
 		archs = helpers.AppendIfMissing(archs, os.Getenv("ARCH"))
-			fmt.Println("Architecture from $ARCH:", os.Getenv("ARCH"))
+		fmt.Println("Architecture from $ARCH:", os.Getenv("ARCH"))
 	}
 
 	if len(archs) != 1 {
@@ -227,9 +227,9 @@ func GenerateAppImage(appdir string) {
 		fmt.Println("         http://output.jsbin.com/qoqukof")
 	} else {
 		fmt.Println("Trying to validate AppStream information with the appstreamcli tool")
-			if helpers.IsCommandAvailable("appstreamcli") == false {
-				fmt.Println("Required helper tool appstreamcli missing")
-				os.Exit(1)
+		if helpers.IsCommandAvailable("appstreamcli") == false {
+			fmt.Println("Required helper tool appstreamcli missing")
+			os.Exit(1)
 		}
 		err = helpers.ValidateAppStreamMetainfoFile(appdir)
 		if err != nil {
@@ -358,7 +358,7 @@ func GenerateAppImage(appdir string) {
 	fmt.Println("Writing updateinformation into .upd_info segment...", uilength)
 
 	// Seek file to ui_offset and write it there
-	helpers.WriteStringIntoOtherFileAtOffset(updateinformation,target,uioffset)
+	helpers.WriteStringIntoOtherFileAtOffset(updateinformation, target, uioffset)
 	helpers.PrintError("GetSectionData for '.upd_info'", err)
 	if err != nil {
 		os.Stderr.WriteString("Could write into .upd_info segment, exiting\n")

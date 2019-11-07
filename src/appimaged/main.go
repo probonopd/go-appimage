@@ -5,16 +5,17 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 
-	helpers "github.com/probonopd/appimage/internal/helpers"
-
 	"github.com/adrg/xdg"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/godbus/dbus"
+	helpers "github.com/probonopd/appimage/internal/helpers"
 	"github.com/prometheus/procfs"
 )
 
@@ -41,6 +42,11 @@ var toBeIntegrated []string
 var toBeUnintegrated []string
 
 var conn *dbus.Conn
+var MQTTclient mqtt.Client
+
+// This key in the desktop files written by us describes where the AppImage is in the filesystem.
+// We need this because we rewrite Exec= to include things like wrap and Firejail
+const ExecLocationKey = helpers.ExecLocationKey
 
 // https://blog.kowalczyk.info/article/vEja/embedding-build-number-in-go-executable.html
 // The build script needs to set, e.g.,
@@ -113,13 +119,27 @@ func main() {
 	watchDirectories()
 
 	// TODO: Also react to network interfaces and network connections coming and going,
-	// refer to the official NetworkManager dbus specification: https://developer.gnome.org/NetworkManager/1.16/spec.html
+	// refer to the official NetworkManager dbus specification:
+	// https://developer.gnome.org/NetworkManager/1.16/spec.html
 	if *noZeroconfPtr == false {
-		if checkIfConnectedToNetwork() == true {
+		if CheckIfConnectedToNetwork() == true {
 			go registerZeroconfService()
+			go browseZeroconfServices()
 		}
 	}
-	go browseZeroconfServices()
+
+	// Connect to MQTT server and subscribe to the topic for ourselves
+	if CheckIfConnectedToNetwork() == true {
+		uri, err := url.Parse("http://broker.hivemq.com:1883")
+		if err != nil {
+			log.Fatal(err)
+		}
+		MQTTclient = connect("sub", uri)
+		log.Println("MQTT client connected:", MQTTclient.IsConnected())
+		// go SubscribeMQTT(MQTTclient, "gh-releases-zsync|probonopd|merkaartor|continuous|Merkaartor-*-x86_64.AppImage.zsync")
+		// go SubscribeMQTT(MQTTclient, "gh-releases-zsync|AppImage|AppImageKit|continuous|appimagetool-x86_64.AppImage.zsync")
+
+	}
 
 	// Use dbus to find out about AppImages to be handled
 	// go monitorDbusSessionBus()
@@ -130,16 +150,31 @@ func main() {
 		sendDesktopNotification("watcher", "Started")
 	}
 
+	// Ticker to periodically check whether MQTT is still connected.
+	// Periodically check whether the MQTT client is
+	// still connected; try to reconnect if it is not.
+	// This is recommended by MQTT servers since they can go
+	// down for maintenance
+	ticker2 := time.NewTicker(120 * time.Second)
+	go func() {
+		for {
+			select {
+			case <-ticker2.C:
+				checkMQTTConnected(MQTTclient)
+			case <-quit:
+				ticker2.Stop()
+				return
+			}
+		}
+	}()
+
 	// Ticker to periodically move desktop files into system
 	ticker := time.NewTicker(2 * time.Second)
-	quit := make(chan struct{})
-
 	go func() {
 		for {
 			select {
 			case <-ticker.C:
 				moveDesktopFiles()
-
 			case <-quit:
 				ticker.Stop()
 				return
@@ -147,8 +182,25 @@ func main() {
 		}
 	}()
 
+	quit := make(chan struct{})
+
 	<-quit
 
+}
+
+// checkMQTTConnected checks whether the MQTT client is
+// still connected; try to reconnect if it is not.
+// This is recommended by MQTT servers since they can go
+// down for maintenance
+func checkMQTTConnected(MQTTclient mqtt.Client) {
+	if CheckIfConnectedToNetwork() == true {
+		if MQTTclient.IsConnected() == false {
+			log.Println("MQTT client connected:", MQTTclient.IsConnected())
+			MQTTclient.Connect()
+			log.Println("MQTT client connected:", MQTTclient.IsConnected())
+			// TODO: Do we need to subscribe everything again when this happens?
+		}
+	}
 }
 
 // Periodically move desktop files from their temporary location
@@ -188,7 +240,12 @@ func moveDesktopFiles() {
 		helpers.LogError("main", err)
 	}
 	if len(files) > 0 {
-		log.Println("main: Moved", len(files), "desktop files to", xdg.DataHome+"/applications/; use -v to see details")
+
+		if *verbosePtr == true {
+			log.Println("main: Moved", len(files), "desktop files to", xdg.DataHome+"/applications/")
+		} else {
+			log.Println("main: Moved", len(files), "desktop files to", xdg.DataHome+"/applications/; use -v to see details")
+		}
 
 		// Run the various tools that make sure that the added desktop files really show up in the menu.
 		// Of course, almost no 2 systems are similar.

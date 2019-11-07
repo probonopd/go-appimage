@@ -32,16 +32,17 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	// Write out the icon to a temporary location
 	thumbnailcachedir := xdg.CacheHome + "/thumbnails/" + ai.md5
 
-	if ai.imagetype == 1 {
-		err := os.MkdirAll(thumbnailcachedir, os.ModePerm)
-		helpers.LogError("thumbnail: thumbnailcachedir", err)
-		cmd := exec.Command("bsdtar", "-C", thumbnailcachedir, "-xf", ai.path, ".DirIcon")
-		runCommand(cmd)
-	} else if ai.imagetype == 2 {
-		// TODO: first list contents of the squashfs, then determine what to extract
-		cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, ".DirIcon")
-		runCommand(cmd)
-	}
+	// if ai.imagetype == 1 {
+	// 	err := os.MkdirAll(thumbnailcachedir, os.ModePerm)
+	// 	helpers.LogError("thumbnail: thumbnailcachedir", err)
+	// 	cmd := exec.Command("bsdtar", "-C", thumbnailcachedir, "-xf", ai.path, ".DirIcon")
+	// 	runCommand(cmd)
+	// } else if ai.imagetype == 2 {
+	// 	// TODO: first list contents of the squashfs, then determine what to extract
+	// 	cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, ".DirIcon")
+	// 	runCommand(cmd)
+	// }
+	ai.ExtractFile(".DirIcon", thumbnailcachedir)
 
 	// What we have just extracted may well have been a symlink
 	// hence we try to resolve it

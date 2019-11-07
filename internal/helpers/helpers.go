@@ -4,9 +4,6 @@ import (
 	"bytes"
 	"debug/elf"
 	"fmt"
-	"github.com/adrg/xdg"
-	version "github.com/hashicorp/go-version"
-	"gopkg.in/ini.v1"
 	"io"
 	"io/ioutil"
 	"log"
@@ -14,7 +11,16 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
+
+	"github.com/adrg/xdg"
+	version "github.com/hashicorp/go-version"
+	"gopkg.in/ini.v1"
 )
+
+// This key in the desktop files written by us describes where the AppImage is in the filesystem.
+// We need this because we rewrite Exec= to include things like wrap and Firejail
+const ExecLocationKey = "X-ExecLocation"
 
 // PrintError prints error, prefixed by a string that explains the context
 func PrintError(context string, e error) {
@@ -104,7 +110,7 @@ func CheckIfExecFileExists(desktopfilepath string) bool {
 	}
 	cfg, e := ini.Load(desktopfilepath)
 	LogError("desktop", e)
-	dst := cfg.Section("Desktop Entry").Key("Exec").String()
+	dst := cfg.Section("Desktop Entry").Key(ExecLocationKey).String()
 
 	_, err = os.Stat(dst)
 	if os.IsNotExist(err) {
@@ -134,7 +140,6 @@ func DeleteDesktopFilesWithNonExistingTargets() {
 			}
 		}
 	}
-
 }
 
 // ValidateDesktopFile validates a desktop file using the desktop-file-validate tool on the $PATH
@@ -148,7 +153,7 @@ func ValidateDesktopFile(desktopfile string) error {
 		os.Stderr.WriteString("ERROR: Desktop file contains errors. Please fix them. Please see https://standards.freedesktop.org/desktop-entry-spec/1.0\n")
 		return err
 	}
-return nil
+	return nil
 }
 
 // ValidateAppStreamMetainfoFile validates an AppStream metainfo file using the appstreamcli tool on the $PATH
@@ -220,7 +225,7 @@ func CheckIfSquashfsVersionSufficient(toolname string) bool {
 
 // WriteFileIntoOtherFileAtOffset writes the content of inputfile into outputfile at offset, without truncating
 // Returns error in case of errors, otherwise returns nil
-func WriteFileIntoOtherFileAtOffset(inputfilepath string, outputfilepath string, offset uint64) (error) {
+func WriteFileIntoOtherFileAtOffset(inputfilepath string, outputfilepath string, offset uint64) error {
 	// open input file
 	f, err := os.Open(inputfilepath)
 	if err != nil {
@@ -257,7 +262,7 @@ func WriteFileIntoOtherFileAtOffset(inputfilepath string, outputfilepath string,
 
 // WriteStringIntoOtherFileAtOffset writes the content of inputstring into outputfile at offset, without truncating
 // Returns error in case of errors, otherwise returns nil
-func WriteStringIntoOtherFileAtOffset(inputstring string, outputfilepath string, offset uint64) (error) {
+func WriteStringIntoOtherFileAtOffset(inputstring string, outputfilepath string, offset uint64) error {
 	fo, err := os.OpenFile(outputfilepath, os.O_WRONLY, 0644)
 	if err != nil {
 		return err
@@ -265,9 +270,9 @@ func WriteStringIntoOtherFileAtOffset(inputstring string, outputfilepath string,
 	fo.Seek(int64(offset), 0)
 	defer fo.Close()
 	buf := bytes.NewBufferString(inputstring)
-		if _, err := buf.WriteTo(fo); err != nil {
-			return err
-		}
+	if _, err := buf.WriteTo(fo); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -333,4 +338,42 @@ func AppendIfMissing(slice []string, s string) []string {
 		}
 	}
 	return append(slice, s)
+}
+
+// ReplaceTextInFile replaces search string with replce string in a file.
+// Returns error or nil
+func ReplaceTextInFile(path string, search string, replace string) error {
+	input, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	output := bytes.Replace(input, []byte(search), []byte(replace), -1)
+	if err = ioutil.WriteFile(path, output, 0666); err != nil {
+		return err
+	}
+	return nil
+}
+
+// FindMostRecentFile returns the most recent file
+// from a slice of files, based on its mtime
+func FindMostRecentFile(files []string) string {
+	var modTime time.Time
+	var names []string
+	for _, f := range files {
+		fi, _ := os.Stat(f)
+		if fi.Mode().IsRegular() {
+			if !fi.ModTime().Before(modTime) {
+				if fi.ModTime().After(modTime) {
+					modTime = fi.ModTime()
+					names = names[:0]
+				}
+				names = append(names, f)
+			}
+		}
+	}
+	if len(names) > 0 {
+		fmt.Println(modTime, names[0]) // Most recent
+		return names[0]                // Most recent
+	}
+	return ""
 }

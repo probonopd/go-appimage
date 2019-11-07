@@ -16,13 +16,13 @@ func sendDesktopNotification(title string, body string) {
 
 	if conn == nil {
 		log.Println("ERROR: notification: Could not get conn") // FIXME. Why don't I get conn here?
-		os.Exit(1)
+		return
 	}
 
 	obj := conn.Object("org.freedesktop.Notifications", "/org/freedesktop/Notifications")
 	if obj == nil {
 		log.Println("ERROR: notification: obj is nil")
-		os.Exit(1)
+		return
 	}
 
 	call := obj.Call("org.freedesktop.Notifications.Notify", 0, "", uint32(0),

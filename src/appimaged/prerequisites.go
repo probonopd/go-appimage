@@ -16,12 +16,13 @@ func checkPrerequisites() {
 
 	ensureRunningFromLiveSystem()
 
-	// Check if the tools that we need are available and warn if they are not
-	// TODO: Elaborate checks whether the tools have the functionality we need (offset, ZISOFS)
-	if helpers.IsCommandAvailable("unsquashfs") == false || helpers.IsCommandAvailable("bsdtar") == false {
-		println("Required helper tools are missing.")
-		println("Please make sure that recent versions of unsquashfs and bsdtar are on the $PATH")
-		os.Exit(1)
+	// Check for needed files on $PATH
+	tools := []string{"bsdtar", "unsquashfs", "desktop-file-validate"}
+	for _, t := range tools {
+		if helpers.IsCommandAvailable(t) == false {
+			log.Println("Required helper tool", t, "missing")
+			os.Exit(1)
+		}
 	}
 
 	// Check whether we have a sufficient version of unsquashfs for -offset
@@ -50,8 +51,11 @@ func checkPrerequisites() {
 			err := os.Remove(file)
 			helpers.LogError("main:", err)
 		}
-		log.Println("Deleted", len(files), "desktop files from", xdg.DataHome+"/applications/; use -v to see details")
-
+		if *verbosePtr == true {
+			log.Println("Deleted", len(files), "desktop files from", xdg.DataHome+"/applications/")
+		} else {
+			log.Println("Deleted", len(files), "desktop files from", xdg.DataHome+"/applications/; use -v to see details")
+		}
 	}
 
 	// E.g., on Xubuntu this directory is not there by default

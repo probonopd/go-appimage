@@ -37,6 +37,7 @@ type AppImage struct {
 	thumbnailfilepath string
 	offset            int64
 	rawcontents       string
+	updateinformation string
 }
 
 func newAppImage(path string) AppImage {
@@ -65,7 +66,15 @@ func newAppImage(path string) AppImage {
 		return ai
 	}
 	ai.offset = calculateElfSize(ai.path)
+	ui, err := ai.ReadUpdateInformation()
+	if err == nil && ui != "" {
+		ai.updateinformation = ui
+	}
+
 	// ai.discoverContents() // Only do when really needed since this is slow
+	// log.Println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX rawcontents:", ai.rawcontents)
+	// Besides, for whatever reason it is not working properly yet
+
 	return ai
 }
 
@@ -82,17 +91,16 @@ func (ai AppImage) discoverContents() {
 	if ai.imagetype == 1 {
 		cmd = exec.Command("bsdtar", "-t", "'"+ai.path+"'")
 	} else if ai.imagetype == 2 {
-		cmd = exec.Command("unsquashfs", "-f", "-n", "-ll", "-o", strconv.FormatInt(ai.offset, 10), "-d", "'"+ai.path+"'")
+		cmd = exec.Command("unsquashfs", "-f", "-n", "-ll", "-o", strconv.FormatInt(ai.offset, 10), "-d ''", "'"+ai.path+"'")
 	}
 	if *verbosePtr == true {
-		log.Printf("cmd: %q\n", cmd)
+		log.Printf("cmd: %q\n", cmd.String())
 	}
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()
 	helpers.LogError("appimage: list files:", err)
 	ai.rawcontents = out.String()
-
 }
 
 func (ai AppImage) calculateMD5filenamepart() string {
@@ -215,6 +223,11 @@ func (ai AppImage) _integrate() {
 
 	writeDesktopFile(ai) // Do not run with "go" as it would interfere with extractDirIconAsThumbnail
 
+	// Subscribe to MQTT messages for this application
+	if ai.updateinformation != "" {
+		go SubscribeMQTT(MQTTclient, ai.updateinformation)
+	}
+
 	if *notifPtr == true {
 		sendDesktopNotification(ai.path, "Integrated")
 	}
@@ -240,7 +253,6 @@ func (ai AppImage) _integrate() {
 }
 
 func (ai AppImage) _removeIntegration() {
-
 	log.Println("appimage: Remove integration", ai.path)
 	err := os.Remove(ai.thumbnailfilepath)
 	if err == nil {
@@ -281,4 +293,36 @@ func Exists(name string) bool {
 		return true
 	}
 	return false
+}
+
+// ExtractFile extracts a file from from filepath (which may contain * wildcards)
+// in an AppImage to the destinationdirpath.
+// Returns err in case of errors, or nil.
+// TODO: resolve symlinks
+// TODO: Should this be a io.Reader()?
+func (ai AppImage) ExtractFile(filepath string, destinationdirpath string) error {
+	var err error
+	if ai.imagetype == 1 {
+		err = os.MkdirAll(destinationdirpath, os.ModePerm)
+		cmd := exec.Command("bsdtar", "-C", destinationdirpath, "-xf", ai.path, filepath)
+		_, err = runCommand(cmd)
+		return err
+	} else if ai.imagetype == 2 {
+		cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", destinationdirpath, ai.path, filepath)
+		_, err = runCommand(cmd)
+		return err
+	}
+	// FIXME: What we may have extracted may well be (until here) broken symlinks... we need to do better than that
+	return nil
+}
+
+// ReadUpdateInformation reads updateinformation from an AppImage
+// Returns updateinformation string and error
+func (ai AppImage) ReadUpdateInformation() (string, error) {
+	aibytes, err := helpers.GetSectionData(ai.path, ".upd_info")
+	if err == nil {
+		return strings.TrimSpace(string(bytes.Trim(aibytes, "\x00"))), nil
+	} else {
+		return "", err
+	}
 }
