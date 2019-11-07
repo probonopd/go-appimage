@@ -2,8 +2,8 @@
 
 Experimental playgroud for a Go implementation of AppImage tools.
 
-* `appimaged`, an optional daemon that integrates AppImages into the system, shows their icons, and makes them executable
-* `appimagetool`, a tool to convert AppDirs into AppImages
+* [`appimaged`](https://github.com/probonopd/appimage/blob/master/src/appimaged/README.md), an optional daemon that integrates AppImages into the system, shows their icons, and makes them executable
+* [`appimagetool`](https://github.com/probonopd/appimage/blob/master/src/appimagetool/README.md), a tool to convert AppDirs into AppImages
 
 Download them from https://github.com/probonopd/appimage/releases/tag/continuous.
 
