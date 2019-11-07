@@ -49,7 +49,8 @@ func newAppImage(path string) AppImage {
 	if strings.HasSuffix(path, ".temp") ||
 		strings.HasSuffix(path, "~") ||
 		strings.HasSuffix(path, ".part") ||
-		strings.HasSuffix(path, ".partial") {
+		strings.HasSuffix(path, ".partial") ||
+		strings.HasSuffix(path, ".zs-old") {
 		ai.imagetype = -1
 		return ai
 	}
