@@ -1,6 +1,6 @@
 # Go AppImage [![Build Status](https://travis-ci.com/probonopd/appimage.svg?branch=master)](https://travis-ci.com/probonopd/appimage)
 
-Experimental playgroud for a Go implementation of AppImage tools.
+Experimental playgroud for a Go implementation of [AppImage](https://appimage.org) tools, from the inventor of the AppImage format.
 
 * [`appimaged`](https://github.com/probonopd/appimage/blob/master/src/appimaged/README.md), an optional daemon that integrates AppImages into the system, shows their icons, and makes them executable
 * [`appimagetool`](https://github.com/probonopd/appimage/blob/master/src/appimagetool/README.md), a tool to convert AppDirs into AppImages
