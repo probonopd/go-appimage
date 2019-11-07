@@ -92,6 +92,9 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 		}
 		if parts[1] == "version" {
 			version := string(msg.Payload())
+			if version == "" {
+				return
+			}
 			queryEscapedUpdateInformation := parts[0]
 			fmt.Println("mqtt:", queryEscapedUpdateInformation, "reports version", version)
 			unescapedui, _ := url.QueryUnescape(queryEscapedUpdateInformation)
