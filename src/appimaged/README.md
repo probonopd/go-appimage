@@ -4,7 +4,7 @@ This is an experimental implementation of the optional AppImage daemon, `appimag
 
 ## Installation and usage
 
-Assuming you are using a 64-bit Intel machine (arm64, also known as x86_64), you can use our pre-compiled binaries. To try it out:
+Assuming you are using a 64-bit Intel machine (arm64, also known as x86_64), you can use our pre-compiled binaries. To try it out, boot a Ubuntu, Debian, Fedora, openSUSE, elementary OS, KDE neon,... Live ISO and run:
 
 ```
 # Remove pre-existing similar tools
