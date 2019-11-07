@@ -119,7 +119,7 @@ func main() {
 
 	// Connect to MQTT server and subscribe to the topic for ourselves
 	if CheckIfConnectedToNetwork() == true {
-		uri, err := url.Parse("http://broker.hivemq.com:1883")
+		uri, err := url.Parse(helpers.MQTTServerURI)
 		if err != nil {
 			log.Fatal(err)
 		}

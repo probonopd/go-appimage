@@ -18,10 +18,19 @@ import (
 	"gopkg.in/ini.v1"
 )
 
-// This key in the desktop files written by us describes where the AppImage is in the filesystem.
+// This key in the desktop files written by appimaged describes where the AppImage is in the filesystem.
 // We need this because we rewrite Exec= to include things like wrap and Firejail
 const ExecLocationKey = "X-ExecLocation"
+
+// This key in the desktop files written by appimaged contains the updateinformation string
+// that we write there so that we can get all updateinformation strings easily when
+// we get a MQTT message telling us that an update is available. Then we need to find
+// quickly all AppImages that have a matching updateinformation string, and figure out
+// which of the existing ones is the newest
 const UpdateInformationKey = "X-AppImage-UpdateInformation"
+
+const MQTTServerURI = "http://broker.hivemq.com:1883"
+const MQTTNamespace = "p9q358t" // Our namespace. Our topic begins with this
 
 // PrintError prints error, prefixed by a string that explains the context
 func PrintError(context string, e error) {

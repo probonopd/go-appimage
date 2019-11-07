@@ -41,7 +41,7 @@ func main() {
 	helpers.AddHereToPath()
 
 	// Check for needed files on $PATH
-	tools := []string{"file", "mksquashfs", "desktop-file-validate"}
+	tools := []string{"file", "mksquashfs", "desktop-file-validate", "uploadtool"}
 	for _, t := range tools {
 		if helpers.IsCommandAvailable(t) == false {
 			fmt.Println("Required helper tool", t, "missing")
@@ -385,6 +385,23 @@ func GenerateAppImage(appdir string) {
 	if updateinformation != "" {
 		opts := zsync.Options{0, "", filepath.Base(target)}
 		zsync.ZsyncMake(target, opts)
+	}
+
+	// Upload and publish if we know this is a Travis CI build
+	if os.Getenv("TRAVIS_REPO_SLUG") != "" {
+		cmd := exec.Command("uploadtool", target, target+".zsync")
+		fmt.Println(cmd.String())
+		out, err := cmd.CombinedOutput()
+		fmt.Printf("%s", string(out))
+		if err != nil {
+			helpers.PrintError("uploadtool", err)
+			os.Exit(1)
+		}
+
+		// If upload succeeded, publish MQTT message
+		// TODO: Message AppImageHub instead, which in turn messages the clients
+
+		PublishMQTTMessage(updateinformation, version)
 	}
 
 	fmt.Println("Success")

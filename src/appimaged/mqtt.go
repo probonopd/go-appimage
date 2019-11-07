@@ -73,18 +73,17 @@ func createClientOptions(clientId string, uri *url.URL) *mqtt.ClientOptions {
 }
 
 func SubscribeMQTT(client mqtt.Client, updateinformation string) {
-	prefix := "p9q358t" // Our namespace
 	queryEscapedUpdateInformation := url.QueryEscape(updateinformation)
 	if queryEscapedUpdateInformation == "" {
 		return
 	}
-	topic := prefix + "/" + queryEscapedUpdateInformation + "/#"
+	topic := helpers.MQTTNamespace + "/" + queryEscapedUpdateInformation + "/#"
 	fmt.Println("mqtt: Subscribing for", updateinformation)
-	fmt.Println("mqtt: Waiting for messages on topic", prefix+"/"+queryEscapedUpdateInformation+"/version")
+	fmt.Println("mqtt: Waiting for messages on topic", helpers.MQTTNamespace+"/"+queryEscapedUpdateInformation+"/version")
 	client.Subscribe(topic, 0, func(client mqtt.Client, msg mqtt.Message) {
 		// fmt.Printf("* [%s] %s\n", msg.Topic(), string(msg.Payload()))
 		// fmt.Println(topic)
-		short := strings.Replace(msg.Topic(), prefix+"/", "", -1)
+		short := strings.Replace(msg.Topic(), helpers.MQTTNamespace+"/", "", -1)
 		parts := strings.Split(short, "/")
 		fmt.Println("mqtt: received:", parts)
 		if len(parts) < 2 {
