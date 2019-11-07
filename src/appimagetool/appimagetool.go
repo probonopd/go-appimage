@@ -401,7 +401,7 @@ func GenerateAppImage(appdir string) {
 		// If upload succeeded, publish MQTT message
 		// TODO: Message AppImageHub instead, which in turn messages the clients
 
-		PublishMQTTMessage(updateinformation, version)
+		helpers.PublishMQTTMessage(updateinformation, version)
 	}
 
 	fmt.Println("Success")

@@ -29,9 +29,6 @@ const ExecLocationKey = "X-ExecLocation"
 // which of the existing ones is the newest
 const UpdateInformationKey = "X-AppImage-UpdateInformation"
 
-const MQTTServerURI = "http://broker.hivemq.com:1883"
-const MQTTNamespace = "p9q358t" // Our namespace. Our topic begins with this
-
 // PrintError prints error, prefixed by a string that explains the context
 func PrintError(context string, e error) {
 	if e != nil {
