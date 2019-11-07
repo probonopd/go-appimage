@@ -1,8 +1,13 @@
 # Go AppImage [![Build Status](https://travis-ci.com/probonopd/appimage.svg?branch=master)](https://travis-ci.com/probonopd/appimage)
 
-Purely experimental playgroud for a Go implementation of AppImage tools.
+Experimental playgroud for a Go implementation of AppImage tools.
 
-Nothing useful here to see at this time. You might be looking for https://github.com/AppImage/AppImageKit instead in case you are looking for current production code.
+* `appimaged`, an optional daemon that integrates AppImages into the system, shows their icons, and makes them executable
+* `appimagetool`, a tool to convert AppDirs into AppImages
+
+Download them from https://github.com/probonopd/appimage/releases/tag/continuous.
+
+__NOTE:__ You might be looking for https://github.com/AppImage/AppImageKit instead in case you are looking for current production code.
 
 ## Why Go?
 
