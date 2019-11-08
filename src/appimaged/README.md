@@ -16,6 +16,9 @@ rm "$HOME"/.thumbnails/normal/*
 rm "$HOME"/.thumbnails/large/*
 rm "$HOME"/.local/share/applications/appimage*
 
+# Put Firejail and AppImageUpdate on your $PATH (with those exact names)
+# to benefit from additional functionality
+
 # Launch
 ./appimaged-*.AppImage
 ```
@@ -35,11 +38,14 @@ Implemented
 * Opening the containing folder via the context menu
 * Extracting AppImages via the context menu
 * Announces itself on the local network using Zeroconf (more to come)
+* Real-time notification based on PubSub when updates are available, as soon as they are uploaded (more to come)
 
 Envisioned
 
-* Seamless P2P distribution using IPFS
-* Real-time notification based on PubSub when updates are available
+* Seamless P2P distribution using IPFS?
+* Decentralized PubSub using IPFS?
+* Web-of-trust (based on a Social Graph)?
+* Blockchain?
 * ...
 
 ## Building
