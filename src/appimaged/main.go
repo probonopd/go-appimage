@@ -123,7 +123,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	SimpleNotify("Starting", helpers.Here(), 5000)
+	// SimpleNotify("Starting", helpers.Here(), 5000)
 
 	log.Println("main: Running from", helpers.Here())
 
