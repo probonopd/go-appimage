@@ -212,6 +212,9 @@ func checkMQTTConnected(MQTTclient mqtt.Client) {
 			MQTTclient.Connect()
 			log.Println("MQTT client connected:", MQTTclient.IsConnected())
 			// TODO: Do we need to subscribe everything again when this happens?
+			// Not if we use a persistent session, see
+			// https://www.hivemq.com/blog/mqtt-essentials-part-7-persistent-session-queuing-messages/
+			// TODO: use a persistent session with the appropriate quality of service level
 		}
 	}
 }
