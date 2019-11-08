@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/md5"
 	"flag"
 	"fmt"
 	"os"
@@ -377,6 +378,19 @@ func GenerateAppImage(appdir string) {
 	// TODO: calculate and embed MD5 digest
 	// https://github.com/AppImage/AppImageKit/blob/801e789390d0e6848aef4a5802cd52da7f4abafb/src/appimagetool.c#L961
 	// Blocked by https://github.com/AppImage/AppImageSpec/issues/29
+	// This is actually very useful for PubSub notifications, to find out whether we have already have
+	// an identical AppImage on the local machine or not
+
+	// Calculate AppImage MD5 digest according to
+	// https://github.com/AppImage/libappimage/blob/4d6f5f3d5b6c8c01c39b8ce0364b74cd6e4043c7/src/libappimage_shared/digest.c
+	// The ELF sections
+	// .digest_md5
+	// .sha256_sig
+	// .sig_key
+	// need to be skipped, although I think
+	// .upd_info
+	// ought to be skipped, too
+	md5.New()
 
 	// TODO: Signing. It is pretty convoluted and hardly anyone is using it.
 	//  Can we make it much simpler to use? Check how goreleaser does it.

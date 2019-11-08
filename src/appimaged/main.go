@@ -41,6 +41,8 @@ var noZeroconfPtr = flag.Bool("nz", false, "Do not announce this service on the 
 var toBeIntegrated []string
 var toBeUnintegrated []string
 
+var thisai AppImage // A reference to myself
+
 var conn *dbus.Conn
 var MQTTclient mqtt.Client
 
@@ -72,6 +74,31 @@ func main() {
 		fmt.Println("Unsupported local", filepath.Base(os.Args[0]), "developer build")
 	}
 
+	checkPrerequisites()
+
+	// Connect to MQTT server and subscribe to the topic for ourselves
+	if CheckIfConnectedToNetwork() == true {
+		uri, err := url.Parse(helpers.MQTTServerURI)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// go SubscribeMQTT(MQTTclient, "gh-releases-zsync|probonopd|merkaartor|continuous|Merkaartor-*-x86_64.AppImage.zsync")
+		// go SubscribeMQTT(MQTTclient, "gh-releases-zsync|AppImage|AppImageKit|continuous|appimagetool-x86_64.AppImage.zsync")
+
+		MQTTclient = connect("sub", uri)
+		log.Println("MQTT client connected:", MQTTclient.IsConnected())
+		if thisai.imagetype > 0 {
+			go SubscribeMQTT(MQTTclient, thisai.updateinformation)
+		}
+	}
+
+	// If we are running from an AppImage,
+	// we subscribe to this application's topic, and we handle messages for this topic in a special way
+	if thisai.imagetype > 0 {
+		go SubscribeMQTT(MQTTclient, thisai.updateinformation)
+	}
+
 	var err error
 	// Catch for young players:
 	// conn, err := dbus.SessionBus() would not work here,
@@ -97,7 +124,6 @@ func main() {
 
 	log.Println("main: xdg.DataHome =", xdg.DataHome)
 
-	checkPrerequisites()
 	helpers.DeleteDesktopFilesWithNonExistingTargets()
 
 	log.Println("Overwrite:", *overwritePtr)
@@ -115,19 +141,6 @@ func main() {
 			go registerZeroconfService()
 			go browseZeroconfServices()
 		}
-	}
-
-	// Connect to MQTT server and subscribe to the topic for ourselves
-	if CheckIfConnectedToNetwork() == true {
-		uri, err := url.Parse(helpers.MQTTServerURI)
-		if err != nil {
-			log.Fatal(err)
-		}
-		MQTTclient = connect("sub", uri)
-		log.Println("MQTT client connected:", MQTTclient.IsConnected())
-		// go SubscribeMQTT(MQTTclient, "gh-releases-zsync|probonopd|merkaartor|continuous|Merkaartor-*-x86_64.AppImage.zsync")
-		// go SubscribeMQTT(MQTTclient, "gh-releases-zsync|AppImage|AppImageKit|continuous|appimagetool-x86_64.AppImage.zsync")
-
 	}
 
 	// Try to register ourselves as a thumbnailer for AppImages, in the hope that

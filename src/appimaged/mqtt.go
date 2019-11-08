@@ -63,6 +63,13 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 			queryEscapedUpdateInformation := parts[0]
 			fmt.Println("mqtt:", queryEscapedUpdateInformation, "reports version", version)
 			unescapedui, _ := url.QueryUnescape(queryEscapedUpdateInformation)
+			if unescapedui == thisai.updateinformation {
+				log.Println("++++++++++++++++++++++++++++++++++++++++++++++++++")
+				log.Println("+ Update available for this AppImage.")
+				log.Println("+ Something special should happen here...")
+				log.Println("+ To be imlpemented.")
+				log.Println("++++++++++++++++++++++++++++++++++++++++++++++++++")
+			}
 			results := FindAppImagesWithMatchingUpdateInformation(unescapedui)
 			fmt.Println("mqtt:", updateinformation, "reports version", version, "we have matching", results)
 			// Find the most recent local file, based on https://stackoverflow.com/a/45579190

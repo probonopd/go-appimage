@@ -26,7 +26,7 @@ script:
   - export PATH=$(readlink -f upx-*_linux/):$PATH
   # export GO111MODULE=off
   # appimagetool
-  - go get github.com/probonopd/appimage/src/appimagetool
+  - go get -v github.com/probonopd/appimage/src/appimagetool
   - go build -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/appimage/src/appimagetool
   # upx -9 appimagetool
   - mv ./appimagetool appimagetool-$(go env GOHOSTARCH)
@@ -37,7 +37,7 @@ script:
   # if [ $(go env GOHOSTARCH) == "arm64" ] ; then upx -9 ./appimagetool ; fi
   - if [ $(go env GOHOSTARCH) == "arm64" ] ; then mv ./appimagetool appimagetool-arm ; fi
   # appimaged
-  - go get github.com/probonopd/appimage/src/appimaged
+  - go get -v github.com/probonopd/appimage/src/appimaged
   - go build -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/appimage/src/appimaged
   # upx -9 appimaged
   - mv ./appimaged appimaged-$(go env GOHOSTARCH)

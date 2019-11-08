@@ -14,6 +14,16 @@ import (
 
 func checkPrerequisites() {
 
+	thisai = newAppImage(helpers.HereArgs0())
+
+	if thisai.imagetype < 1 {
+		log.Println("++++++++++++++++++++++++++++++++++++++++++++++++++")
+		log.Println("+ Not running from within an AppImage.")
+		log.Println("+ This is discouraged because some functionality")
+		log.Println("+ may not be available.")
+		log.Println("++++++++++++++++++++++++++++++++++++++++++++++++++")
+	}
+
 	ensureRunningFromLiveSystem()
 
 	// Check for needed files on $PATH
