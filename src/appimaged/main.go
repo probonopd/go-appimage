@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -35,7 +36,7 @@ var quit = make(chan struct{})
 var verbosePtr = flag.Bool("v", false, "Print verbose log messages")
 var overwritePtr = flag.Bool("o", false, "Overwrite existing desktop integration")
 var cleanPtr = flag.Bool("c", false, "Clean pre-existing desktop files")
-var notifPtr = flag.Bool("n", false, "Send desktop notifications")
+var quietPtr = flag.Bool("q", false, "Do not send desktop notifications")
 var noZeroconfPtr = flag.Bool("nz", false, "Do not announce this service on the network using Zeroconf")
 
 var toBeIntegrated []string
@@ -56,6 +57,14 @@ const ExecLocationKey = helpers.ExecLocationKey
 var commit string
 
 func main() {
+
+	// As quickly as possible go there if we are invoked with the "notify" command
+	if len(os.Args) > 1 {
+		if os.Args[1] == "notify" {
+			JustNotify()
+			os.Exit(0)
+		}
+	}
 
 	// As quickly as possible go there if we are invoked with the "wrap" command
 	if len(os.Args) > 1 {
@@ -114,9 +123,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if *notifPtr == true {
-		sendDesktopNotification("Starting", helpers.Here())
-	}
+	SimpleNotify("Starting", helpers.Here(), 5000)
 
 	log.Println("main: Running from", helpers.Here())
 
@@ -153,15 +160,6 @@ func main() {
 	go monitorUdisks()
 
 	watchDirectories()
-
-	// Use dbus to find out about AppImages to be handled
-	// go monitorDbusSessionBus()
-	// or
-	// use inotify to find out about AppImages to be handled
-
-	if *notifPtr == true {
-		sendDesktopNotification("watcher", "Started")
-	}
 
 	// Ticker to periodically check whether MQTT is still connected.
 	// Periodically check whether the MQTT client is
@@ -262,6 +260,8 @@ func moveDesktopFiles() {
 		} else {
 			log.Println("main: Moved", len(files), "desktop files to", xdg.DataHome+"/applications/; use -v to see details")
 		}
+
+		SimpleNotify("Added "+strconv.Itoa(len(files))+" applications", "", 5000)
 
 		// Run the various tools that make sure that the added desktop files really show up in the menu.
 		// Of course, almost no 2 systems are similar.

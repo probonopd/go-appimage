@@ -90,7 +90,7 @@ func sendErrorDesktopNotification(title string, body string) {
 	// If 0, the notification never expires.
 
 	if call.Err != nil {
-		log.Println("ERROR: notification:", call.Err)
+		log.Println("ERROR: appwrapper:", call.Err)
 	}
 }
 

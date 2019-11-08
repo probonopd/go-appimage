@@ -69,12 +69,14 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 				log.Println("+ Something special should happen here...")
 				log.Println("+ To be imlpemented.")
 				log.Println("++++++++++++++++++++++++++++++++++++++++++++++++++")
+				SimpleNotify("Update available", "An update for the AppImage daemon is available; I could update myself now...", 0)
 			}
 			results := FindAppImagesWithMatchingUpdateInformation(unescapedui)
 			fmt.Println("mqtt:", updateinformation, "reports version", version, "we have matching", results)
 			// Find the most recent local file, based on https://stackoverflow.com/a/45579190
 			mostRecent := helpers.FindMostRecentFile(results)
 			fmt.Println("mqtt:", updateinformation, "reports version", version, "we have matching", mostRecent)
+
 			// TODO: If version the AppImage has embededed is different, if yes launch AppImageUpdate
 			if helpers.IsCommandAvailable("AppImageUpdate") {
 				fmt.Println("mqtt: AppImageUpdate", mostRecent)

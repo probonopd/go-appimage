@@ -234,9 +234,7 @@ func (ai AppImage) _integrate() {
 		go SubscribeMQTT(MQTTclient, ai.updateinformation)
 	}
 
-	if *notifPtr == true {
-		sendDesktopNotification(ai.path, "Integrated")
-	}
+	// SimpleNotify(ai.path, "Integrated", 3000)
 
 	// For performance reasons, we stop working immediately
 	// in case a thumbnail file already exists at that location
@@ -270,9 +268,8 @@ func (ai AppImage) _removeIntegration() {
 	err = os.Remove(ai.desktopfilepath)
 	if err == nil {
 		log.Println("appimage: Deleted", ai.desktopfilepath)
-		if *notifPtr == true {
-			sendDesktopNotification(ai.path, "Integration removed")
-		}
+
+		SimpleNotify(ai.path, "Integration removed", 3000)
 
 	}
 }
