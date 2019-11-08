@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 
 	"github.com/godbus/dbus"
 )
@@ -17,7 +18,7 @@ import (
 // by launching a new process
 func SimpleNotify(title string, body string, timeout int) {
 	if *quietPtr == false {
-		exec.Command(os.Args[0], "notify", strconv.Itoa(timeout), title, body).Start()
+		exec.Command(os.Args[0], "notify", strconv.Itoa(timeout), strings.TrimSpace(title), strings.TrimSpace(body)).Start()
 	}
 }
 

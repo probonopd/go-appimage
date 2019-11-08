@@ -10,7 +10,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -65,15 +64,8 @@ func writeDesktopFile(ai AppImage) {
 	cfg.Section("Desktop Entry").Key("Type").SetValue("Application")
 	// Construct the Name entry based on the actual filename
 	// so that renaming the file in the file manager results in a changed name in the menu
-	niceName := filepath.Base(ai.path)
-	niceName = strings.Replace(niceName, ".AppImage", "", -1)
-	niceName = strings.Replace(niceName, ".appimage", "", -1)
-	niceName = strings.Replace(niceName, "-x86_64", "", -1)
-	niceName = strings.Replace(niceName, "-i386", "", -1)
-	niceName = strings.Replace(niceName, "-i686", "", -1)
-	niceName = strings.Replace(niceName, "-", " ", -1)
-	niceName = strings.Replace(niceName, "_", " ", -1)
-	cfg.Section("Desktop Entry").Key("Name").SetValue(niceName)
+
+	cfg.Section("Desktop Entry").Key("Name").SetValue(ai.niceName)
 	home, _ := os.UserHomeDir()
 	thumbnail := home + "/.thumbnails/normal/" + ai.md5 + ".png"
 	// FIXME: If the thumbnail is not generated here but by another external thumbnailer, it may not be fast enough

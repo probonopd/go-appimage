@@ -38,6 +38,7 @@ type AppImage struct {
 	offset            int64
 	rawcontents       string
 	updateinformation string
+	niceName          string
 }
 
 func newAppImage(path string) AppImage {
@@ -66,6 +67,7 @@ func newAppImage(path string) AppImage {
 	if ai.imagetype < 0 {
 		return ai
 	}
+	ai.niceName = ai.calculateNiceName()
 	ai.offset = calculateElfSize(ai.path)
 	ui, err := ai.ReadUpdateInformation()
 	if err == nil && ui != "" {
@@ -108,6 +110,18 @@ func (ai AppImage) calculateMD5filenamepart() string {
 	hasher := md5.New()
 	hasher.Write([]byte(ai.uri))
 	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+func (ai AppImage) calculateNiceName() string {
+	niceName := filepath.Base(ai.path)
+	niceName = strings.Replace(niceName, ".AppImage", "", -1)
+	niceName = strings.Replace(niceName, ".appimage", "", -1)
+	niceName = strings.Replace(niceName, "-x86_64", "", -1)
+	niceName = strings.Replace(niceName, "-i386", "", -1)
+	niceName = strings.Replace(niceName, "-i686", "", -1)
+	niceName = strings.Replace(niceName, "-", " ", -1)
+	niceName = strings.Replace(niceName, "_", " ", -1)
+	return niceName
 }
 
 func runCommand(cmd *exec.Cmd) (io.Writer, error) {

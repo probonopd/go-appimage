@@ -84,5 +84,5 @@ func PublishMQTTMessage(updateinformation string, version string) {
 	}
 	topic := MQTTNamespace + "/" + queryEscapedUpdateInformation + "/version" // TODO: Publish hash instead of or in addition to version
 	fmt.Println("Publishing version", version, "for", updateinformation)
-	client.Publish(topic, 0, true, version) // Retain
+	client.Publish(topic, 1, true, version) // Retain; QoS 1
 }

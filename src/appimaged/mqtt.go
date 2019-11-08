@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/url"
 	"os"
-	"os/exec"
+
 	"strings"
 	"time"
 
@@ -39,6 +39,10 @@ func createClientOptions(clientId string, uri *url.URL) *mqtt.ClientOptions {
 }
 
 func SubscribeMQTT(client mqtt.Client, updateinformation string) {
+	time.Sleep(time.Second * 60) // We get retained messages immediately when we subscribe;
+	// at this point our AppImage may not be integrated yet...
+	// Also it's better user experience not to be bombarded with updates immediately at startup.
+	// 60 seconds should be plenty of time.
 	queryEscapedUpdateInformation := url.QueryEscape(updateinformation)
 	if queryEscapedUpdateInformation == "" {
 		return
@@ -78,13 +82,15 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 			fmt.Println("mqtt:", updateinformation, "reports version", version, "we have matching", mostRecent)
 
 			// TODO: If version the AppImage has embededed is different, if yes launch AppImageUpdate
-			if helpers.IsCommandAvailable("AppImageUpdate") {
-				fmt.Println("mqtt: AppImageUpdate", mostRecent)
-				cmd := exec.Command("AppImageUpdate", mostRecent)
-				log.Printf("Running AppImageUpdate command and waiting for it to finish...")
-				err := cmd.Run()
-				log.Printf("AppImageUpdate finished with error: %v", err)
-			}
+			// if helpers.IsCommandAvailable("AppImageUpdate") {
+			// 	fmt.Println("mqtt: AppImageUpdate", mostRecent)
+			// 	cmd := exec.Command("AppImageUpdate", mostRecent)
+			// 	log.Printf("Running AppImageUpdate command and waiting for it to finish...")
+			// 	err := cmd.Run()
+			// 	log.Printf("AppImageUpdate finished with error: %v", err)
+			// }
+			ai := newAppImage(mostRecent)
+			SimpleNotify("Update available", ai.niceName+"\ncan be updated to version "+version, 120000)
 		}
 	})
 }
