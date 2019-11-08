@@ -28,11 +28,9 @@ func checkPrerequisites() {
 
 	// Check for needed files on $PATH
 	tools := []string{"bsdtar", "unsquashfs", "desktop-file-validate"}
-	for _, t := range tools {
-		if helpers.IsCommandAvailable(t) == false {
-			log.Println("Required helper tool", t, "missing")
-			os.Exit(1)
-		}
+	err := helpers.CheckForNeededTools(tools)
+	if err != nil {
+		os.Exit(1)
 	}
 
 	// Check whether we have a sufficient version of unsquashfs for -offset
@@ -71,7 +69,7 @@ func checkPrerequisites() {
 	// E.g., on Xubuntu this directory is not there by default
 	// but luckily it starts working right away without
 	// the desktop needing to be restarted
-	err := os.MkdirAll(xdg.DataHome+"/applications/", os.ModePerm)
+	err = os.MkdirAll(xdg.DataHome+"/applications/", os.ModePerm)
 	helpers.LogError("main:", err)
 	err = os.MkdirAll(xdg.CacheHome+"/thumbnails/normal", os.ModePerm)
 	helpers.LogError("main:", err)

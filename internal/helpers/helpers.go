@@ -411,3 +411,14 @@ func FindMostRecentFile(files []string) string {
 	}
 	return ""
 }
+
+// Check for needed files on $PATH. Returns err
+func CheckForNeededTools(tools []string) error {
+	for _, t := range tools {
+		if IsCommandAvailable(t) == false {
+			log.Println("Required helper tool", t, "missing")
+			return os.ErrNotExist // How else to do this?
+		}
+	}
+	return nil
+}

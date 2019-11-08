@@ -1,3 +1,6 @@
+// TODO: Use https://github.com/src-d/go-git or https://github.com/google/go-github to
+// * Get changelog history and publish it on PubSub
+
 package main
 
 import (
