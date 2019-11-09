@@ -294,7 +294,6 @@ func GenerateAppImage(appdir string) {
 		helpers.PrintError("Could not get size of AppImage", err)
 		os.Exit(1)
 	}
-	filesize := int64(fi.Size())
 
 	// Construct update information
 	var updateinformation string
@@ -423,7 +422,7 @@ func GenerateAppImage(appdir string) {
 	//  Can we make it much simpler to use? Check how goreleaser does it.
 
 	// Create the payload the publishing
-	pl, _ := constructMQTTPayload("Foobar App", version, filesize)
+	pl, _ := constructMQTTPayload("Foobar App", version)
 	fmt.Println(pl)
 
 	// Upload and publish if we know this is a Travis CI build
@@ -442,7 +441,7 @@ func GenerateAppImage(appdir string) {
 		// If upload succeeded, publish MQTT message
 		// TODO: Message AppImageHub instead, which in turn messages the clients
 
-		helpers.PublishMQTTMessage(updateinformation, version)
+		helpers.PublishMQTTMessage(updateinformation, pl)
 	}
 
 	fmt.Println("Success")
@@ -452,12 +451,12 @@ func GenerateAppImage(appdir string) {
 	fmt.Println("at https://github.com/AppImage/appimage.github.io")
 }
 
-func constructMQTTPayload(name string, version string, size int64) (string, error) {
+func constructMQTTPayload(name string, version string) (string, error) {
 
 	psd := helpers.PubSubData{
 		Name:    name,
 		Version: version,
-		Size:    size,
+		// Size:    size,
 		// Fruit:   []string{"Apple", "Banana", "Orange"},
 		// Id:      999,
 		// private: "Unexported field",
