@@ -102,12 +102,6 @@ func main() {
 		}
 	}
 
-	// If we are running from an AppImage,
-	// we subscribe to this application's topic, and we handle messages for this topic in a special way
-	if thisai.imagetype > 0 {
-		go SubscribeMQTT(MQTTclient, thisai.updateinformation)
-	}
-
 	var err error
 	// Catch for young players:
 	// conn, err := dbus.SessionBus() would not work here,

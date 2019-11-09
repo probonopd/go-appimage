@@ -146,8 +146,10 @@ func GenerateAppImage(appdir string) {
 
 	// Read "Name=" key and convert spaces into underscores
 	val, _ = d.Section("Desktop Entry").GetKey("Name")
-	name := strings.Replace(val.String(), " ", "_", 999)
-	fmt.Println(name)
+	name := val.String()
+	nameWithUnderscores := strings.Replace(name, " ", "_", -1)
+
+	fmt.Println(nameWithUnderscores)
 
 	// Determine the architecture
 	// If no $ARCH variable is set check all .so that we can find to determine the architecture
@@ -191,7 +193,7 @@ func GenerateAppImage(appdir string) {
 	helpers.PrintError("Save desktop file", err)
 
 	// Construct target AppImage filename
-	target := name + "-" + version + "-" + arch + ".AppImage"
+	target := nameWithUnderscores + "-" + version + "-" + arch + ".AppImage"
 	fmt.Println(target)
 
 	var iconfile string
@@ -332,7 +334,7 @@ func GenerateAppImage(appdir string) {
 			} else {
 				channel = "continuous"
 			}
-			updateinformation = "gh-releases-zsync|" + parts[0] + "|" + parts[1] + "|" + channel + "|" + name + "-" + "*-" + arch + ".AppImage.zsync"
+			updateinformation = "gh-releases-zsync|" + parts[0] + "|" + parts[1] + "|" + channel + "|" + nameWithUnderscores + "-" + "*-" + arch + ".AppImage.zsync"
 			fmt.Println("Calculated updateinformation:", updateinformation)
 		}
 	}
@@ -421,7 +423,7 @@ func GenerateAppImage(appdir string) {
 	//  Can we make it much simpler to use? Check how goreleaser does it.
 
 	// Create the payload the publishing
-	pl, _ := constructMQTTPayload("Foobar App", version)
+	pl, _ := constructMQTTPayload(name, version)
 	fmt.Println(pl)
 
 	// Upload and publish if we know this is a Travis CI build
