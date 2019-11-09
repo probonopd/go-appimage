@@ -28,6 +28,8 @@ var flgVersion bool
 
 func main() {
 
+	fmt.Println(os.Environ())
+
 	// Parse command line arguments
 	flag.BoolVar(&flgVersion, "version", false, "Show version number")
 	flag.Parse()

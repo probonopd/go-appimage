@@ -78,7 +78,7 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 			if unescapedui == thisai.updateinformation {
 				log.Println("++++++++++++++++++++++++++++++++++++++++++++++++++")
 				log.Println("+ Update available for this AppImage.")
-				log.Println("+ Something special should happen here...")
+				log.Println("+ Something special should happen here: Selfupdate")
 				log.Println("+ To be imlpemented.")
 				log.Println("++++++++++++++++++++++++++++++++++++++++++++++++++")
 				SimpleNotify("Update available", "An update for the AppImage daemon is available; I could update myself now...", 0)
@@ -90,6 +90,7 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 			fmt.Println("mqtt:", updateinformation, "reports version", version, "we have matching", mostRecent)
 
 			// TODO: If version the AppImage has embededed is different, if yes launch AppImageUpdate
+			// For now we just notify.
 			// if helpers.IsCommandAvailable("AppImageUpdate") {
 			// 	fmt.Println("mqtt: AppImageUpdate", mostRecent)
 			// 	cmd := exec.Command("AppImageUpdate", mostRecent)
@@ -99,7 +100,8 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 			// }
 			ai := newAppImage(mostRecent)
 			// TODO: Do some checks before, e.g., see whether we already have it,
-			// and whether it is really available for download
+			// and whether it is really available for download, and which version the existing
+			// AppImage claims to be
 			SimpleNotify("Update available", ai.niceName+"\ncan be updated to version "+version, 120000)
 		}
 	})

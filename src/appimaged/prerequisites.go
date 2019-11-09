@@ -13,18 +13,30 @@ import (
 )
 
 func checkPrerequisites() {
-
+	log.Println(os.Getenv("GOCACHE"))
 	thisai = newAppImage(helpers.HereArgs0())
 
-	if thisai.imagetype < 1 {
-		log.Println("++++++++++++++++++++++++++++++++++++++++++++++++++")
-		log.Println("+ Not running from within an AppImage.")
-		log.Println("+ This is discouraged because some functionality")
-		log.Println("+ may not be available.")
-		log.Println("++++++++++++++++++++++++++++++++++++++++++++++++++")
-	}
-
+	// Maybe in the distant future this may go away but for now we want everyone
+	// who tests or works on this to help making it a 1st class experience on Live systems
+	// becase we deeply care about those. Yes, AppImage is "opinionated".
+	// Once the experience on Live systems is as intended, we may lift this restriction.
+	// We want to prevent people from working on this code without caring about
+	// Live systems.
 	ensureRunningFromLiveSystem()
+
+	if thisai.imagetype < 1 || os.Getenv("APPIMAGE") == "" {
+		// We really don't want users to run this in any other way than from an AppImage
+		// because it only creates support issues and we can't update this AppImage
+		// using our own dogfood
+		log.Println("Not running from within an AppImage, exiting")
+		// The ONLY exception is developers that know what they are doing
+		// Note that this exception may go away at any time.
+		if os.Getenv("GOCACHE") == "" {
+			os.Exit(1)
+		} else {
+			SimpleNotify("Not running from an AppImage", "This is discouraged because some functionality may not be available, such as self-updating", 5000)
+		}
+	}
 
 	// Check for needed files on $PATH
 	tools := []string{"bsdtar", "unsquashfs", "desktop-file-validate"}
