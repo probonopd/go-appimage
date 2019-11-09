@@ -24,25 +24,32 @@ import (
 // go build -ldflags "-X main.commit=$TRAVIS_BUILD_NUMBER"
 var commit string
 
-var flgVersion bool
-
 func main() {
 
-	fmt.Println(os.Environ())
+	var version string
+	if commit != "" {
+		version = commit
+	} else {
+		version = "unsupported custom build"
+	}
 
-	// Parse command line arguments
-	flag.BoolVar(&flgVersion, "version", false, "Show version number")
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" "+version+"\n")
+		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "Tool to convert an AppDir into an AppImage.\n")
+		fmt.Fprintf(os.Stderr, "If it is running on Travis CI, it also uploads the AppImage\nto GitHub Releases, creates update and publishes the information needed\nfor updating the AppImage.\n")
+		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "Usage:\n")
+		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" <path to AppDir>\n")
+		fmt.Fprintf(os.Stderr, "\n")
+
+		flag.PrintDefaults()
+	}
 	flag.Parse()
 
-	// Always show version, but exit immediately if only the version number was requested
-	if commit != "" {
-		fmt.Printf("%s %s\n", filepath.Base(os.Args[0]), commit)
-	} else {
-		fmt.Println("Unsupported local", filepath.Base(os.Args[0]), "developer build")
-	}
-	if flgVersion == true {
-		os.Exit(0)
-	}
+	// Always show version
+	fmt.Println(filepath.Base(os.Args[0]), version)
 
 	// Add the location of the executable to the $PATH
 	helpers.AddHereToPath()

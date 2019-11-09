@@ -82,6 +82,11 @@ func main() {
 		fmt.Fprintf(os.Stderr, "\n")
 		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" "+version+"\n")
 		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "Optional daemon that registers AppImages and integrates them with the system.\n")
+		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "Sets the executable bit on AppImages, adds them to the system menu,\n")
+		fmt.Fprintf(os.Stderr, "and makes it possible to launch the most recent AppImage\n that isregistered on the system for a given application.\n")
+		fmt.Fprintf(os.Stderr, "\n")
 
 		// FIXME: Someone please tell me how to do this using flag
 		fmt.Fprintf(os.Stderr, "Commands: \n")
@@ -96,7 +101,7 @@ func main() {
 	flag.Parse()
 
 	// Always show version
-	fmt.Printf(filepath.Base(os.Args[0]), version)
+	fmt.Println(filepath.Base(os.Args[0]), version)
 
 	checkPrerequisites()
 

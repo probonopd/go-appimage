@@ -70,6 +70,9 @@ type PubSubData struct {
 // TODO: Instead of using hardcoded values here, we should grab those values from
 // some URL where we can change them, to allow the broker and namespace to be
 // switched at any time without having to update all clients.
+// We should also publish the version of the message format
+// there so that we could force applications to be updated if they are not built
+// for that version of the message format
 const MQTTServerURI = "http://broker.hivemq.com:1883"
 const MQTTNamespace = "p9q358t" // Our namespace. Our topic begins with this
 
