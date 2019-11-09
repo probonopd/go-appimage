@@ -33,7 +33,7 @@ func update() {
 	// AppImages. In the future we may do the updating ourselves.
 
 	// aiu := "gh-releases-zsync|antony-jr|AppImageUpdater|continuous|AppImageUpdater*-x86_64.AppImage.zsync"
-	aiu := "gxxh-releases-zsync|AppImage|AppImageUpdate|continuous|AppImageUpdate-*x86_64.AppImage.zsync"
+	aiu := "gh-releases-zsync|AppImage|AppImageUpdate|continuous|AppImageUpdate-*x86_64.AppImage.zsync"
 
 	a := FindMostRecentAppImageWithMatchingUpdateInformation(aiu)
 	if a == "" {
