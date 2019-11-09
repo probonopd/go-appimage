@@ -11,9 +11,8 @@ import (
 
 func takeCareOfCommandlineCommands() {
 
-	if len(os.Args) < 3 {
-		fmt.Println("Not enough arguments supplied")
-		os.Exit(1)
+	if len(os.Args) < 2 {
+		return
 	}
 
 	// As quickly as possible go there if we are invoked with the "notify" command
@@ -39,6 +38,11 @@ func takeCareOfCommandlineCommands() {
 	// appimaged run <updateinformation>: Waits for the process to exit
 	// appimaged start <updateinformation>: Does not wait and exits immediately after having tried to launch
 	if os.Args[1] == "run" || os.Args[1] == "start" {
+		if len(os.Args) < 3 {
+			fmt.Println("No updateinformation supplied")
+			os.Exit(1)
+		}
+
 		err := helpers.ValidateUpdateInformation(os.Args[2])
 		var ui string
 		if err == nil {
