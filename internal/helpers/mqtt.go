@@ -47,6 +47,26 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
+// Define the PubSubData that gets exchanged between
+// AppImage authoring tool and AppImage desktop integration tool
+// (e.g., appimagetool and appimaged).
+// For best practices regarding JSON payloads, see
+// https://yourbasic.org/golang/json-example/
+// e.g., use int64 for number.
+// We try to keep the messages as small as possible and
+// not transmit redundant information here that can be constructed
+// by the client directly (e.g., the URL to the GitHub repository
+// can logially be derived from the updateinformation string)
+type PubSubData struct {
+	Name    string
+	Version string
+	// Fruit   []string
+	Size int64
+	// Id      int64  `json:"ref"` // A field can be encoded to a different key name in JSON
+	// private string // An unexported (lowercase) field is not encoded
+	// Created time.Time // Use this format and time.Now() to transport timestamps but we don't need it since the MQTT message itself is timestamped
+}
+
 const MQTTServerURI = "http://broker.hivemq.com:1883"
 const MQTTNamespace = "p9q358t" // Our namespace. Our topic begins with this
 

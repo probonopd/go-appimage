@@ -5,6 +5,7 @@ package main
 
 import (
 	"crypto/md5"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -285,8 +286,27 @@ func GenerateAppImage(appdir string) {
 	fmt.Println("Marking the AppImage as executable...")
 	os.Chmod(target, 0755)
 
+	// Get the filesize in bytes of the resulting AppImage
+	fi, err = os.Stat(target)
+	if err != nil {
+		helpers.PrintError("Could not get size of AppImage", err)
+		os.Exit(1)
+	}
+	filesize := int64(fi.Size())
+
 	// Construct update information
 	var updateinformation string
+
+	// If we know this is a GitLab CI build
+	// do nothing at the moment but print some nice message
+	// https://docs.gitlab.com/ee/ci/variables/#predefined-variables-environment-variables
+	// CI_PROJECT_URL
+	// "CI_COMMIT_REF_NAME"); The branch or tag name for which project is built
+	// "CI_JOB_NAME"); The name of the job as defined in .gitlab-ci.yml
+	if os.Getenv("CI_COMMIT_REF_NAME") != "" {
+		fmt.Println("Running on GitLab CI")
+		fmt.Println("Will not calculate update information for GitLab because GitLab does not support HTTP range requests yet")
+	}
 
 	// If we know this is a Travis CI build,
 	// then fill in update information based on TRAVIS_REPO_SLUG
@@ -314,17 +334,6 @@ func GenerateAppImage(appdir string) {
 			updateinformation = "gh-releases-zsync|" + parts[0] + "|" + parts[1] + "|" + channel + "|" + name + "-" + "*-" + arch + ".AppImage.zsync"
 			fmt.Println("Calculated updateinformation:", updateinformation)
 		}
-	}
-
-	// If we know this is a GitLab CI build
-	// do nothing at the moment but print some nice message
-	// https://docs.gitlab.com/ee/ci/variables/#predefined-variables-environment-variables
-	// CI_PROJECT_URL
-	// "CI_COMMIT_REF_NAME"); The branch or tag name for which project is built
-	// "CI_JOB_NAME"); The name of the job as defined in .gitlab-ci.yml
-	if os.Getenv("CI_COMMIT_REF_NAME") != "" {
-		fmt.Println("Running on GitLab CI")
-		fmt.Println("Will not calculate update information for GitLab because GitLab does not support HTTP range requests yet")
 	}
 
 	// TODO: If updateinformation was provided, then we check and embed it
@@ -378,6 +387,19 @@ func GenerateAppImage(appdir string) {
 	fmt.Println("Embedded .upd-info section now contains:")
 	fmt.Println(string(uidata))
 
+	// If updateinformation was provided, then we also generate the zsync file (after having signed the AppImage)
+	if updateinformation != "" {
+		opts := zsync.Options{0, "", filepath.Base(target)}
+		zsync.ZsyncMake(target, opts)
+
+		// Check if the zsync file is really there
+		fi, err = os.Stat(target + ".zsync")
+		if err != nil {
+			helpers.PrintError("zsync file not generated", err)
+			os.Exit(1)
+		}
+	}
+
 	// TODO: calculate and embed MD5 digest
 	// https://github.com/AppImage/AppImageKit/blob/801e789390d0e6848aef4a5802cd52da7f4abafb/src/appimagetool.c#L961
 	// Blocked by https://github.com/AppImage/AppImageSpec/issues/29
@@ -398,13 +420,13 @@ func GenerateAppImage(appdir string) {
 	// TODO: Signing. It is pretty convoluted and hardly anyone is using it.
 	//  Can we make it much simpler to use? Check how goreleaser does it.
 
-	// If updateinformation was provided, then we also generate the zsync file (after having signed the AppImage)
-	if updateinformation != "" {
-		opts := zsync.Options{0, "", filepath.Base(target)}
-		zsync.ZsyncMake(target, opts)
-	}
+	// Create the payload the publishing
+	pl, _ := constructMQTTPayload("Foobar App", version, filesize)
+	fmt.Println(pl)
 
 	// Upload and publish if we know this is a Travis CI build
+	// TODO: Instead of using uploadtool, do it in Go. That way we could
+	// use the response coming from the GitHub API...
 	if os.Getenv("TRAVIS_REPO_SLUG") != "" {
 		cmd := exec.Command("uploadtool", target, target+".zsync")
 		fmt.Println(cmd.String())
@@ -426,4 +448,32 @@ func GenerateAppImage(appdir string) {
 	fmt.Println("Please consider submitting your AppImage to AppImageHub, the crowd-sourced")
 	fmt.Println("central directory of available AppImages, by opening a pull request")
 	fmt.Println("at https://github.com/AppImage/appimage.github.io")
+}
+
+func constructMQTTPayload(name string, version string, size int64) (string, error) {
+
+	psd := helpers.PubSubData{
+		Name:    name,
+		Version: version,
+		Size:    size,
+		// Fruit:   []string{"Apple", "Banana", "Orange"},
+		// Id:      999,
+		// private: "Unexported field",
+		// Created: time.Now(),
+	}
+
+	var jsonData []byte
+	jsonData, err := json.Marshal(psd)
+	if err != nil {
+		return "", err
+	}
+	// Print it in a nice readable form, unlike the one that actually gets returned
+	var jsonDataReadable []byte
+	jsonDataReadable, err = json.MarshalIndent(psd, "", "    ")
+	if err != nil {
+		return "", err
+	}
+	fmt.Println(string(jsonDataReadable))
+
+	return string(jsonData), nil
 }

@@ -1,12 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/url"
 	"os"
-
 	"strings"
 	"time"
 
@@ -59,8 +59,16 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 		if len(parts) < 2 {
 			return
 		}
+
 		if parts[1] == "version" {
-			version := string(msg.Payload())
+			// version := string(msg.Payload())
+			// Decode incoming JSON
+			var data helpers.PubSubData
+			err := json.Unmarshal(msg.Payload(), &data)
+			if err != nil {
+				helpers.PrintError("mqtt unmarshal", err)
+			}
+			version := data.Version
 			if version == "" {
 				return
 			}
@@ -90,6 +98,8 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 			// 	log.Printf("AppImageUpdate finished with error: %v", err)
 			// }
 			ai := newAppImage(mostRecent)
+			// TODO: Do some checks before, e.g., see whether we already have it,
+			// and whether it is really available for download
 			SimpleNotify("Update available", ai.niceName+"\ncan be updated to version "+version, 120000)
 		}
 	})
