@@ -14,7 +14,6 @@ import (
 
 func checkPrerequisites() {
 	log.Println(os.Getenv("GOCACHE"))
-	thisai = newAppImage(helpers.HereArgs0())
 
 	// Maybe in the distant future this may go away but for now we want everyone
 	// who tests or works on this to help making it a 1st class experience on Live systems
@@ -25,7 +24,7 @@ func checkPrerequisites() {
 	ensureRunningFromLiveSystem()
 	_, aiEnvIsThere := os.LookupEnv("APPIMAGE")
 	_, gcEnvIsThere := os.LookupEnv("GOCACHE")
-	if thisai.imagetype < 2 || aiEnvIsThere == false {
+	if aiEnvIsThere == false {
 		log.Println(os.Environ())
 		log.Println("Running from AppImage type", thisai.imagetype)
 		// We really don't want users to run this in any other way than from an AppImage
