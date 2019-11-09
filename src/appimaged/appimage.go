@@ -206,6 +206,23 @@ func (ai AppImage) setExecBit() {
 	// printError("appimage", err) // Do not print error since AppImages on read-only media are common
 }
 
+// CheckQualityAndNotify checks the quality of an AppImage and notifies about any issues found
+// Returns error or nil
+func (ai AppImage) Validate() error {
+	log.Println("xxxxxxxx Validating AppImage", ai.path)
+	// Check validity of the updateinformation in this AppImage, if it contains some
+	if ai.updateinformation != "" {
+		log.Println("xxxxxxxx Validating updateinformation in", ai.path)
+		err := helpers.ValidateUpdateInformation(ai.updateinformation)
+		helpers.PrintError("appimage: updateinformation verification", err)
+		if err != nil {
+			SimpleNotify("Invalid AppImage", ai.niceName+"\ncontains invalid update information:\n"+ai.updateinformation+"\n"+err.Error()+"\nPlease ask the author to fix it.", 30000)
+			return err
+		}
+	}
+	return nil
+}
+
 // Integrate an AppImage into the system (put in menu, extract thumbnail)
 // Can take a long time, hence run with "go"
 func (ai AppImage) _integrate() {
@@ -236,6 +253,13 @@ func (ai AppImage) _integrate() {
 				}
 			}
 		}
+	}
+
+	// Let's be evil and integrate only good AppImages...
+	err := ai.Validate()
+	if err != nil {
+		log.Println("xxx AppImage did not pass verification:", ai.path)
+		return
 	}
 
 	writeDesktopFile(ai) // Do not run with "go" as it would interfere with extractDirIconAsThumbnail
@@ -342,12 +366,7 @@ func (ai AppImage) ReadUpdateInformation() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if ui != "" {
-		err = helpers.VerifyUpdateInformation(ui)
-		if err != nil {
-			SimpleNotify("Invalid AppImage", ai.niceName+"\ncontains invalid update information:\n"+ui+"\n"+err.Error()+"\nPlease ask the author to fix it.", 30000)
-			return "", err
-		}
-	}
+	// Don't validate here, we don't want to get warnings all the time.
+	// We have AppImage.Validate as its own function which we call less frequently than this.
 	return ui, nil
 }

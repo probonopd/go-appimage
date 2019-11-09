@@ -17,7 +17,7 @@ import (
 // This is currently a stub. TODO: Implement more checks.
 // Returns error.
 // TODO: Eventually use this in AppImageHub, too
-func VerifyUpdateInformation(updateinformation string) error {
+func ValidateUpdateInformation(updateinformation string) error {
 	parts := strings.Split(updateinformation, "|")
 	if len(parts) < 2 {
 		return errors.New("Too short")

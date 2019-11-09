@@ -339,7 +339,7 @@ func GenerateAppImage(appdir string) {
 		}
 	}
 
-	err = helpers.VerifyUpdateInformation(updateinformation)
+	err = helpers.ValidateUpdateInformation(updateinformation)
 	if err != nil {
 		helpers.PrintError("VerifyUpdateInformation", err)
 		os.Exit(1)
