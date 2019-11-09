@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"strings"
 
@@ -14,6 +16,7 @@ import (
 
 func checkPrerequisites() {
 
+	// Ensure we are running on a Live system
 	// Maybe in the distant future this may go away but for now we want everyone
 	// who tests or works on this to help making it a 1st class experience on Live systems
 	// becase we deeply care about those. Yes, AppImage is "opinionated".
@@ -21,29 +24,43 @@ func checkPrerequisites() {
 	// We want to prevent people from working on this code without caring about
 	// Live systems.
 	ensureRunningFromLiveSystem()
+
+	// Check for needed files on $PATH
+	tools := []string{"bsdtar", "unsquashfs", "desktop-file-validate", "pgrep"}
+	err := helpers.CheckForNeededTools(tools)
+	if err != nil {
+		os.Exit(1)
+	}
+
+	// Poor man's singleton
+	// Ensure that no other processes with the same name are already runing under the same user
+	// FIXME: How to do this properly?
+	u, _ := user.Current()
+	res, _ := exec.Command("pgrep", "-u", u.Uid, filepath.Base(os.Args[0])).Output()
+	// log.Println(res)
+	pids := strings.Split(string(bytes.TrimSpace(res)), "\n")
+	// log.Println(pids)
+	if (len(pids)) != 1 {
+		log.Println("Other processes with the name", filepath.Base(os.Args[0]), "are already running. Please stop them first.")
+		os.Exit(1)
+	}
+
+	// We really don't want users to run this in any other way than from an AppImage
+	// because it only creates support issues and we can't update this AppImage
+	// using our own dogfood
+	// The ONLY exception is developers that know what they are doing
 	_, aiEnvIsThere := os.LookupEnv("APPIMAGE")
 	_, gcEnvIsThere := os.LookupEnv("GOCACHE")
 	if aiEnvIsThere == false {
 		// log.Println(os.Environ())
 		log.Println("Running from AppImage type", thisai.imagetype)
-		// We really don't want users to run this in any other way than from an AppImage
-		// because it only creates support issues and we can't update this AppImage
-		// using our own dogfood
-		// The ONLY exception is developers that know what they are doing
-		// Note that this exception may go away at any time.
 		if gcEnvIsThere == false {
 			log.Println("Not running from within an AppImage, exiting")
 			os.Exit(1)
 		} else {
-			SimpleNotify("Not running from an AppImage", "This is discouraged because some functionality may not be available, such as self-updating", 5000)
+			// Note that this exception is for use during develpment of this tool only and may go away at any time.
+			SimpleNotify("Not running from an AppImage", "This is discouraged because some functionality may not be available", 5000)
 		}
-	}
-
-	// Check for needed files on $PATH
-	tools := []string{"bsdtar", "unsquashfs", "desktop-file-validate"}
-	err := helpers.CheckForNeededTools(tools)
-	if err != nil {
-		os.Exit(1)
 	}
 
 	// Check whether we have a sufficient version of unsquashfs for -offset
