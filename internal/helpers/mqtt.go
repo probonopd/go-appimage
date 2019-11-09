@@ -64,7 +64,7 @@ type PubSubData struct {
 	// Size int64 // FIXME: Size is not sufficient to tell two AppImages apart since squashfs pads the end
 	// Id      int64  `json:"ref"` // A field can be encoded to a different key name in JSON
 	// private string // An unexported (lowercase) field is not encoded
-	// Created time.Time // Use this format and time.Now() to transport timestamps but we don't need it since the MQTT message itself is timestamped
+	FSTime time.Time // Use this format and time.Now() to transport timestamps. We (ab)use FSTime to check local files with "unsquashfs -fstime" to see whether they are "different"
 }
 
 // TODO: Instead of using hardcoded values here, we should grab those values from

@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/agriardyan/go-zsyncmake/zsync"
 	"github.com/probonopd/appimage/internal/helpers"
@@ -274,8 +275,13 @@ func GenerateAppImage(appdir string) {
 	}
 	offset := fi.Size()
 
+	// We supply our own fstime rather than letting mksquashfs determine it
+	// so that we know its value for being able to publish it
+	FSTime := time.Now()
+	fstime := string(FSTime.Unix()) // Seconds since epoch.  Default to current time
+
 	// "mksquashfs", source, destination, "-offset", offset, "-comp", "gzip", "-root-owned", "-noappend"
-	cmd := exec.Command("mksquashfs", appdir, target, "-offset", strconv.FormatInt(offset, 10), "-comp", "gzip", "-root-owned", "-noappend")
+	cmd := exec.Command("mksquashfs", appdir, target, "-offset", strconv.FormatInt(offset, 10), "-fstime", fstime, "-comp", "gzip", "-root-owned", "-noappend")
 	fmt.Println(cmd.String())
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -430,7 +436,7 @@ func GenerateAppImage(appdir string) {
 	//  Can we make it much simpler to use? Check how goreleaser does it.
 
 	// Create the payload the publishing
-	pl, _ := constructMQTTPayload(name, version)
+	pl, _ := constructMQTTPayload(name, version, FSTime)
 	fmt.Println(pl)
 
 	// Upload and publish if we know this is a Travis CI build
@@ -459,7 +465,7 @@ func GenerateAppImage(appdir string) {
 	fmt.Println("at https://github.com/AppImage/appimage.github.io")
 }
 
-func constructMQTTPayload(name string, version string) (string, error) {
+func constructMQTTPayload(name string, version string, FSTime time.Time) (string, error) {
 
 	psd := helpers.PubSubData{
 		Name:    name,
