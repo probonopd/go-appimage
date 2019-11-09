@@ -23,15 +23,18 @@ func checkPrerequisites() {
 	// We want to prevent people from working on this code without caring about
 	// Live systems.
 	ensureRunningFromLiveSystem()
-
-	if thisai.imagetype < 1 || os.Getenv("APPIMAGE") == "" {
+	_, aiEnvIsThere := os.LookupEnv("APPIMAGE")
+	_, gcEnvIsThere := os.LookupEnv("GOCACHE")
+	if thisai.imagetype < 2 || aiEnvIsThere == false {
+		log.Println(os.Environ())
+		log.Println("Running from AppImage type", thisai.imagetype)
 		// We really don't want users to run this in any other way than from an AppImage
 		// because it only creates support issues and we can't update this AppImage
 		// using our own dogfood
-		log.Println("Not running from within an AppImage, exiting")
 		// The ONLY exception is developers that know what they are doing
 		// Note that this exception may go away at any time.
-		if os.Getenv("GOCACHE") == "" {
+		if gcEnvIsThere == false {
+			log.Println("Not running from within an AppImage, exiting")
 			os.Exit(1)
 		} else {
 			SimpleNotify("Not running from an AppImage", "This is discouraged because some functionality may not be available, such as self-updating", 5000)

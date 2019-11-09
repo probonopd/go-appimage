@@ -231,10 +231,7 @@ func (ai AppImage) _integrate() {
 				if diff > (time.Duration(0) * time.Second) {
 					// Do nothing if the desktop file is already newer than the AppImage file
 					// but subscribe
-					ui := ai.updateinformation
-					if ui != "" {
-						SubscribeMQTT(MQTTclient, ui)
-					}
+					go SubscribeMQTT(MQTTclient, ai.updateinformation)
 					return
 				}
 			}
@@ -279,11 +276,15 @@ func (ai AppImage) _removeIntegration() {
 		log.Println("appimage:", err, ai.thumbnailfilepath)
 	}
 
+	// Unsubscribe to MQTT messages for this application
+	if ai.updateinformation != "" {
+		go UnSubscribeMQTT(MQTTclient, ai.updateinformation)
+	}
+
 	err = os.Remove(ai.desktopfilepath)
 	if err == nil {
 		log.Println("appimage: Deleted", ai.desktopfilepath)
-
-		SimpleNotify(ai.path, "Integration removed", 3000)
+		SimpleNotify("Removed", ai.path, 3000)
 
 	}
 }

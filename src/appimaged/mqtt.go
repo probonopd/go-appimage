@@ -38,6 +38,18 @@ func createClientOptions(clientId string, uri *url.URL) *mqtt.ClientOptions {
 	return opts
 }
 
+// UnSubscribeMQTT unubscribe from receiving update notifications for updateinformation
+// TODO: Keep track of what we have already subscribed, and remove from that list
+func UnSubscribeMQTT(client mqtt.Client, updateinformation string) {
+	queryEscapedUpdateInformation := url.QueryEscape(updateinformation)
+	if queryEscapedUpdateInformation == "" {
+		return
+	}
+	client.Unsubscribe(queryEscapedUpdateInformation)
+}
+
+// SubscribeMQTT subscribes to receive update notifications for updateinformation
+// TODO: Keep track of what we have already subscribed, and don't subscribe again
 func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 	time.Sleep(time.Second * 60) // We get retained messages immediately when we subscribe;
 	// at this point our AppImage may not be integrated yet...
