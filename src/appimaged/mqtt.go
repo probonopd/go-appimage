@@ -49,9 +49,13 @@ func UnSubscribeMQTT(client mqtt.Client, updateinformation string) {
 // SubscribeMQTT subscribes to receive update notifications for updateinformation
 // TODO: Keep track of what we have already subscribed, and don't subscribe again
 func SubscribeMQTT(client mqtt.Client, updateinformation string) {
+
 	if helpers.SliceContains(subscribedMQTTTopics, updateinformation) == true {
 		// We have already subscribed to this; so nothing to do here
 		return
+	} else {
+		// Need to do this immediately here, otherwise it comes too late
+		subscribedMQTTTopics = helpers.AppendIfMissing(subscribedMQTTTopics, updateinformation)
 	}
 	time.Sleep(time.Second * 60) // We get retained messages immediately when we subscribe;
 	// at this point our AppImage may not be integrated yet...
@@ -64,6 +68,7 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 	topic := helpers.MQTTNamespace + "/" + queryEscapedUpdateInformation + "/#"
 	fmt.Println("mqtt: Subscribing for", updateinformation)
 	fmt.Println("mqtt: Waiting for messages on topic", helpers.MQTTNamespace+"/"+queryEscapedUpdateInformation+"/version")
+
 	client.Subscribe(topic, 0, func(client mqtt.Client, msg mqtt.Message) {
 		// fmt.Printf("* [%s] %s\n", msg.Topic(), string(msg.Payload()))
 		// fmt.Println(topic)

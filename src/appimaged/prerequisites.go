@@ -13,7 +13,6 @@ import (
 )
 
 func checkPrerequisites() {
-	log.Println(os.Getenv("GOCACHE"))
 
 	// Maybe in the distant future this may go away but for now we want everyone
 	// who tests or works on this to help making it a 1st class experience on Live systems

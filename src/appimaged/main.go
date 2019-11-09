@@ -46,6 +46,15 @@ var thisai AppImage // A reference to myself
 
 var conn *dbus.Conn
 var MQTTclient mqtt.Client
+
+// To keep track of what we already have subscribed. Something like this is needed in order
+// not to be flooded with messages.
+// If possible I would like to get rid of this slice,
+// the mqtt library probably keeps track of this internally?
+// Right now we never remove from this list for logical reasons
+// (multiple AppImages may share the same updateinformation)...
+// Checking whehter other AppImages are left is probably costly.
+// So better find a way to get this information from the mqtt library.
 var subscribedMQTTTopics []string
 
 // This key in the desktop files written by us describes where the AppImage is in the filesystem.
@@ -224,6 +233,8 @@ func checkMQTTConnected(MQTTclient mqtt.Client) {
 // into the menu, so that the menu does not get rebuilt all the time
 func moveDesktopFiles() {
 	// log.Println("main: xxxxxxxxxxxxxxx Ticktock")
+
+	// log.Println("Subscriptions:", subscribedMQTTTopics)
 
 	// log.Println(watchedDirectories)
 	// for _, w := range watchedDirectories {

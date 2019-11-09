@@ -265,7 +265,7 @@ func (ai AppImage) _integrate() {
 	// Let's be evil and integrate only good AppImages...
 	err := ai.Validate()
 	if err != nil {
-		log.Println("xxx AppImage did not pass verification:", ai.path)
+		log.Println("AppImage did not pass verification:", ai.path)
 		return
 	}
 
