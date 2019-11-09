@@ -72,5 +72,5 @@ func takeCareOfCommandlineCommands() {
 		}
 		os.Exit(1)
 	}
-	os.Exit(0) // Ensure that if we are in this function, then the process exits no matter what
+
 }

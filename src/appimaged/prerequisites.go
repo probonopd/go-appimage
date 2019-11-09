@@ -24,7 +24,7 @@ func checkPrerequisites() {
 	_, aiEnvIsThere := os.LookupEnv("APPIMAGE")
 	_, gcEnvIsThere := os.LookupEnv("GOCACHE")
 	if aiEnvIsThere == false {
-		log.Println(os.Environ())
+		// log.Println(os.Environ())
 		log.Println("Running from AppImage type", thisai.imagetype)
 		// We really don't want users to run this in any other way than from an AppImage
 		// because it only creates support issues and we can't update this AppImage

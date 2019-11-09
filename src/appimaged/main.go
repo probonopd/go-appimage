@@ -71,14 +71,32 @@ func main() {
 	// As quickly as possible go there if we are invoked from the command line with a command
 	takeCareOfCommandlineCommands()
 
+	var version string
+	if commit != "" {
+		version = commit
+	} else {
+		version = "unsupported custom build"
+	}
+
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" "+version+"\n")
+		fmt.Fprintf(os.Stderr, "\n")
+
+		// FIXME: Someone please tell me how to do this using flag
+		fmt.Fprintf(os.Stderr, "Commands: \n")
+		fmt.Fprintf(os.Stderr, "run <updateinformation>:\n\tRun the most recent AppImage registered\n\tfor the updateinformation provided\n")
+		fmt.Fprintf(os.Stderr, "start <updateinformation>:\n\tStart the most recent AppImage registered\n\tfor the updateinformation provided and exit immediately\n")
+		fmt.Fprintf(os.Stderr, "update <path to AppImage>:\n\tUpdate the AppImage using the most recent\n\tAppImageUpdate registered\n")
+		fmt.Fprintf(os.Stderr, "wrap <path to executable>:\n\tExecute the exeutable and send\n\tdesktop notifications for any errors\n")
+		fmt.Fprintf(os.Stderr, "\n")
+
+		flag.PrintDefaults()
+	}
 	flag.Parse()
 
 	// Always show version
-	if commit != "" {
-		fmt.Printf("%s %s\n", filepath.Base(os.Args[0]), commit)
-	} else {
-		fmt.Println("Unsupported local", filepath.Base(os.Args[0]), "developer build")
-	}
+	fmt.Printf(filepath.Base(os.Args[0]), version)
 
 	checkPrerequisites()
 
