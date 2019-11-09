@@ -46,6 +46,7 @@ var thisai AppImage // A reference to myself
 
 var conn *dbus.Conn
 var MQTTclient mqtt.Client
+var subscribedMQTTTopics []string
 
 // This key in the desktop files written by us describes where the AppImage is in the filesystem.
 // We need this because we rewrite Exec= to include things like wrap and Firejail
@@ -70,6 +71,14 @@ func main() {
 	if len(os.Args) > 1 {
 		if os.Args[1] == "wrap" {
 			appwrap()
+			os.Exit(0)
+		}
+	}
+
+	// As quickly as possible go there if we are invoked with the "update" command
+	if len(os.Args) > 1 {
+		if os.Args[1] == "update" {
+			update()
 			os.Exit(0)
 		}
 	}
@@ -255,7 +264,11 @@ func moveDesktopFiles() {
 			log.Println("main: Moved", len(files), "desktop files to", xdg.DataHome+"/applications/; use -v to see details")
 		}
 
-		SimpleNotify("Added "+strconv.Itoa(len(files))+" applications", "", 5000)
+		if len(files) == 1 {
+			SimpleNotify("Added application", "", 5000)
+		} else {
+			SimpleNotify("Added "+strconv.Itoa(len(files))+" applications", "", 5000)
+		}
 
 		// Run the various tools that make sure that the added desktop files really show up in the menu.
 		// Of course, almost no 2 systems are similar.

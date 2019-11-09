@@ -6,8 +6,11 @@ import (
 	"bytes"
 	"crypto/md5"
 	"encoding/hex"
-
 	"io"
+	"io/ioutil"
+	"net/url"
+
+	"gopkg.in/ini.v1"
 
 	"log"
 	"os"
@@ -209,10 +212,14 @@ func (ai AppImage) setExecBit() {
 // CheckQualityAndNotify checks the quality of an AppImage and notifies about any issues found
 // Returns error or nil
 func (ai AppImage) Validate() error {
-	log.Println("xxxxxxxx Validating AppImage", ai.path)
+	if *verbosePtr == true {
+		log.Println("Validating AppImage", ai.path)
+	}
 	// Check validity of the updateinformation in this AppImage, if it contains some
 	if ai.updateinformation != "" {
-		log.Println("xxxxxxxx Validating updateinformation in", ai.path)
+		if *verbosePtr == true {
+			log.Println("Validating updateinformation in", ai.path)
+		}
 		err := helpers.ValidateUpdateInformation(ai.updateinformation)
 		helpers.PrintError("appimage: updateinformation verification", err)
 		if err != nil {
@@ -369,4 +376,67 @@ func (ai AppImage) ReadUpdateInformation() (string, error) {
 	// Don't validate here, we don't want to get warnings all the time.
 	// We have AppImage.Validate as its own function which we call less frequently than this.
 	return ui, nil
+}
+
+// LaunchMostRecentAppImage launches an the most recent application for a given
+// updateinformation that we found among the integrated AppImages.
+// Kinda like poor man's Launch Services. Probably we should make as much use of it as possible.
+// Downside: Applications without updateinformation cannot be used in this way.
+func LaunchMostRecentAppImage(updateinformation string, args []string) {
+	if updateinformation == "" {
+		return
+	}
+	if *quietPtr == false {
+		aipath := FindMostRecentAppImageWithMatchingUpdateInformation(updateinformation)
+		log.Println("Launching", aipath, args)
+		cmd := []string{aipath}
+		cmd = append(cmd, args...)
+		helpers.RunCmdTransparently(cmd)
+
+	}
+}
+
+// FindMostRecentAppImageWithMatchingUpdateInformation finds the most recent registered AppImage
+// that havs matching upate information embedded
+func FindMostRecentAppImageWithMatchingUpdateInformation(updateinformation string) string {
+	results := FindAppImagesWithMatchingUpdateInformation(updateinformation)
+	mostRecent := helpers.FindMostRecentFile(results)
+	return mostRecent
+}
+
+// FindAppImagesWithMatchingUpdateInformation finds registered AppImages
+// that have matching upate information embedded
+func FindAppImagesWithMatchingUpdateInformation(updateinformation string) []string {
+	files, err := ioutil.ReadDir(xdg.DataHome + "/applications/")
+	helpers.LogError("desktop", err)
+	var results []string
+	if err != nil {
+		return results
+	}
+	for _, file := range files {
+		if strings.HasSuffix(file.Name(), ".desktop") && strings.HasPrefix(file.Name(), "appimagekit_") {
+			cfg, e := ini.Load(xdg.DataHome + "/applications/" + file.Name())
+			helpers.LogError("desktop", e)
+			dst := cfg.Section("Desktop Entry").Key(ExecLocationKey).String()
+			_, err = os.Stat(dst)
+			if os.IsNotExist(err) {
+				log.Println(dst, "does not exist, it is mentioned in", xdg.DataHome+"/applications/"+file.Name())
+				continue
+			}
+			ai := newAppImage(dst)
+			ui, err := ai.ReadUpdateInformation()
+			if err == nil && ui != "" {
+				//log.Println("updateinformation:", ui)
+				// log.Println("updateinformation:", url.QueryEscape(ui))
+				unescapedui, _ := url.QueryUnescape(ui)
+				// log.Println("updateinformation:", unescapedui)
+				if updateinformation == unescapedui {
+					results = append(results, ai.path)
+				}
+			}
+
+			continue
+		}
+	}
+	return results
 }

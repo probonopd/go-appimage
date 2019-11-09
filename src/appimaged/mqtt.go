@@ -3,17 +3,15 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+
 	"log"
 	"net/url"
-	"os"
+
 	"strings"
 	"time"
 
-	"github.com/adrg/xdg"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	helpers "github.com/probonopd/appimage/internal/helpers"
-	"gopkg.in/ini.v1"
 )
 
 func connect(clientId string, uri *url.URL) mqtt.Client {
@@ -51,6 +49,10 @@ func UnSubscribeMQTT(client mqtt.Client, updateinformation string) {
 // SubscribeMQTT subscribes to receive update notifications for updateinformation
 // TODO: Keep track of what we have already subscribed, and don't subscribe again
 func SubscribeMQTT(client mqtt.Client, updateinformation string) {
+	if helpers.SliceContains(subscribedMQTTTopics, updateinformation) == true {
+		// We have already subscribed to this; so nothing to do here
+		return
+	}
 	time.Sleep(time.Second * 60) // We get retained messages immediately when we subscribe;
 	// at this point our AppImage may not be integrated yet...
 	// Also it's better user experience not to be bombarded with updates immediately at startup.
@@ -95,64 +97,21 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 				log.Println("++++++++++++++++++++++++++++++++++++++++++++++++++")
 				SimpleNotify("Update available", "An update for the AppImage daemon is available; I could update myself now...", 0)
 			}
-			results := FindAppImagesWithMatchingUpdateInformation(unescapedui)
-			fmt.Println("mqtt:", updateinformation, "reports version", version, "we have matching", results)
-			// Find the most recent local file, based on https://stackoverflow.com/a/45579190
-			mostRecent := helpers.FindMostRecentFile(results)
+
+			mostRecent := FindMostRecentAppImageWithMatchingUpdateInformation(unescapedui)
 			fmt.Println("mqtt:", updateinformation, "reports version", version, "we have matching", mostRecent)
 
-			// TODO: If version the AppImage has embededed is different, if yes launch AppImageUpdate
-			// For now we just notify.
-			// if helpers.IsCommandAvailable("AppImageUpdate") {
-			// 	fmt.Println("mqtt: AppImageUpdate", mostRecent)
-			// 	cmd := exec.Command("AppImageUpdate", mostRecent)
-			// 	log.Printf("Running AppImageUpdate command and waiting for it to finish...")
-			// 	err := cmd.Run()
-			// 	log.Printf("AppImageUpdate finished with error: %v", err)
-			// }
+			// FIXME: Only notify if the version is newer than what we already have.
+			// More precisely, if the AppImage being offered is different from the one we already have
+			// even despite version numbers being the same.
+			// Blocked by https://github.com/AppImage/AppImageSpec/issues/29
+
 			ai := newAppImage(mostRecent)
 			// TODO: Do some checks before, e.g., see whether we already have it,
 			// and whether it is really available for download, and which version the existing
 			// AppImage claims to be
+
 			SimpleNotify("Update available", ai.niceName+"\ncan be updated to version "+version, 120000)
 		}
 	})
-}
-
-// FindAppImagesWithMatchingUpdateInformation finds registered AppImages
-// that have matching upate information embedded
-// FIXME: Take care of things like "appimaged wrap" or "firejail" prefixes. We need to do this differently!
-func FindAppImagesWithMatchingUpdateInformation(updateinformation string) []string {
-	files, err := ioutil.ReadDir(xdg.DataHome + "/applications/")
-	helpers.LogError("desktop", err)
-	var results []string
-	if err != nil {
-		return results
-	}
-	for _, file := range files {
-		if strings.HasSuffix(file.Name(), ".desktop") && strings.HasPrefix(file.Name(), "appimagekit_") {
-			cfg, e := ini.Load(xdg.DataHome + "/applications/" + file.Name())
-			helpers.LogError("desktop", e)
-			dst := cfg.Section("Desktop Entry").Key(ExecLocationKey).String()
-			_, err = os.Stat(dst)
-			if os.IsNotExist(err) {
-				log.Println(dst, "does not exist, it is mentioned in", xdg.DataHome+"/applications/"+file.Name())
-				continue
-			}
-			ai := newAppImage(dst)
-			ui, err := ai.ReadUpdateInformation()
-			if err == nil && ui != "" {
-				//log.Println("updateinformation:", ui)
-				// log.Println("updateinformation:", url.QueryEscape(ui))
-				unescapedui, _ := url.QueryUnescape(ui)
-				// log.Println("updateinformation:", unescapedui)
-				if updateinformation == unescapedui {
-					results = append(results, ai.path)
-				}
-			}
-
-			continue
-		}
-	}
-	return results
 }

@@ -156,12 +156,9 @@ func writeDesktopFile(ai AppImage) {
 	// TODO: Add "Mount" action
 
 	// Add "Update" action
-	// TODO: Find usable (latest version of) AppImageUpdate and/or AppImageUpdater in a more fancy way
-	if helpers.IsCommandAvailable("AppImageUpdate") {
-		actions = append(actions, "Update")
-		cfg.Section("Desktop Action Update").Key("Name").SetValue("Update")
-		cfg.Section("Desktop Action Update").Key("Exec").SetValue("AppImageUpdate \"" + ai.path + "\"")
-	}
+	actions = append(actions, "Update")
+	cfg.Section("Desktop Action Update").Key("Name").SetValue("Update")
+	cfg.Section("Desktop Action Update").Key("Exec").SetValue(os.Args[0] + " update \"" + ai.path + "\"")
 
 	// Add "Open Containing Folder" action
 	if helpers.IsCommandAvailable("xdg-open") {

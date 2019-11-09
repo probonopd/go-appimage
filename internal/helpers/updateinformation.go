@@ -13,6 +13,12 @@ import (
 // Hence we are using it as the main identifier for AppImages now, similar
 // to how the Play Store uses strings like "com.spotify.music" to identify apps.
 
+// For example, if the system wants to update an application,
+// we search for the newest AppImage that has update information of the updater.
+// This way, no matter how many versions of the updater are on the system,
+// we are using the most recent one.
+// This is kinda replicating Launch Services behavior using XDG standards.
+
 // VerifyUpdateInformation verifies whether updateinformation is corerct.
 // This is currently a stub. TODO: Implement more checks.
 // Returns error.

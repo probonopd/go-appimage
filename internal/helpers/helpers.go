@@ -389,7 +389,9 @@ func ReplaceTextInFile(path string, search string, replace string) error {
 }
 
 // FindMostRecentFile returns the most recent file
-// from a slice of files, based on its mtime
+// from a slice of files, (currently) based on its mtime
+// based on https://stackoverflow.com/a/45579190
+// TODO: mtime may be fast, but is it "good enough" for our purposes?
 func FindMostRecentFile(files []string) string {
 	var modTime time.Time
 	var names []string
@@ -421,4 +423,16 @@ func CheckForNeededTools(tools []string) error {
 		}
 	}
 	return nil
+}
+
+// SliceContains returns true if the []string contains string,
+// false otherwise.
+// Why is this not in the standard library as a method of every []string?
+func SliceContains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }
