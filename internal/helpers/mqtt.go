@@ -67,6 +67,9 @@ type PubSubData struct {
 	// Created time.Time // Use this format and time.Now() to transport timestamps but we don't need it since the MQTT message itself is timestamped
 }
 
+// TODO: Instead of using hardcoded values here, we should grab those values from
+// some URL where we can change them, to allow the broker and namespace to be
+// switched at any time without having to update all clients.
 const MQTTServerURI = "http://broker.hivemq.com:1883"
 const MQTTNamespace = "p9q358t" // Our namespace. Our topic begins with this
 

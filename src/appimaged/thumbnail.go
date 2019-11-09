@@ -163,9 +163,12 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	// https://specifications.freedesktop.org/thumbnail-spec/thumbnail-spec-latest.html#AEN245
 	// Thumb::URI	The absolute canonical uri for the original file. (eg file:///home/jens/photo/me.jpg)
 
+	// FIXME; github.com/sabhiram/png-embed does not overwrite pre-existing values,
+	// https://github.com/sabhiram/png-embed/issues/1
+
 	content, err := pngembed.ExtractFile(thumbnailcachedir + "/.DirIcon")
 	if _, ok := content["Thumb::URI"]; ok {
-		log.Println("thumbnail: FIXME: Remove pre-existing Thumb::URI in", ai.path) // FIXME; github.com/sabhiram/png-embed does not seem to overwrite pre-existing values, is it a bug there?
+		log.Println("thumbnail: FIXME: Remove pre-existing Thumb::URI in", ai.path)
 		// log.Println(content["Thumb::URI"])
 	}
 	if _, ok := content["Thumb::MTime"]; ok {

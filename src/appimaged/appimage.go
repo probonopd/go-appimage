@@ -337,9 +337,16 @@ func (ai AppImage) ExtractFile(filepath string, destinationdirpath string) error
 // Returns updateinformation string and error
 func (ai AppImage) ReadUpdateInformation() (string, error) {
 	aibytes, err := helpers.GetSectionData(ai.path, ".upd_info")
-	if err == nil {
-		return strings.TrimSpace(string(bytes.Trim(aibytes, "\x00"))), nil
-	} else {
+	ui := strings.TrimSpace(string(bytes.Trim(aibytes, "\x00")))
+	if err != nil {
 		return "", err
 	}
+	if ui != "" {
+		err = helpers.VerifyUpdateInformation(ui)
+		if err != nil {
+			SimpleNotify("Invalid AppImage", ai.niceName+"\ncontains invalid update information:\n"+ui+"\n"+err.Error()+"\nPlease ask the author to fix it.", 30000)
+			return "", err
+		}
+	}
+	return ui, nil
 }

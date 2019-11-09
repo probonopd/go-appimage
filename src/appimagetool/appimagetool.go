@@ -337,12 +337,11 @@ func GenerateAppImage(appdir string) {
 		}
 	}
 
-	// TODO: If updateinformation was provided, then we check and embed it
-	// but questionable whether we should have users do this since it is complex and prone to error
-	// if(!g_str_has_prefix(updateinformation,"zsync|"))
-	// if(!g_str_has_prefix(updateinformation,"bintray-zsync|"))
-	// if(!g_str_has_prefix(updateinformation,"gh-releases-zsync|"))
-	// die("The provided updateinformation is not in a recognized format");
+	err = helpers.VerifyUpdateInformation(updateinformation)
+	if err != nil {
+		helpers.PrintError("VerifyUpdateInformation", err)
+		os.Exit(1)
+	}
 
 	// Find offset and length of updateinformation
 	uidata, err := helpers.GetSectionData(target, ".upd_info")
