@@ -278,7 +278,7 @@ func GenerateAppImage(appdir string) {
 	// We supply our own fstime rather than letting mksquashfs determine it
 	// so that we know its value for being able to publish it
 	FSTime := time.Now()
-	fstime := string(FSTime.Unix()) // Seconds since epoch.  Default to current time
+	fstime := string(strconv.FormatInt(FSTime.Unix(), 10)) // Seconds since epoch.  Default to current time
 
 	// "mksquashfs", source, destination, "-offset", offset, "-comp", "gzip", "-root-owned", "-noappend"
 	cmd := exec.Command("mksquashfs", appdir, target, "-offset", strconv.FormatInt(offset, 10), "-fstime", fstime, "-comp", "gzip", "-root-owned", "-noappend")
