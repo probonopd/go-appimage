@@ -467,14 +467,9 @@ func GenerateAppImage(appdir string) {
 	// https://github.com/probonopd/uploadtool says
 	// Note that UPLOADTOOL* variables will be used in bash script to form a JSON request,
 	// that means some characters like double quotes and new lines need to be escaped
-	// TODO: Instead of using uploadtool, do it in Go.
+	// TODO: Instead of trying to somehow force this into uploadtool, do it properly in Go.
 	body, err := helpers.GetCommitMessageForThisCommitOnTravis()
-	json, err := json.Marshal(body)
-	if err == nil {
-		os.Setenv("UPLOADTOOL_BODY", string(json))
-	} else {
-		helpers.PrintError("GetCommitMessageForThisCommitOnTravis", err)
-	}
+	fmt.Println("Commit message for this commit:", body)
 
 	if os.Getenv("TRAVIS_REPO_SLUG") != "" {
 		cmd := exec.Command("uploadtool", target, target+".zsync")
