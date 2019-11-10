@@ -34,16 +34,16 @@ func checkPrerequisites() {
 
 	// Poor man's singleton
 	// Ensure that no other processes with the same name are already runing under the same user
+	// Turns out that this is too simplistic because it prevents launching appimaged
+	// while we have processes running using "apppimaged wrap"
 	// FIXME: How to do this properly?
-	u, _ := user.Current()
-	res, _ := exec.Command("pgrep", "-u", u.Uid, filepath.Base(os.Args[0])).Output()
-	// log.Println(res)
-	pids := strings.Split(string(bytes.TrimSpace(res)), "\n")
-	// log.Println(pids)
-	if (len(pids)) != 1 {
-		log.Println("Other processes with the name", filepath.Base(os.Args[0]), "are already running. Please stop them first.")
-		os.Exit(1)
-	}
+	// u, _ := user.Current()
+	// res, _ := exec.Command("pgrep", "-u", u.Uid, filepath.Base(os.Args[0])).Output()
+	// pids := strings.Split(string(bytes.TrimSpace(res)), "\n")
+	// if (len(pids)) != 1 {
+	// 	log.Println("Other processes with the name", filepath.Base(os.Args[0]), "are already running. Please stop them first.")
+	// 	os.Exit(1)
+	// }
 
 	// We really don't want users to run this in any other way than from an AppImage
 	// because it only creates support issues and we can't update this AppImage

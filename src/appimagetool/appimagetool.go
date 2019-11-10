@@ -470,6 +470,7 @@ func constructMQTTPayload(name string, version string, FSTime time.Time) (string
 	psd := helpers.PubSubData{
 		Name:    name,
 		Version: version,
+		FSTime:  FSTime,
 		// Size:    size,
 		// Fruit:   []string{"Apple", "Banana", "Orange"},
 		// Id:      999,
