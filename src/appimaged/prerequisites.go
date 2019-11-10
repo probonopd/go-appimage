@@ -149,7 +149,7 @@ func ensureRunningFromLiveSystem() {
 	}
 	if found == false {
 		println("Not running on one of the supported Live systems.")
-		println("Grab a Ubuntu, Debian, Fedora, openSUSE, elementary OS, KDE neon,... Live ISO and try from there.")
+		println("Grab a Ubuntu, Debian, Deepin, Fedora, openSUSE, elementary OS, KDE neon,... Live ISO and try from there.")
 		os.Exit(1)
 	}
 }
