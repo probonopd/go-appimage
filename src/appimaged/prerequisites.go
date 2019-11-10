@@ -24,7 +24,8 @@ func checkPrerequisites() {
 	ensureRunningFromLiveSystem()
 
 	// Check for needed files on $PATH
-	tools := []string{"bsdtar", "unsquashfs", "desktop-file-validate", "pgrep"}
+	helpers.AddHereToPath() // Add the location of the executable to the $PATH
+	tools := []string{"bsdtar", "unsquashfs", "desktop-file-validate"}
 	err := helpers.CheckForNeededTools(tools)
 	if err != nil {
 		os.Exit(1)

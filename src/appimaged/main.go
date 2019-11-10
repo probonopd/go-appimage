@@ -140,9 +140,6 @@ func main() {
 	// SimpleNotify("Starting", helpers.Here(), 5000)
 
 	log.Println("main: Running from", helpers.Here())
-
-	helpers.AddHereToPath()
-
 	log.Println("main: xdg.DataHome =", xdg.DataHome)
 
 	helpers.DeleteDesktopFilesWithNonExistingTargets()
