@@ -334,11 +334,9 @@ func watchDirectories() {
 
 	os.MkdirAll(home+"/Applications", 0755)
 
-	// FIXME: Use XDG translated names for Downloads and Desktop; blocked by
-	// https://github.com/adrg/xdg/issues/1 or https://github.com/OpenPeeDeeP/xdg/issues/6
 	watchedDirectories := []string{
-		home + "/Downloads", // TODO: XDG localized version
-		home + "/Desktop",   // TODO: XDG localized version
+		xdg.UserDirs.Download,
+		xdg.UserDirs.Desktop,
 		home + "/.local/bin",
 		home + "/bin",
 		home + "/Applications",
