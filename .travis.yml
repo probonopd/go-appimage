@@ -107,10 +107,9 @@ branches:
     # Do not build tags that we create when we upload to GitHub Releases
     - /^(?i:continuous)/
 
-# https://restic.net/blog/2018-09-02/travis-build-cache
 cache:
   directories:
-    - $HOME/.cache/go-build
-    - $HOME/gopath/pkg/mod
-    
-#   - $HOME/gopath/src
+    - $HOME/.cache/go-build # https://restic.net/blog/2018-09-02/travis-build-cache
+    - $HOME/gopath/pkg/mod # https://restic.net/blog/2018-09-02/travis-build-cache
+    - $GOPATH/pkg/mod # https://evilmartians.com/chronicles/speeding-up-go-modules-for-docker-and-ci
+#   - $HOME/gopath/src # This is where my code gets downloaded to as well, so maybe not the best solution
