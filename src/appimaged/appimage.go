@@ -332,6 +332,7 @@ func (ai AppImage) _removeIntegration() {
 // (registers or unregisters) an AppImage from the system,
 // depending on whether the file exists on disk
 func (ai AppImage) IntegrateOrUnintegrate() {
+
 	if _, err := os.Stat(ai.path); os.IsNotExist(err) {
 		ai._removeIntegration()
 	} else {

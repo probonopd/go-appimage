@@ -64,13 +64,13 @@ func inotifyWatch(path string) {
 						dirs = append(dirs, event.Name)
 						watchDirectoriesReally(dirs) // If a directory has been created, watch that directory as well
 					} else {
-						toBeIntegrated = helpers.AppendIfMissing(toBeIntegrated, event.Name)
+						toBeIntegratedOrUnintegrated = helpers.AppendIfMissing(toBeIntegratedOrUnintegrated, event.Name)
 					}
 				}
 				if event.Op&fsnotify.Remove == fsnotify.Remove || event.Op&fsnotify.Rename == fsnotify.Rename {
 					// log.Println("inotify: Should check whether to unregister file:", event.Name)
 					// May want to check filesystem whether it was integrated at all before doing anything
-					toBeUnintegrated = helpers.AppendIfMissing(toBeUnintegrated, event.Name)
+					toBeIntegratedOrUnintegrated = helpers.AppendIfMissing(toBeIntegratedOrUnintegrated, event.Name)
 					log.Println("inotify: TODO: If it was a directory (too late to find out), then also check if AppImages were in", event.Name, "that need to be unintegrated")
 					// TODO: When a directory is deleted, we need to find all applications that
 					// live inside that directory. Maybe we need to parse the already-installed desktop files

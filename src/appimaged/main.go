@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/adrg/xdg"
@@ -34,13 +35,21 @@ import (
 var quit = make(chan struct{})
 
 var verbosePtr = flag.Bool("v", false, "Print verbose log messages")
-var overwritePtr = flag.Bool("o", false, "Overwrite existing desktop integration")
+
+// The following are disabled for now, because the path to this program can
+// change (e.g., when the user updates it). Lacking a system-wide Launch Services
+// like way to figure out the path to this program, we overwrite for now.
+// TODO: Instead of overwriting the desktop files and getting all
+// information from AppImages (slow), we could just rewrite the path to this
+// program in all desktop files. That should be much faster.
+// var overwritePtr = flag.Bool("o", false, "Overwrite existing desktop integration")
+var overwritePtr *bool
 var cleanPtr = flag.Bool("c", false, "Clean pre-existing desktop files")
+
 var quietPtr = flag.Bool("q", false, "Do not send desktop notifications")
 var noZeroconfPtr = flag.Bool("nz", false, "Do not announce this service on the network using Zeroconf")
 
-var toBeIntegrated []string
-var toBeUnintegrated []string
+var toBeIntegratedOrUnintegrated []string
 
 var thisai AppImage // A reference to myself
 
@@ -104,6 +113,9 @@ func main() {
 	fmt.Println(filepath.Base(os.Args[0]), version)
 
 	checkPrerequisites()
+
+	ptrue := true // Nasty trick from https://code-review.googlesource.com/c/gocloud/+/26730/3/bigquery/query.go
+	overwritePtr = &ptrue
 
 	// Connect to MQTT server and subscribe to the topic for ourselves
 	if CheckIfConnectedToNetwork() == true {
@@ -197,6 +209,7 @@ func main() {
 			select {
 			case <-ticker.C:
 				moveDesktopFiles()
+
 			case <-quit:
 				ticker.Stop()
 				return
@@ -231,6 +244,7 @@ func checkMQTTConnected(MQTTclient mqtt.Client) {
 // Periodically move desktop files from their temporary location
 // into the menu, so that the menu does not get rebuilt all the time
 func moveDesktopFiles() {
+
 	// log.Println("main: xxxxxxxxxxxxxxx Ticktock")
 
 	// log.Println("Subscriptions:", subscribedMQTTTopics)
@@ -240,17 +254,22 @@ func moveDesktopFiles() {
 	// 	log.Println(w.Path)
 	// }
 
-	for _, path := range toBeIntegrated {
-		ai := NewAppImage(path)
-		go ai.IntegrateOrUnintegrate()
-	}
-	toBeIntegrated = nil
+	// We want to know that all go routines have been completed,
+	// and only then move in all desktop files at once
+	// https://nathanleclaire.com/blog/2014/02/15/how-to-wait-for-all-goroutines-to-finish-executing-before-continuing/
+	// For this we use "var wg sync.WaitGroup" before we start the go routines,
+	// and "wg.Wait()" then waits until they have all done their job. Neat!
+	var wg sync.WaitGroup
 
-	for _, path := range toBeUnintegrated {
+	for _, path := range toBeIntegratedOrUnintegrated {
 		ai := NewAppImage(path)
 		go ai.IntegrateOrUnintegrate()
 	}
-	toBeUnintegrated = nil
+
+	wg.Wait()                   // Wait until all go routines since "var wg sync.WaitGroup" have been completed
+	time.Sleep(time.Second * 1) // And wait one second longer to catch other AppImages that may have been come in the meantime
+
+	toBeIntegratedOrUnintegrated = nil
 
 	desktopcachedir := xdg.CacheHome + "/applications/" // FIXME: Do not hardcode here and in other places
 
@@ -266,7 +285,8 @@ func moveDesktopFiles() {
 		err = os.Rename(desktopcachedir+"/"+file.Name(), xdg.DataHome+"/applications/"+file.Name())
 		helpers.LogError("main", err)
 	}
-	if len(files) > 0 {
+
+	if len(files) != 0 {
 
 		if *verbosePtr == true {
 			log.Println("main: Moved", len(files), "desktop files to", xdg.DataHome+"/applications/")
