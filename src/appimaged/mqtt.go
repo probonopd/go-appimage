@@ -130,7 +130,7 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 					if err != nil {
 						helpers.PrintError("mqtt: GetCommitMessageForLatestCommit:", err)
 					} else {
-						SimpleNotify("Update available for ", ai.niceName+"\ncan be updated to version "+version+".\n"+msg, 120000)
+						SimpleNotify("Update available for "+ai.niceName, "It can be updated to version "+version+".\n "+msg, 120000)
 					}
 				}
 			} else {
