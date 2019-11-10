@@ -464,8 +464,14 @@ func GenerateAppImage(appdir string) {
 	fmt.Println(pl)
 
 	// Upload and publish if we know this is a Travis CI build
-	// TODO: Instead of using uploadtool, do it in Go. That way we could
-	// use the response coming from the GitHub API...
+	// https://github.com/probonopd/uploadtool says
+	// Note that UPLOADTOOL* variables will be used in bash script to form a JSON request,
+	// that means some characters like double quotes and new lines need to be escaped
+	// TODO: Instead of using uploadtool, do it in Go.
+	body := json.Marshal(helpers.GetCommitMessageForThisCommitUnTravis())
+
+	os.Setenv("UPLOADTOOL_BODY", body)
+
 	if os.Getenv("TRAVIS_REPO_SLUG") != "" {
 		cmd := exec.Command("uploadtool", target, target+".zsync")
 		fmt.Println(cmd.String())

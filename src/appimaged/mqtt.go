@@ -107,7 +107,7 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 			ai := NewAppImage(mostRecent)
 
 			fstime := ai.getFSTime()
-			fmt.Println("mqtt:", updateinformation, "reports version", version, "with FSTime", data.FSTime.Unix(), "- we have matching", mostRecent, "with FSTime", fstime.Unix())
+			fmt.Println("mqtt:", updateinformation, "reports version", version, "with FSTime", data.FSTime.Unix(), "- we have", mostRecent, "with FSTime", fstime.Unix())
 
 			// FIXME: Only notify if the version is newer than what we already have.
 			// More precisely, if the AppImage being offered is *different* from the one we already have
