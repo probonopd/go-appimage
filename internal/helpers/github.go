@@ -43,34 +43,28 @@ func GetCommitMessageForLatestCommit(ui UpdateInformation) (string, error) {
 // Uses the TRAVIS_COMMIT environment variable
 func GetCommitMessageForThisCommitOnTravis() (string, error) {
 
-	if ui.transportmechanism == "gh-releases-zsync" {
+	client := github.NewClient(nil)
 
-		client := github.NewClient(nil)
-
-		TRAVIS_COMMIT := os.Environ("TRAVIS_COMMIT")
-		if TRAVIS_COMMIT == "" {
-			return "", errors.New("TRAVIS_COMMIT environment variable missing. Not running on Travis CI?")
-		}
-
-		repo_slug := os.Environ("TRAVIS_REPO_SLUG")
-		if repo_slug == "" {
-			return "", errors.New("TRAVIS_REPO_SLUG environment variable missing. Not running on Travis CI?")
-		}
-
-		parts := strings.Split(repo_slug, "/")
-		if len(parts) < 2 {
-			return ""
-		}
-
-		commit, _, err := client.Git.GetCommit(context.Background(), parts[0], parts[1], TRAVIS_COMMIT)
-		if err == nil {
-			return commit.GetMessage(), err
-		} else {
-			return "", err
-		}
-
-	} else {
-
-		return "", errors.New("Not yet implemented for this transport mechanism")
+	TRAVIS_COMMIT := os.Getenv("TRAVIS_COMMIT")
+	if TRAVIS_COMMIT == "" {
+		return "", errors.New("TRAVIS_COMMIT environment variable missing. Not running on Travis CI?")
 	}
+
+	repo_slug := os.Getenv("TRAVIS_REPO_SLUG")
+	if repo_slug == "" {
+		return "", errors.New("TRAVIS_REPO_SLUG environment variable missing. Not running on Travis CI?")
+	}
+
+	parts := strings.Split(repo_slug, "/")
+	if len(parts) < 2 {
+		return "", errors.New("Cannot split repo_slug")
+	}
+
+	commit, _, err := client.Git.GetCommit(context.Background(), parts[0], parts[1], TRAVIS_COMMIT)
+	if err == nil {
+		return commit.GetMessage(), err
+	} else {
+		return "", err
+	}
+
 }
