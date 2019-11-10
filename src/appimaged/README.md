@@ -34,11 +34,13 @@ Implemented
 * Significantly lower CPU and memory usage than other implementations
 * Error notifications in case applications cannot be launched for whatever reason
 * If Firejail is on the $PATH, various options for running applications sandboxed via the context menu
-* If AppImageUpdate is on the $PATH, updating applications via the context menu
+* Updating applications via the context menu
 * Opening the containing folder via the context menu
 * Extracting AppImages via the context menu
 * Announces itself on the local network using Zeroconf (more to come)
-* Real-time notification based on PubSub when updates are available, as soon as they are uploaded (more to come)
+* Real-time notification based on PubSub when updates are available, as soon as they are uploaded
+* Quality checking of AppImages and notifications in case of errors (can be extended)
+* Launch Services like functionality, e.g., being able to launch the newest version of an AppImage that we know of
 
 Envisioned
 
