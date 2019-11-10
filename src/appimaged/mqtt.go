@@ -107,20 +107,23 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 			ai := NewAppImage(mostRecent)
 
 			fstime := ai.getFSTime()
-			fmt.Println("mqtt:", updateinformation, "reports version", version, "we have matching", mostRecent, "with FSTime", fstime)
+			fmt.Println("mqtt:", updateinformation, "reports version", version, "with FSTime", data.FSTime.Unix(), "- we have matching", mostRecent, "with FSTime", fstime.Unix())
 
 			// FIXME: Only notify if the version is newer than what we already have.
 			// More precisely, if the AppImage being offered is different from the one we already have
 			// even despite version numbers being the same.
 			// Blocked by https://github.com/AppImage/AppImageSpec/issues/29
 
-			if fstime != data.FSTime {
+			if fstime.Unix() != data.FSTime.Unix() {
 
 				// TODO: Do some checks before, e.g., see whether we already have it,
 				// and whether it is really available for download, and which version the existing
 				// AppImage claims to be
 
 				SimpleNotify("Update available", ai.niceName+"\ncan be updated to version "+version, 120000)
+			} else {
+				fmt.Println("mqtt: Not taking action on", ai.niceName, "because FStime is identical")
+
 			}
 		}
 	})
