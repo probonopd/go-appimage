@@ -107,6 +107,10 @@ branches:
     # Do not build tags that we create when we upload to GitHub Releases
     - /^(?i:continuous)/
 
-#cache:
-#  directories:
-#    - $HOME/gopath/src
+# https://restic.net/blog/2018-09-02/travis-build-cache
+cache:
+  directories:
+    - $HOME/.cache/go-build
+    - $HOME/gopath/pkg/mod
+    
+#   - $HOME/gopath/src
