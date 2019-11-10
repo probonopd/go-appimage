@@ -1,12 +1,10 @@
 package main
 
 import (
-	"bytes"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
-	"os/user"
 	"path/filepath"
 	"strings"
 
