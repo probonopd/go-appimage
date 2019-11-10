@@ -59,7 +59,8 @@ func NewAppImage(path string) AppImage {
 		strings.HasSuffix(path, "~") ||
 		strings.HasSuffix(path, ".part") ||
 		strings.HasSuffix(path, ".partial") ||
-		strings.HasSuffix(path, ".zs-old") {
+		strings.HasSuffix(path, ".zs-old") ||
+		strings.HasSuffix(path, ".crdownload") {
 		ai.imagetype = -1
 		return ai
 	}
