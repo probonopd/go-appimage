@@ -44,7 +44,12 @@ type AppImage struct {
 	niceName          string
 }
 
-func newAppImage(path string) AppImage {
+// NewAppImage creates an AppImage object from the location defined by path.
+// The AppImage object will also be created if path does not exist,
+// because the AppImage that used to be there may need to be removed
+// and for this the functions of an AppImage are needed.
+// Non-existing and invalid AppImages will have type -1.
+func NewAppImage(path string) AppImage {
 
 	ai := AppImage{path: path, imagetype: 0}
 
@@ -95,9 +100,9 @@ func (ai AppImage) discoverContents() {
 	// to resolve symlinks, and to determine which files to extract in addition to the desktop file and icon
 	cmd := exec.Command("")
 	if ai.imagetype == 1 {
-		cmd = exec.Command("bsdtar", "-t", "'"+ai.path+"'")
+		cmd = exec.Command("bsdtar", "-t", ai.path)
 	} else if ai.imagetype == 2 {
-		cmd = exec.Command("unsquashfs", "-f", "-n", "-ll", "-o", strconv.FormatInt(ai.offset, 10), "-d ''", "'"+ai.path+"'")
+		cmd = exec.Command("unsquashfs", "-f", "-n", "-ll", "-o", strconv.FormatInt(ai.offset, 10), "-d ''", ai.path)
 	}
 	if *verbosePtr == true {
 		log.Printf("cmd: %q\n", cmd.String())
@@ -230,6 +235,7 @@ func (ai AppImage) Validate() error {
 	return nil
 }
 
+// Do not call this directly. Instead, call IntegrateOrUnintegrate
 // Integrate an AppImage into the system (put in menu, extract thumbnail)
 // Can take a long time, hence run with "go"
 func (ai AppImage) _integrate() {
@@ -298,6 +304,7 @@ func (ai AppImage) _integrate() {
 
 }
 
+// Do not call this directly. Instead, call IntegrateOrUnintegrate
 func (ai AppImage) _removeIntegration() {
 	log.Println("appimage: Remove integration", ai.path)
 	err := os.Remove(ai.thumbnailfilepath)
@@ -320,7 +327,10 @@ func (ai AppImage) _removeIntegration() {
 	}
 }
 
-func (ai AppImage) integrateOrUnintegrate() {
+// IntegrateOrUnintegrate integrates or unintegrates
+// (registers or unregisters) an AppImage from the system,
+// depending on whether the file exists on disk
+func (ai AppImage) IntegrateOrUnintegrate() {
 	if _, err := os.Stat(ai.path); os.IsNotExist(err) {
 		ai._removeIntegration()
 	} else {
@@ -423,7 +433,7 @@ func FindAppImagesWithMatchingUpdateInformation(updateinformation string) []stri
 				log.Println(dst, "does not exist, it is mentioned in", xdg.DataHome+"/applications/"+file.Name())
 				continue
 			}
-			ai := newAppImage(dst)
+			ai := NewAppImage(dst)
 			ui, err := ai.ReadUpdateInformation()
 			if err == nil && ui != "" {
 				//log.Println("updateinformation:", ui)
@@ -439,4 +449,26 @@ func FindAppImagesWithMatchingUpdateInformation(updateinformation string) []stri
 		}
 	}
 	return results
+}
+
+// getFSTime reads FSTime from the AppImage. We are doing this only when it is needed,
+// not when an NewAppImage is called
+func (ai AppImage) getFSTime() time.Time {
+	if ai.imagetype == 2 {
+		result, err := exec.Command("unsquashfs", "-q", "-fstime", "-o", strconv.FormatInt(ai.offset, 10), ai.path).Output()
+		resstr := strings.TrimSpace(string(bytes.TrimSpace(result)))
+		if err != nil {
+			helpers.PrintError("appimage: getFSTime", err)
+			return time.Unix(0, 0)
+		}
+		if n, err := strconv.Atoi(resstr); err == nil {
+			return time.Unix(int64(n), 0)
+		} else {
+			log.Println("appimage: getFSTime:", resstr, "is not an integer.")
+			return time.Unix(0, 0)
+		}
+	} else {
+		log.Println("TODO: Implement getFSTime for type-1 AppImages")
+		return time.Unix(0, 0)
+	}
 }

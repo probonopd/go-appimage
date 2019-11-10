@@ -280,6 +280,15 @@ func GenerateAppImage(appdir string) {
 	FSTime := time.Now()
 	fstime := string(strconv.FormatInt(FSTime.Unix(), 10)) // Seconds since epoch.  Default to current time
 
+	// Turns out that using time.Now() is more precise than a Unix timestamp (seconds precision).
+	// Hence we convert back from the Unix timestamp to be consistent.
+	if n, err := strconv.Atoi(fstime); err == nil {
+		FSTime = time.Unix(int64(n), 0)
+	} else {
+		fmt.Println("Time conversion error:", fstime, "is not an integer.")
+		FSTime = time.Unix(0, 0)
+	}
+
 	// "mksquashfs", source, destination, "-offset", offset, "-comp", "gzip", "-root-owned", "-noappend"
 	cmd := exec.Command("mksquashfs", appdir, target, "-offset", strconv.FormatInt(offset, 10), "-fstime", fstime, "-comp", "gzip", "-root-owned", "-noappend")
 	fmt.Println(cmd.String())

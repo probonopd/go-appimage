@@ -244,14 +244,14 @@ func moveDesktopFiles() {
 	// }
 
 	for _, path := range toBeIntegrated {
-		ai := newAppImage(path)
-		go ai.integrateOrUnintegrate()
+		ai := NewAppImage(path)
+		go ai.IntegrateOrUnintegrate()
 	}
 	toBeIntegrated = nil
 
 	for _, path := range toBeUnintegrated {
-		ai := newAppImage(path)
-		go ai.integrateOrUnintegrate()
+		ai := NewAppImage(path)
+		go ai.IntegrateOrUnintegrate()
 	}
 	toBeUnintegrated = nil
 
@@ -384,9 +384,9 @@ func watchDirectoriesReally(watchedDirectories []string) {
 			} else if info.IsDir() == true {
 				go inotifyWatch(path)
 			} else if info.IsDir() == false {
-				ai := newAppImage(path)
+				ai := NewAppImage(path)
 				if ai.imagetype > 0 {
-					go ai.integrateOrUnintegrate()
+					go ai.IntegrateOrUnintegrate()
 				}
 			}
 			return nil
