@@ -122,7 +122,17 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 			// then we assume we should offer to update.
 			// This mechanism should be more robust against wrong timestamps.
 			if fstime.Unix() != data.FSTime.Unix() {
-				SimpleNotify("Update available", ai.niceName+"\ncan be updated to version "+version, 120000)
+				ui, err := helpers.NewUpdateInformationFromString(updateinformation)
+				if err != nil {
+					helpers.PrintError("mqtt: NewUpdateInformationFromString:", err)
+				} else {
+					msg, err := helpers.GetCommitMessageForLatestCommit(ui)
+					if err != nil {
+						helpers.PrintError("mqtt: GetCommitMessageForLatestCommit:", err)
+					} else {
+						SimpleNotify("Update available", ai.niceName+"\ncan be updated to version "+version+"\n"+msg, 120000)
+					}
+				}
 			} else {
 				fmt.Println("mqtt: Not taking action on", ai.niceName, "because FStime is identical")
 
