@@ -10,6 +10,7 @@ import (
 // Currently it is C code (because I don't know how to write this in Go)
 // but eventually may be rewritten to do things natively in Go. Any help appreciated.
 // https://forum.golangbridge.org/t/calculate-the-size-of-an-elf/16064
+// https://github.com/golang/go/issues/35489
 
 /*
 // https://github.com/draffensperger/go-interlang/blob/master/go_to_c/c_in_comment/main.go

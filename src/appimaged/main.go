@@ -354,7 +354,7 @@ func watchDirectories() {
 			log.Println("main: MountPoint", mount.MountPoint)
 		}
 		if strings.HasPrefix(mount.MountPoint, "/sys") == false && // Is /dev needed for openSUSE Live?
-			strings.HasPrefix(mount.MountPoint, "/run") == false &&
+			// strings.HasPrefix(mount.MountPoint, "/run") == false && // Manjaro mounts the device on which the Live ISO is in /run, so we cannot exclude that
 			strings.HasPrefix(mount.MountPoint, "/tmp") == false &&
 			strings.HasPrefix(mount.MountPoint, "/proc") == false {
 			watchedDirectories = helpers.AppendIfMissing(watchedDirectories, mount.MountPoint+"/Applications")
