@@ -361,67 +361,57 @@ func GenerateAppImage(appdir string) {
 		}
 	}
 
-	err = helpers.ValidateUpdateInformation(updateinformation)
-	if err != nil {
-		helpers.PrintError("VerifyUpdateInformation", err)
-		os.Exit(1)
-	}
-
-	// Find offset and length of updateinformation
-	uidata, err := helpers.GetSectionData(target, ".upd_info")
-	helpers.PrintError("GetSectionData for '.upd_info'", err)
-	if err != nil {
-		os.Stderr.WriteString("Could not find section .upd_info in runtime, exiting\n")
-		os.Exit(1)
-	}
-	fmt.Println("Embedded .upd-info section before embedding updateinformation:")
-	fmt.Println(uidata)
-
-	uioffset, uilength, err := helpers.GetSectionOffsetAndLength(target, ".upd_info")
-	helpers.PrintError("GetSectionData for '.upd_info'", err)
-	if err != nil {
-		os.Stderr.WriteString("Could not determine offset and length of .upd_info in runtime, exiting\n")
-		os.Exit(1)
-	}
-	fmt.Println("Embedded .upd-info section offset:", uioffset)
-	fmt.Println("Embedded .upd-info section length:", uilength)
-
-	// Exit if updateinformation exceeds available space
-	if len(updateinformation) > len(uidata) {
-		os.Stderr.WriteString("updateinformation does not fit into .upd_info segment, exiting\n")
-		os.Exit(1)
-	}
-
-	fmt.Println("Writing updateinformation into .upd_info segment...", uilength)
-
-	// Seek file to ui_offset and write it there
-	helpers.WriteStringIntoOtherFileAtOffset(updateinformation, target, uioffset)
-	helpers.PrintError("GetSectionData for '.upd_info'", err)
-	if err != nil {
-		os.Stderr.WriteString("Could write into .upd_info segment, exiting\n")
-		os.Exit(1)
-	}
-
-	uidata, err = helpers.GetSectionData(target, ".upd_info")
-	helpers.PrintError("GetSectionData for '.upd_info'", err)
-	if err != nil {
-		os.Stderr.WriteString("Could not find section .upd_info in runtime, exiting\n")
-		os.Exit(1)
-	}
-	fmt.Println("Embedded .upd-info section now contains:")
-	fmt.Println(string(uidata))
-
-	// If updateinformation was provided, then we also generate the zsync file (after having signed the AppImage)
 	if updateinformation != "" {
-		opts := zsync.Options{0, "", filepath.Base(target)}
-		zsync.ZsyncMake(target, opts)
 
-		// Check if the zsync file is really there
-		fi, err = os.Stat(target + ".zsync")
+		err = helpers.ValidateUpdateInformation(updateinformation)
 		if err != nil {
-			helpers.PrintError("zsync file not generated", err)
+			helpers.PrintError("VerifyUpdateInformation", err)
 			os.Exit(1)
 		}
+
+		// Find offset and length of updateinformation
+		uidata, err := helpers.GetSectionData(target, ".upd_info")
+		helpers.PrintError("GetSectionData for '.upd_info'", err)
+		if err != nil {
+			os.Stderr.WriteString("Could not find section .upd_info in runtime, exiting\n")
+			os.Exit(1)
+		}
+		fmt.Println("Embedded .upd-info section before embedding updateinformation:")
+		fmt.Println(uidata)
+
+		uioffset, uilength, err := helpers.GetSectionOffsetAndLength(target, ".upd_info")
+		helpers.PrintError("GetSectionData for '.upd_info'", err)
+		if err != nil {
+			os.Stderr.WriteString("Could not determine offset and length of .upd_info in runtime, exiting\n")
+			os.Exit(1)
+		}
+		fmt.Println("Embedded .upd-info section offset:", uioffset)
+		fmt.Println("Embedded .upd-info section length:", uilength)
+
+		// Exit if updateinformation exceeds available space
+		if len(updateinformation) > len(uidata) {
+			os.Stderr.WriteString("updateinformation does not fit into .upd_info segment, exiting\n")
+			os.Exit(1)
+		}
+
+		fmt.Println("Writing updateinformation into .upd_info segment...", uilength)
+
+		// Seek file to ui_offset and write it there
+		helpers.WriteStringIntoOtherFileAtOffset(updateinformation, target, uioffset)
+		helpers.PrintError("GetSectionData for '.upd_info'", err)
+		if err != nil {
+			os.Stderr.WriteString("Could write into .upd_info segment, exiting\n")
+			os.Exit(1)
+		}
+
+		uidata, err = helpers.GetSectionData(target, ".upd_info")
+		helpers.PrintError("GetSectionData for '.upd_info'", err)
+		if err != nil {
+			os.Stderr.WriteString("Could not find section .upd_info in runtime, exiting\n")
+			os.Exit(1)
+		}
+		fmt.Println("Embedded .upd-info section now contains:")
+		fmt.Println(string(uidata))
 	}
 
 	// TODO: calculate and embed MD5 digest
@@ -443,6 +433,31 @@ func GenerateAppImage(appdir string) {
 
 	// TODO: Signing. It is pretty convoluted and hardly anyone is using it.
 	//  Can we make it much simpler to use? Check how goreleaser does it.
+
+	if updateinformation == "" {
+		// No updateinformation was provided nor calculated, so the following steps make no sense
+		fmt.Println("Almost a success")
+		fmt.Println("")
+		fmt.Println("The AppImage was created, but is lacking update information.")
+		fmt.Println("Possibly it was built on a local developer machine.")
+		fmt.Println("Such an AppImage is fine for local use but should not be distributed.")
+		fmt.Println("Please build on one of the supported CI systems like Travis CI")
+		fmt.Println("if you want your AppImage to be updatable\nand have update notifications published.")
+		os.Exit(0)
+	}
+
+	// If updateinformation was provided, then we also generate the zsync file (after having signed the AppImage)
+	if updateinformation != "" {
+		opts := zsync.Options{0, "", filepath.Base(target)}
+		zsync.ZsyncMake(target, opts)
+
+		// Check if the zsync file is really there
+		fi, err = os.Stat(target + ".zsync")
+		if err != nil {
+			helpers.PrintError("zsync file not generated", err)
+			os.Exit(1)
+		}
+	}
 
 	// Create the payload the publishing
 	pl, _ := constructMQTTPayload(name, version, FSTime)

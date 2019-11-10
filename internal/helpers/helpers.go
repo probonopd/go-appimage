@@ -68,7 +68,7 @@ func AddHereToPath() {
 	// The directory we run from is added to the $PATH so that we find helper
 	// binaries there, too
 	os.Setenv("PATH", Here()+":"+os.Getenv("PATH"))
-	log.Println("main: PATH:", os.Getenv("PATH"))
+	// log.Println("main: PATH:", os.Getenv("PATH"))
 }
 
 // IsCommandAvailable returns true if a file is on the $PATH
