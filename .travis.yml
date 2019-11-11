@@ -30,10 +30,10 @@ script:
   - go build -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/appimage/src/appimagetool
   # upx -9 appimagetool
   - mv ./appimagetool appimagetool-$(go env GOHOSTARCH)
-  - if [ $(go env GOHOSTARCH) == "amd64" ] ; then env CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/appimage/src/appimagetool ; fi
+  - if [ $(go env GOHOSTARCH) == "amd64" ] ; then env GOOS=linux GOARCH=386 go build -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/appimage/src/appimagetool ; fi
   # if [ $(go env GOHOSTARCH) == "amd64" ] ; then upx -9 ./appimagetool ; fi
   - if [ $(go env GOHOSTARCH) == "amd64" ] ; then mv ./appimagetool appimagetool-386 ; fi
-  - if [ $(go env GOHOSTARCH) == "arm64" ] ; then env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=5 go build -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/appimage/src/appimagetool ; fi
+  - if [ $(go env GOHOSTARCH) == "arm64" ] ; then env CC=arm-linux-gnueabi-gcc GOOS=linux GOARCH=arm GOARM=5 go build -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/appimage/src/appimagetool ; fi
   # if [ $(go env GOHOSTARCH) == "arm64" ] ; then upx -9 ./appimagetool ; fi
   - if [ $(go env GOHOSTARCH) == "arm64" ] ; then mv ./appimagetool appimagetool-arm ; fi
   # appimaged
@@ -41,10 +41,10 @@ script:
   - go build -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/appimage/src/appimaged
   # upx -9 appimaged
   - mv ./appimaged appimaged-$(go env GOHOSTARCH)
-  - if [ $(go env GOHOSTARCH) == "amd64" ] ; then env CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/appimage/src/appimaged ; fi
+  - if [ $(go env GOHOSTARCH) == "amd64" ] ; then env GOOS=linux GOARCH=386 go build -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/appimage/src/appimaged ; fi
   # if [ $(go env GOHOSTARCH) == "amd64" ] ; then upx -9 ./appimaged ; fi
   - if [ $(go env GOHOSTARCH) == "amd64" ] ; then mv ./appimaged appimaged-386 ; fi
-  - if [ $(go env GOHOSTARCH) == "arm64" ] ; then env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=5 go build -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/appimage/src/appimaged ; fi
+  - if [ $(go env GOHOSTARCH) == "arm64" ] ; then env CC=arm-linux-gnueabi-gcc GOOS=linux GOARCH=arm GOARM=5 go build -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/appimage/src/appimaged ; fi
   # if [ $(go env GOHOSTARCH) == "arm64" ] ; then upx -9 ./appimaged ; fi
   - if [ $(go env GOHOSTARCH) == "arm64" ] ; then mv ./appimaged appimaged-arm ; fi
   # Eat our own dogfood, use appimagetool to make AppImages
@@ -98,10 +98,6 @@ script:
     ./appimagetool-*-x86_64.AppImage ./appimaged.AppDir
     fi
 
-after_success:
-  - wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh
-  # bash upload.sh appimaged-* appimagetool-*
-
 branches:
   except:
     # Do not build tags that we create when we upload to GitHub Releases
@@ -113,3 +109,4 @@ cache:
     - $HOME/gopath/pkg/mod # https://restic.net/blog/2018-09-02/travis-build-cache
     - $GOPATH/pkg/mod # https://evilmartians.com/chronicles/speeding-up-go-modules-for-docker-and-ci
 #   - $HOME/gopath/src # This is where my code gets downloaded to as well, so maybe not the best solution
+#   - ...and apparently not needed
