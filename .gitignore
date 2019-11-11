@@ -1,3 +1,20 @@
+# Since we want this repository simple and clean,
+# we allow only certain types of files (whitelisting)
+
+# By default, ignore everything
+*
+
+# But don't ignore entities ending with slash = directories
+!*/
+
+# And don't ignore files ending with whitelisted endings
+!*.go
+!*.png
+!*.md
+
+# Everything below this line is redundant
+# and may be removed once everything works as intended
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
