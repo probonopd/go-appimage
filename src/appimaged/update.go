@@ -32,17 +32,24 @@ func update() {
 	// but merely launch an updater we found among the integrated
 	// AppImages. In the future we may do the updating ourselves.
 
-	// aiu := "gh-releases-zsync|antony-jr|AppImageUpdater|continuous|AppImageUpdater*-x86_64.AppImage.zsync"
-	aiu := "gh-releases-zsync|AppImage|AppImageUpdate|continuous|AppImageUpdate-*x86_64.AppImage.zsync"
+	aiur := "gh-releases-zsync|antony-jr|AppImageUpdater|continuous|AppImageUpdater*-x86_64.AppImage.zsync"
 
-	a := FindMostRecentAppImageWithMatchingUpdateInformation(aiu)
+	// aiu := "gh-releases-zsync|AppImage|AppImageUpdate|continuous|AppImageUpdate-*x86_64.AppImage.zsync"
+	// Using AppImageUpdate is blocked by https://github.com/AppImage/AppImageUpdate/issues/1
+	// https://github.com/AppImage/AppImageUpdate/issues/139
+	// whereas AppImageUpdater gets this right as per
+	// https://github.com/antony-jr/AppImageUpdater/issues/14
+
+	a := FindMostRecentAppImageWithMatchingUpdateInformation(aiur)
 	if a == "" {
-		SimpleNotify("AppImageUpdate missing", "Please download the AppImageUpdate\nAppImage and try again", 30000)
+		SimpleNotify("AppImageUpdater missing", "Please download the AppImageUpdater\nAppImage and try again", 30000)
 		// Tried making a hyperlink but when I click it in Xfce, nothing happens.
 	} else {
 		cmd := []string{a}
+		cmd = append(cmd, "-n")
+		cmd = append(cmd, "-d")
 		cmd = append(cmd, os.Args[2:]...)
-
 		helpers.RunCmdTransparently(cmd)
 	}
+
 }
