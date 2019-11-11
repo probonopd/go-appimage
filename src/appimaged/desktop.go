@@ -156,9 +156,11 @@ func writeDesktopFile(ai AppImage) {
 	// TODO: Add "Mount" action
 
 	// Add "Update" action
-	actions = append(actions, "Update")
-	cfg.Section("Desktop Action Update").Key("Name").SetValue("Update")
-	cfg.Section("Desktop Action Update").Key("Exec").SetValue(os.Args[0] + " update \"" + ai.path + "\"")
+	if ai.updateinformation != "" {
+		actions = append(actions, "Update")
+		cfg.Section("Desktop Action Update").Key("Name").SetValue("Update")
+		cfg.Section("Desktop Action Update").Key("Exec").SetValue(os.Args[0] + " update \"" + ai.path + "\"")
+	}
 
 	// Add "Open Containing Folder" action
 	if helpers.IsCommandAvailable("xdg-open") {
