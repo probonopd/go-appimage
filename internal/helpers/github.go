@@ -40,7 +40,8 @@ func GetCommitMessageForLatestCommit(ui UpdateInformation) (string, error) {
 	}
 }
 
-// Uses the TRAVIS_COMMIT environment variable
+// GetCommitMessageForThisCommitOnTravis returns a string with the most
+// recent commit message for the commit in the TRAVIS_COMMIT environment variable, and error
 func GetCommitMessageForThisCommitOnTravis() (string, error) {
 
 	client := github.NewClient(nil)

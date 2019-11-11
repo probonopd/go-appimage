@@ -58,7 +58,8 @@ func main() {
 	// Check for needed files on $PATH
 	tools := []string{"file", "mksquashfs", "desktop-file-validate", "uploadtool"}
 	for _, t := range tools {
-		if helpers.IsCommandAvailable(t) == false {
+		_, err := exec.LookPath(t)
+		if err != nil {
 			fmt.Println("Required helper tool", t, "missing")
 			os.Exit(1)
 		}
@@ -93,7 +94,8 @@ func GenerateAppImage(appdir string) {
 	// Check if $VERSION is empty and git is on the path, if yes "git rev-parse --short HEAD"
 	version := ""
 	version = os.Getenv("VERSION")
-	if version == "" && helpers.IsCommandAvailable("git") == true {
+	_, err := exec.LookPath("git")
+	if version == "" && err == nil {
 		version, err := exec.Command("git", "rev-parse", "--short", "HEAD", appdir).Output()
 		os.Stderr.WriteString("Could not determine version automatically, please supply the application version as $VERSION " + filepath.Base(os.Args[0]) + " ... \n")
 		os.Exit(1) ////////////// Temporarily disabled for debugging
@@ -121,7 +123,7 @@ func GenerateAppImage(appdir string) {
 
 	desktopfile := helpers.FilesWithSuffixInDirectory(appdir, ".desktop")[0]
 
-	err := helpers.ValidateDesktopFile(desktopfile)
+	err = helpers.ValidateDesktopFile(desktopfile)
 	helpers.PrintError("ValidateDesktopFile", err)
 	if err != nil {
 		os.Exit(1)
@@ -244,7 +246,8 @@ func GenerateAppImage(appdir string) {
 		fmt.Println("         http://output.jsbin.com/qoqukof")
 	} else {
 		fmt.Println("Trying to validate AppStream information with the appstreamcli tool")
-		if helpers.IsCommandAvailable("appstreamcli") == false {
+		_, err := exec.LookPath("appstreamcli")
+		if err != nil {
 			fmt.Println("Required helper tool appstreamcli missing")
 			os.Exit(1)
 		}

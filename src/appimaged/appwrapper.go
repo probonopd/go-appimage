@@ -51,8 +51,10 @@ func appwrap() {
 
 				if strings.Contains(out.String(), "cannot open shared object file: No such file or directory") == true {
 					parts := strings.Split(out.String(), ":")
-					summary = "Error: Missing library " + strings.TrimSpace(parts[2])
-					body = filepath.Base(os.Args[2]) + " could not be started because " + strings.TrimSpace(parts[2]) + " is missing"
+					summary = "Cannot open " + filepath.Base(os.Args[2])
+					body = "Missing library " + strings.TrimSpace(parts[2])
+					// summary = "Error: Missing library " + strings.TrimSpace(parts[2])
+					// body = filepath.Base(os.Args[2]) + " could not be started because " + strings.TrimSpace(parts[2]) + " is missing"
 				}
 
 				sendErrorDesktopNotification(summary, body)

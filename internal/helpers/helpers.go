@@ -71,15 +71,6 @@ func AddHereToPath() {
 	// log.Println("main: PATH:", os.Getenv("PATH"))
 }
 
-// IsCommandAvailable returns true if a file is on the $PATH
-func IsCommandAvailable(name string) bool {
-	cmd := exec.Command("/bin/sh", "-c", "command -v "+name)
-	if err := cmd.Run(); err != nil {
-		return false
-	}
-	return true
-}
-
 // FilesWithSuffixInDirectory returns the files in a given directory with the given filename extension, and err
 func FilesWithSuffixInDirectory(directory string, extension string) []string {
 	var foundfiles []string
@@ -417,12 +408,22 @@ func FindMostRecentFile(files []string) string {
 // Check for needed files on $PATH. Returns err
 func CheckForNeededTools(tools []string) error {
 	for _, t := range tools {
-		if IsCommandAvailable(t) == false {
+		_, err := exec.LookPath(t)
+		if err != nil {
 			log.Println("Required helper tool", t, "missing")
-			return os.ErrNotExist // How else to do this?
+			return os.ErrNotExist
 		}
 	}
 	return nil
+}
+
+// IsCommandAvailable returns true if a file is on the $PATH
+func IsCommandAvailable(name string) bool {
+	_, err := exec.LookPath(name)
+	if err == nil {
+		return true
+	}
+	return false
 }
 
 // SliceContains returns true if the []string contains string,

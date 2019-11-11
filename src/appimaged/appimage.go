@@ -77,7 +77,7 @@ func NewAppImage(path string) AppImage {
 		return ai
 	}
 	ai.niceName = ai.calculateNiceName()
-	ai.offset = calculateElfSize(ai.path)
+	ai.offset = helpers.CalculateElfSize(ai.path)
 	ui, err := ai.ReadUpdateInformation()
 	if err == nil && ui != "" {
 		ai.updateinformation = ui
