@@ -18,9 +18,9 @@ script:
   - wget -q https://dl.google.com/go/go1.13.4.linux-$ARCH.tar.gz
   - sudo tar -C /usr/local -xzf go*.tar.gz
   - export PATH=/usr/local/go/bin:$PATH
-  - if [ $(go env GOHOSTARCH) == "amd64" ] ; then sudo apt-get -y install gcc-multilib g++-multilib ; fi
+  # if [ $(go env GOHOSTARCH) == "amd64" ] ; then sudo apt-get -y install gcc-multilib g++-multilib ; fi
   # if [ $(go env GOHOSTARCH) == "amd64" ] ; then wget -c -q https://github.com/upx/upx/releases/download/v3.95/upx-3.95-amd64_linux.tar.xz ; fi
-  - if [ $(go env GOHOSTARCH) == "arm64" ] ; then sudo apt-get -y install gcc-arm-linux-gnueabi ; fi
+  # if [ $(go env GOHOSTARCH) == "arm64" ] ; then sudo apt-get -y install gcc-arm-linux-gnueabi ; fi
   # if [ $(go env GOHOSTARCH) == "arm64" ] ; then wget -c -q https://github.com/upx/upx/releases/download/v3.95/upx-3.95-arm64_linux.tar.xz ; fi
   # tar xf upx-*_linux.tar.xz
   - export PATH=$(readlink -f upx-*_linux/):$PATH
