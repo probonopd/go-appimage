@@ -31,9 +31,9 @@ func appwrap() {
 	var out bytes.Buffer
 	cmd.Stderr = &out
 
-	// TODO: In a goroutine, find desktop file(s) that point to the executable in os.Args[2],
+	// Find desktop file(s) that point to the executable in os.Args[2],
 	// and check them with desktop-file-verify; display notification if verification fails
-	checkDesktopFiles(os.Args[2])
+	go checkDesktopFiles(os.Args[2])
 
 	if err := cmd.Start(); err != nil {
 		log.Fatalf("cmd.Start: %v", err)
@@ -46,12 +46,21 @@ func appwrap() {
 				log.Printf("Exit Status: %d", status.ExitStatus())
 				log.Println(out.String())
 
-				summary := "Error"
+				// If what we launched (and failed) was an AppImage, then use its nice (short) name
+				// to display the error message
+				var appname string
+				ai := NewAppImage(os.Args[2])
+				if ai.imagetype > 0 {
+					appname = ai.niceName
+				} else {
+					appname = filepath.Base(os.Args[2])
+				}
+
+				summary := "Cannot open " + appname
 				body := strings.TrimSpace(out.String())
 
 				if strings.Contains(out.String(), "cannot open shared object file: No such file or directory") == true {
 					parts := strings.Split(out.String(), ":")
-					summary = "Cannot open " + filepath.Base(os.Args[2])
 					body = "Missing library " + strings.TrimSpace(parts[2])
 					// summary = "Error: Missing library " + strings.TrimSpace(parts[2])
 					// body = filepath.Base(os.Args[2]) + " could not be started because " + strings.TrimSpace(parts[2]) + " is missing"
