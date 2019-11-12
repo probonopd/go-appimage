@@ -60,7 +60,7 @@ func writeDesktopFile(ai AppImage) {
 	cfg.Section("Desktop Entry").Key("Exec").SetValue(os.Args[0] + " wrap \"" + ai.path + "\"")
 	cfg.Section("Desktop Entry").Key(ExecLocationKey).SetValue(ai.path)
 
-	// cfg.Section("Desktop Entry").Key("TryExec").SetValue(ai.path) // KDE does not accept, even if desktop-file-validate allows ("\"" + ai.path + "\"")
+	cfg.Section("Desktop Entry").Key("TryExec").SetValue(os.Args[0])
 	cfg.Section("Desktop Entry").Key("Type").SetValue("Application")
 	// Construct the Name entry based on the actual filename
 	// so that renaming the file in the file manager results in a changed name in the menu
