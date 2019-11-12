@@ -60,7 +60,7 @@ func checkPrerequisites() {
 			os.Exit(1)
 		} else {
 			// Note that this exception is for use during develpment of this tool only and may go away at any time.
-			SimpleNotify("Not running from an AppImage", "This is discouraged because some functionality may not be available", 5000)
+			sendDesktopNotification("Not running from an AppImage", "This is discouraged because some functionality may not be available", 5000)
 		}
 	}
 

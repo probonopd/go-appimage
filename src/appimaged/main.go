@@ -297,9 +297,9 @@ func moveDesktopFiles() {
 		}
 
 		if len(files) == 1 {
-			SimpleNotify("Added application", "", 5000)
+			sendDesktopNotification("Added application", "", 5000)
 		} else {
-			SimpleNotify("Added "+strconv.Itoa(len(files))+" applications", "", 5000)
+			sendDesktopNotification("Added "+strconv.Itoa(len(files))+" applications", "", 5000)
 		}
 
 		// Run the various tools that make sure that the added desktop files really show up in the menu.

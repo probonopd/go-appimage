@@ -103,7 +103,7 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 				log.Println("+ Something special should happen here: Selfupdate")
 				log.Println("+ To be imlpemented.")
 				log.Println("++++++++++++++++++++++++++++++++++++++++++++++++++")
-				SimpleNotify("Update available", "An update for the AppImage daemon is available; I could update myself now...", 0)
+				sendDesktopNotification("Update available", "An update for the AppImage daemon is available; I could update myself now...", 0)
 			}
 
 			mostRecent := FindMostRecentAppImageWithMatchingUpdateInformation(unescapedui)
@@ -133,7 +133,7 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 					if err != nil {
 						helpers.PrintError("mqtt: GetCommitMessageForLatestCommit:", err)
 					} else {
-						SimpleNotify("Update available for "+ai.niceName, "It can be updated to version "+version+". \n"+msg, 120000)
+						sendDesktopNotification("Update available for "+ai.niceName, "It can be updated to version "+version+". \n"+msg, 120000)
 					}
 				}
 			} else {

@@ -42,7 +42,7 @@ func update() {
 
 	a := FindMostRecentAppImageWithMatchingUpdateInformation(aiur)
 	if a == "" {
-		SimpleNotify("AppImageUpdater missing", "Please download the AppImageUpdater\nAppImage and try again", 30000)
+		sendDesktopNotification("AppImageUpdater missing", "Please download the AppImageUpdater\nAppImage and try again", 30000)
 		// Tried making a hyperlink but when I click it in Xfce, nothing happens.
 	} else {
 		cmd := []string{a}

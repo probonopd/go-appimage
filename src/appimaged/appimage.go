@@ -233,7 +233,7 @@ func (ai AppImage) Validate() error {
 		err := helpers.ValidateUpdateInformation(ai.updateinformation)
 		helpers.PrintError("appimage: updateinformation verification", err)
 		if err != nil {
-			SimpleNotify("Invalid AppImage", ai.niceName+"\ncontains invalid update information:\n"+ai.updateinformation+"\n"+err.Error()+"\nPlease ask the author to fix it.", 30000)
+			sendDesktopNotification("Invalid AppImage", ai.niceName+"\ncontains invalid update information:\n"+ai.updateinformation+"\n"+err.Error()+"\nPlease ask the author to fix it.", 30000)
 			return err
 		}
 	}
@@ -327,7 +327,7 @@ func (ai AppImage) _removeIntegration() {
 	err = os.Remove(ai.desktopfilepath)
 	if err == nil {
 		log.Println("appimage: Deleted", ai.desktopfilepath)
-		SimpleNotify("Removed", ai.path, 3000)
+		sendDesktopNotification("Removed", ai.path, 3000)
 
 	}
 }

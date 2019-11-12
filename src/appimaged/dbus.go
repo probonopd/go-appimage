@@ -47,30 +47,6 @@ func removeDuplicatesUnordered(elements []string) []string {
 	return result
 }
 
-// GetDbusConn returns a private dbus session bus connection which is ready to use, and err
-// Why is this not in the dbus library?
-func xxxGetDbusConn() (*dbus.Conn, error) {
-
-	conn, err := dbus.SessionBusPrivate() // When using SessionBusPrivate(), need to follow with Auth(nil) and Hello()
-	defer conn.Close()
-	if err != nil {
-		return nil, err
-	}
-	if conn == nil {
-		return nil, err
-	}
-
-	if err = conn.Auth(nil); err != nil {
-		return nil, err
-	}
-
-	if err = conn.Hello(); err != nil {
-		conn.Close()
-		return nil, err
-	}
-	return conn, nil
-}
-
 // The session bus is for your login (e.g. desktop notifications), while the
 // system bus handles system-wide stuff (e.g. USB stick plugged in).
 // TODO: Watch system bus, too.

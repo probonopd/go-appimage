@@ -15,12 +15,6 @@ func takeCareOfCommandlineCommands() {
 		return
 	}
 
-	// As quickly as possible go there if we are invoked with the "notify" command
-	if os.Args[1] == "notify" {
-		JustNotify()
-		os.Exit(0)
-	}
-
 	// As quickly as possible go there if we are invoked with the "wrap" command
 	if os.Args[1] == "wrap" {
 		appwrap()
