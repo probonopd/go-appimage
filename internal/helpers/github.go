@@ -9,6 +9,8 @@ import (
 	"github.com/google/go-github/github" // with go modules disabled
 )
 
+// GetCommitMessageForLatestCommit gets the commit message for the latest commit
+// (currently only on GitHub) using UpdateInformation. Returns commit string and err
 func GetCommitMessageForLatestCommit(ui UpdateInformation) (string, error) {
 
 	if ui.transportmechanism == "gh-releases-zsync" {
@@ -38,6 +40,30 @@ func GetCommitMessageForLatestCommit(ui UpdateInformation) (string, error) {
 
 		return "", errors.New("Not yet implemented for this transport mechanism")
 	}
+}
+
+// GetReleaseURL gets the URL message for the latest release
+// (currently only on GitHub) matching the given UpdateInformation. Returns commit string and err
+func GetReleaseURL(ui UpdateInformation) (string, error) {
+
+	if ui.transportmechanism == "gh-releases-zsync" {
+
+		client := github.NewClient(nil)
+
+		release, _, err := client.Repositories.GetReleaseByTag(context.Background(), ui.username, ui.repository, ui.releasename)
+		if err == nil {
+			// log.Println("github", release.GetHTMLURL())
+			// log.Println("github", release.GetBody())
+			// log.Println("github", release.GetAssetsURL())
+			// log.Println("github", release.GetTagName())         // E.g., "continuous"
+			// log.Println("github", release.GetTargetCommitish()) // E.g., "a4039871c082489b4ac5c3b0ab98d3617c408e53"
+
+			return release.GetHTMLURL(), nil
+		} else {
+			return "", err
+		}
+	}
+	return "", errors.New("GetReleaseURL: Could not get URL")
 }
 
 // GetCommitMessageForThisCommitOnTravis returns a string with the most

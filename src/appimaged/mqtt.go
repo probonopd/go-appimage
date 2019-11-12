@@ -130,9 +130,12 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 					helpers.PrintError("mqtt: NewUpdateInformationFromString:", err)
 				} else {
 					msg, err := helpers.GetCommitMessageForLatestCommit(ui)
+					// changelog_url, _ := helpers.GetReleaseURL(ui)
 					if err != nil {
 						helpers.PrintError("mqtt: GetCommitMessageForLatestCommit:", err)
 					} else {
+						// The following could not be tested yet
+						// go sendUpdateDesktopNotification(ai.niceName, version, changelog_url)
 						sendDesktopNotification("Update available for "+ai.niceName, "It can be updated to version "+version+". \n"+msg, 120000)
 					}
 				}
