@@ -16,7 +16,7 @@ import (
 
 	"github.com/adrg/xdg"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"github.com/godbus/dbus"
+
 	helpers "github.com/probonopd/appimage/internal/helpers"
 	"github.com/prometheus/procfs"
 )
@@ -53,7 +53,8 @@ var toBeIntegratedOrUnintegrated []string
 
 var thisai AppImage // A reference to myself
 
-var conn *dbus.Conn
+// var conn *dbus.Conn // MAYBE NOT SHARE IT?
+
 var MQTTclient mqtt.Client
 
 // To keep track of what we already have subscribed. Something like this is needed in order
@@ -134,20 +135,7 @@ func main() {
 		}
 	}
 
-	var err error
-	// Catch for young players:
-	// conn, err := dbus.SessionBus() would not work here,
-	// https://stackoverflow.com/a/34195389
-	conn, err = dbus.SessionBus()
-	// defer conn.Close()
-	if err != nil {
-		log.Println("main: Failed to connect to session bus:", err)
-		os.Exit(1)
-	}
-	if conn == nil {
-		log.Println("ERROR: notification: Could not get conn")
-		os.Exit(1)
-	}
+	// go monitorDbusSessionBus() // If used, then nothing else can use DBus anymore? FIXME #####################
 
 	// SimpleNotify("Starting", helpers.Here(), 5000)
 
@@ -261,12 +249,26 @@ func moveDesktopFiles() {
 	// and "wg.Wait()" then waits until they have all done their job. Neat!
 	var wg sync.WaitGroup
 
+	// If we do everything in parallel, we get "too many files open" errors
+	// Hence we limit the number of concurrent go routines
+	// https://stackoverflow.com/a/38825523
+	sem := make(chan struct{}, 8) // Maximum number of concurrent go routines // ***
+
 	for _, path := range toBeIntegratedOrUnintegrated {
+
+		// The next 3 lines limit the number of concurrent go routines
+		// using a counting semaphore
+		sem <- struct{}{}
+		defer func() { <-sem }()
+		defer wg.Done()
+
 		ai := NewAppImage(path)
 		go ai.IntegrateOrUnintegrate()
 	}
 
-	wg.Wait()                   // Wait until all go routines since "var wg sync.WaitGroup" have been completed
+	wg.Wait() // Wait until all go routines since "var wg sync.WaitGroup" have been completed
+	close(sem)
+
 	time.Sleep(time.Second * 1) // And wait one second longer to catch other AppImages that may have been come in the meantime
 
 	toBeIntegratedOrUnintegrated = nil
@@ -354,7 +356,9 @@ func watchDirectories() {
 
 	os.MkdirAll(home+"/Applications", 0755)
 
-	watchedDirectories := []string{
+	var watchedDirectories []string
+
+	candidateDirectories := []string{
 		xdg.UserDirs.Download,
 		xdg.UserDirs.Desktop,
 		home + "/.local/bin",
@@ -362,6 +366,12 @@ func watchDirectories() {
 		home + "/Applications",
 		home + "/opt",
 		home + "/usr/local/bin",
+	}
+
+	for _, dir := range candidateDirectories {
+		if Exists(dir) {
+			watchedDirectories = append(watchedDirectories, dir)
+		}
 	}
 
 	mounts, _ := procfs.GetMounts()
@@ -375,11 +385,13 @@ func watchDirectories() {
 			// strings.HasPrefix(mount.MountPoint, "/run") == false && // Manjaro mounts the device on which the Live ISO is in /run, so we cannot exclude that
 			strings.HasPrefix(mount.MountPoint, "/tmp") == false &&
 			strings.HasPrefix(mount.MountPoint, "/proc") == false {
-			watchedDirectories = helpers.AppendIfMissing(watchedDirectories, mount.MountPoint+"/Applications")
+			if Exists(mount.MountPoint + "/Applications") {
+				watchedDirectories = helpers.AppendIfMissing(watchedDirectories, mount.MountPoint+"/Applications")
+			}
 		}
 	}
 
-	log.Println("Registering AppImages in well-known locations and their subdirectories...")
+	log.Println("Registering AppImages in", watchedDirectories)
 
 	watchDirectoriesReally(watchedDirectories)
 
@@ -390,22 +402,27 @@ func watchDirectories() {
 
 func watchDirectoriesReally(watchedDirectories []string) {
 	for _, v := range watchedDirectories {
-		// TODO: Maybe we don't want to walk subdirectories?
-		// filepath.Walk is handy but scans subfolders too, by default, which might not be what you want.
-		// The Go stdlib also provides ioutil.ReadDir
-		err := filepath.Walk(v, func(path string, info os.FileInfo, err error) error {
+		go inotifyWatch(v)
+		// For now we don't walk subdirectories.
+		// filepath.Walk scans subfolders too,
+		// ioutil.ReadDir does not.
+		infos, err := ioutil.ReadDir(v)
+		if err != nil {
+			helpers.PrintError("watchDirectoriesReally", err)
+			return
+		}
+		for _, info := range infos {
 			if err != nil {
-				// log.Printf("%v\n", err)
+				log.Printf("%v\n", err)
 			} else if info.IsDir() == true {
-				go inotifyWatch(path)
+				// go inotifyWatch(v + "/" + info.Name())
 			} else if info.IsDir() == false {
-				ai := NewAppImage(path)
+				ai := NewAppImage(v + "/" + info.Name())
 				if ai.imagetype > 0 {
 					go ai.IntegrateOrUnintegrate()
 				}
 			}
-			return nil
-		})
+		}
 		helpers.LogError("main: watchDirectoriesReally", err)
 	}
 }

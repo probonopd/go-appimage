@@ -74,6 +74,7 @@ func CalculateElfSize(filepath string) int64 {
 
 func ioReader(file string) (io.ReaderAt, int64) {
 	f, err := os.Open(file)
+	defer f.Close()
 	if err != nil {
 		return nil, 0
 	}

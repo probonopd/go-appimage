@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/adrg/xdg"
+	"github.com/amenzhinsky/go-polkit"
+	systemd_dbus "github.com/coreos/go-systemd/dbus"
 	helpers "github.com/probonopd/appimage/internal/helpers"
 )
 
@@ -69,8 +71,11 @@ func checkPrerequisites() {
 
 	// Stop any other AppImage system integration daemon
 	// so that they won't interfere with each other
-	stopSystemdService("appimagelauncherd")
-	stopSystemdService("appimagelauncherfs")
+	if checkIfSystemdServiceRunning([]string{"appimagelauncher*"}) == true {
+		log.Println("Trying to stop interfering AppImage system integration daemons")
+		stopSystemdService("appimagelauncherd")
+		stopSystemdService("appimagelauncherfs")
+	}
 
 	// Disable binfmt-misc of AppImageLauncher when we are NOT root? Argh!
 	exitIfBinfmtExists("/proc/sys/fs/binfmt_misc/appimage-type1")
@@ -116,13 +121,82 @@ func checkPrerequisites() {
 	helpers.LogError("main:", err)
 }
 
-func stopSystemdService(servicename string) {
-	cmd := exec.Command("systemctl", "--user", "stop", servicename+".service")
-	if err := cmd.Run(); err != nil {
-		helpers.LogError(cmd.String(), err) // Needs Go 1.13
-	} else {
-		*cleanPtr = true // Clean up pre-existing desktop files from the other AppImage system integration daemon
+func checkIfSystemdServiceRunning(servicenames []string) bool {
+
+	conn, err := systemd_dbus.NewUserConnection()
+	defer conn.Close()
+	helpers.PrintError("pre: checkIfSystemdServiceRunning", err)
+	if err != nil {
+		return false
 	}
+	if conn == nil {
+		log.Println("ERROR: checkIfSystemdServiceRunning: Could not get conn")
+		return false
+	}
+
+	units, err := conn.ListUnitsByPatterns([]string{}, servicenames)
+	helpers.PrintError("pre: checkIfSystemdServiceRunning", err)
+	if err != nil {
+		return false
+	}
+
+	for _, unit := range units {
+		log.Println(unit.Name, unit.ActiveState)
+	}
+
+	if len(units) > 0 {
+		return true
+	} else {
+		return false
+	}
+
+}
+
+// stopSystemdService stops a SystemKit service with servicename.
+// It asks the user for permission using polkit if needed.
+func stopSystemdService(servicename string) {
+	// Get permission from polkit to manage systemd units
+	// Why do we need permission to run systemctl --user on e.g., Clear Linux OS?
+	// After all, it is --user...
+	authority, err := polkit.NewAuthority()
+	if err != nil {
+		helpers.PrintError("polkit", err)
+	}
+	action := "org.freedesktop.systemd1.manage-units"
+	result, err := authority.CheckAuthorization(action, nil, polkit.CheckAuthorizationAllowUserInteraction, "")
+	if err != nil {
+		helpers.PrintError("stopSystemdService", err)
+	}
+
+	log.Printf("polkit: Is authorized: %t %s\n", result.IsAuthorized, action)
+
+	// Stop systemd service
+
+	// cmd := exec.Command("systemctl", "--user", "stop", servicename+".service")
+	// if err := cmd.Run(); err != nil {
+	// 	helpers.LogError(cmd.String(), err) // Needs Go 1.13
+	// } else {
+	// 	*cleanPtr = true // Clean up pre-existing desktop files from the other AppImage system integration daemon
+	// }
+
+	conn, err := systemd_dbus.NewUserConnection()
+	defer conn.Close()
+	helpers.PrintError("pre: checkIfSystemdServiceRunning", err)
+	if err != nil {
+		return
+	}
+	if conn == nil {
+		log.Println("ERROR: stopSystemdService: Could not get conn")
+		return
+	}
+
+	reschan := make(chan string) // needed to wait for StopUnit job to complete
+	_, err = conn.StopUnit(servicename, "replace", reschan)
+	helpers.PrintError("pre: StopUnit", err)
+	if err != nil {
+		return
+	}
+	<-reschan // wait for StopUnit job to complete
 }
 
 func exitIfBinfmtExists(path string) {

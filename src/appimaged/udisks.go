@@ -4,6 +4,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/probonopd/appimage/internal/helpers"
+
 	"github.com/godbus/dbus"
 )
 
@@ -73,9 +75,26 @@ need to "eavesdrop"), independent of whether the GNOME or the KDE or another des
 
 func monitorUdisks() {
 
+	conn, err := dbus.SessionBusPrivate() // When using SessionBusPrivate(), need to follow with Auth(nil) and Hello()
+	defer conn.Close()
+	if err != nil {
+		helpers.PrintError("SessionBusPrivate", err)
+		return
+	}
 	if conn == nil {
-		log.Println("ERROR: notification: Could not get conn") // FIXME. Why don't I get conn here?
-		os.Exit(1)
+		helpers.PrintError("No conn", err)
+		return
+	}
+
+	if err = conn.Auth(nil); err != nil {
+		helpers.PrintError("Auth", err)
+		return
+	}
+
+	if err = conn.Hello(); err != nil {
+		conn.Close()
+		helpers.PrintError("Hello", err)
+		return
 	}
 
 	obj := conn.Object("org.freedesktop.Notifications", "/org/freedesktop/Notifications")

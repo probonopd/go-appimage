@@ -77,6 +77,9 @@ func NewAppImage(path string) AppImage {
 		return ai
 	}
 	ai.niceName = ai.calculateNiceName()
+	if ai.imagetype < 1 {
+		return ai
+	}
 	ai.offset = helpers.CalculateElfSize(ai.path)
 	ui, err := ai.ReadUpdateInformation()
 	if err == nil && ui != "" {
@@ -150,7 +153,6 @@ func runCommand(cmd *exec.Cmd) (io.Writer, error) {
 func (ai AppImage) determineImageType() int {
 	// log.Println("appimage: ", ai.path)
 	f, err := os.Open(ai.path)
-	defer f.Close()
 
 	// printError("appimage", err)
 	if err != nil {
@@ -158,17 +160,17 @@ func (ai AppImage) determineImageType() int {
 	}
 
 	info, err := os.Stat(ai.path)
-
 	if err != nil {
 		return -1
 	}
 
+	// Directories cannot be AppImages, so return fast
 	if err == nil && info.IsDir() {
 		return -1
 	}
 
 	// Very small files cannot be AppImages, so return fast
-	if err == nil && info.Size() < 10*1024 {
+	if err == nil && info.Size() < 100*1024 {
 		return -1
 	}
 
@@ -198,9 +200,9 @@ func checkMagicAtOffset(f *os.File, magic string, offset int64) bool {
 	helpers.LogError("checkMagicAtOffset: "+f.Name(), err)
 	hexmagic := hex.EncodeToString(b[:n])
 	if hexmagic == magic {
-		if *verbosePtr == true {
-			log.Printf("checkMagicAtOffset: %v: Magic 0x%x at offset %v\n", f.Name(), string(b[:n]), offset)
-		}
+		// if *verbosePtr == true {
+		// 	log.Printf("checkMagicAtOffset: %v: Magic 0x%x at offset %v\n", f.Name(), string(b[:n]), offset)
+		// }
 		return true
 	}
 	return false
@@ -210,7 +212,9 @@ func (ai AppImage) setExecBit() {
 
 	err := os.Chmod(ai.path, 0755)
 	if err == nil {
-		log.Println("appimage: Set executable bit on", ai.path)
+		if *verbosePtr == true {
+			log.Println("appimage: Set executable bit on", ai.path)
+		}
 	}
 	// printError("appimage", err) // Do not print error since AppImages on read-only media are common
 }
@@ -272,7 +276,7 @@ func (ai AppImage) _integrate() {
 	// Let's be evil and integrate only good AppImages...
 	err := ai.Validate()
 	if err != nil {
-		log.Println("AppImage did not pass verification:", ai.path)
+		log.Println("AppImage did not pass validation:", ai.path)
 		return
 	}
 
@@ -460,7 +464,7 @@ func (ai AppImage) getFSTime() time.Time {
 		result, err := exec.Command("unsquashfs", "-q", "-fstime", "-o", strconv.FormatInt(ai.offset, 10), ai.path).Output()
 		resstr := strings.TrimSpace(string(bytes.TrimSpace(result)))
 		if err != nil {
-			helpers.PrintError("appimage: getFSTime", err)
+			helpers.PrintError("appimage: getFSTime: "+ai.path, err)
 			return time.Unix(0, 0)
 		}
 		if n, err := strconv.Atoi(resstr); err == nil {

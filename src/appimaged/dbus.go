@@ -28,6 +28,7 @@ import (
 
 	"github.com/go-language-server/uri"
 	"github.com/godbus/dbus"
+	"github.com/probonopd/appimage/internal/helpers"
 )
 
 func removeDuplicatesUnordered(elements []string) []string {
@@ -46,11 +47,57 @@ func removeDuplicatesUnordered(elements []string) []string {
 	return result
 }
 
+// GetDbusConn returns a private dbus session bus connection which is ready to use, and err
+// Why is this not in the dbus library?
+func xxxGetDbusConn() (*dbus.Conn, error) {
+
+	conn, err := dbus.SessionBusPrivate() // When using SessionBusPrivate(), need to follow with Auth(nil) and Hello()
+	defer conn.Close()
+	if err != nil {
+		return nil, err
+	}
+	if conn == nil {
+		return nil, err
+	}
+
+	if err = conn.Auth(nil); err != nil {
+		return nil, err
+	}
+
+	if err = conn.Hello(); err != nil {
+		conn.Close()
+		return nil, err
+	}
+	return conn, nil
+}
+
 // The session bus is for your login (e.g. desktop notifications), while the
 // system bus handles system-wide stuff (e.g. USB stick plugged in).
 // TODO: Watch system bus, too.
 
 func monitorDbusSessionBus() {
+
+	conn, err := dbus.SessionBusPrivate() // When using SessionBusPrivate(), need to follow with Auth(nil) and Hello()
+	defer conn.Close()
+	if err != nil {
+		helpers.PrintError("SessionBusPrivate", err)
+		return
+	}
+	if conn == nil {
+		helpers.PrintError("No conn", err)
+		return
+	}
+
+	if err = conn.Auth(nil); err != nil {
+		helpers.PrintError("Auth", err)
+		return
+	}
+
+	if err = conn.Hello(); err != nil {
+		conn.Close()
+		helpers.PrintError("Hello", err)
+		return
+	}
 
 	var rules = []string{
 		// "path_namespace='/'", // Everything
@@ -100,8 +147,8 @@ func monitorDbusSessionBus() {
 			if strings.HasPrefix(str, "%!s") == false {
 				log.Println("org.gtk.vfs.Metadata", str)
 				// time.Sleep(1 * time.Second)
-				ai := newAppImage(str)
-				go ai.integrateOrUnintegrate()
+				ai := NewAppImage(str)
+				go ai.IntegrateOrUnintegrate()
 			}
 
 		}
@@ -118,8 +165,8 @@ func monitorDbusSessionBus() {
 		if v.Headers[3].String() == "\"ResourceScoreUpdated\"" {
 			fp := v.Body[2].(string)
 			log.Println("monitor: ResourceScoreUpdated: ", fp)
-			ai := newAppImage(fp)
-			go ai.integrateOrUnintegrate()
+			ai := NewAppImage(fp)
+			go ai.IntegrateOrUnintegrate()
 		}
 
 		// KDE
@@ -162,14 +209,14 @@ func monitorDbusSessionBus() {
 				for _, s := range fromfiles {
 					fp := getFilepath(s)
 					log.Println("monitor: MoveFrom: ", fp)
-					ai := newAppImage(fp)
-					ai.integrateOrUnintegrate()
+					ai := NewAppImage(fp)
+					ai.IntegrateOrUnintegrate()
 				}
 				for _, s := range tofiles {
 					fp := getFilepath(s)
 					log.Println("monitor: MoveTo: ", fp)
-					ai := newAppImage(fp)
-					go ai.integrateOrUnintegrate()
+					ai := NewAppImage(fp)
+					go ai.IntegrateOrUnintegrate()
 				}
 			}
 		}
@@ -186,8 +233,8 @@ func monitorDbusSessionBus() {
 				for _, s := range tofiles {
 					fp := getFilepath(s)
 					log.Println("monitor: CopyTo: ", fp)
-					ai := newAppImage(fp)
-					go ai.integrateOrUnintegrate()
+					ai := NewAppImage(fp)
+					go ai.IntegrateOrUnintegrate()
 				}
 			}
 		}
@@ -198,8 +245,8 @@ func monitorDbusSessionBus() {
 				for _, s := range files {
 					fp := getFilepath(s)
 					log.Println("monitor: CleanupOrDelete: ", fp)
-					ai := newAppImage(fp)
-					ai.integrateOrUnintegrate()
+					ai := NewAppImage(fp)
+					ai.IntegrateOrUnintegrate()
 				}
 			}
 		}

@@ -219,7 +219,7 @@ func writeDesktopFile(ai AppImage) {
 
 	err = fixDesktopFile(desktopcachedir + "/" + filename)
 	if err != nil {
-		helpers.PrintError("desktop", err)
+		helpers.PrintError("desktop fixDesktopFile", err)
 		os.Exit(1)
 	}
 }

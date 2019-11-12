@@ -71,7 +71,9 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	// are lacking .DirIcon files as of Fall 2019; here we have to parse the desktop
 	// file, and try to extract the value of Icon= with the suffix ".png" from the AppImage
 	if Exists(thumbnailcachedir+"/.DirIcon") == false && ai.imagetype == 2 {
-		log.Println(".DirIcon extraction failed. Is it missing? Trying to figure out alternative")
+		if *verbosePtr == true {
+			log.Println(".DirIcon extraction failed. Is it missing? Trying to figure out alternative")
+		}
 		cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, "*.desktop")
 		runCommand(cmd)
 		files, _ := ioutil.ReadDir(thumbnailcachedir)
@@ -122,7 +124,9 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 
 	buf, err := ioutil.ReadFile(thumbnailcachedir + "/.DirIcon")
 	if os.IsNotExist(err) {
-		log.Printf("Could not extract icon, use default icon instead: %s\n", thumbnailcachedir+"/.DirIcon")
+		if *verbosePtr == true {
+			log.Printf("Could not extract icon, use default icon instead: %s\n", thumbnailcachedir+"/.DirIcon")
+		}
 		data, err := Asset("data/appimage.png")
 		helpers.LogError("thumbnail", err)
 		err = os.MkdirAll(thumbnailcachedir, 0755)
@@ -167,13 +171,16 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	// https://github.com/sabhiram/png-embed/issues/1
 
 	content, err := pngembed.ExtractFile(thumbnailcachedir + "/.DirIcon")
-	if _, ok := content["Thumb::URI"]; ok {
-		log.Println("thumbnail: FIXME: Remove pre-existing Thumb::URI in", ai.path)
-		// log.Println(content["Thumb::URI"])
-	}
-	if _, ok := content["Thumb::MTime"]; ok {
-		log.Println("thumbnail: FIXME: Remove pre-existing Thumb::MTime", content["Thumb::MTime"], "in", ai.path) // FIXME; pngembed does not seem to overwrite pre-existing values, is it a bug there?
-		// log.Println(content["Thumb::MTime"])
+
+	if *verbosePtr == true {
+		if _, ok := content["Thumb::URI"]; ok {
+			log.Println("thumbnail: FIXME: Remove pre-existing Thumb::URI in", ai.path)
+			// log.Println(content["Thumb::URI"])
+		}
+		if _, ok := content["Thumb::MTime"]; ok {
+			log.Println("thumbnail: FIXME: Remove pre-existing Thumb::MTime", content["Thumb::MTime"], "in", ai.path) // FIXME; pngembed does not seem to overwrite pre-existing values, is it a bug there?
+			// log.Println(content["Thumb::MTime"])
+		}
 	}
 	helpers.LogError("thumbnail "+thumbnailcachedir+"/.DirIcon", err)
 	data, err := pngembed.EmbedFile(thumbnailcachedir+"/.DirIcon", "Thumb::URI", ai.uri)
@@ -194,7 +201,10 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	home, _ := os.UserHomeDir()
 	err = os.MkdirAll(home+"/.thumbnails/normal/", os.ModePerm)
 	helpers.LogError("thumbnail", err)
-	log.Println("thumbnail: Moving", thumbnailcachedir+"/.DirIcon", "to", ai.thumbnailfilepath)
+
+	if *verbosePtr == true {
+		log.Println("thumbnail: Moving", thumbnailcachedir+"/.DirIcon", "to", ai.thumbnailfilepath)
+	}
 	err = os.Rename(thumbnailcachedir+"/.DirIcon", ai.thumbnailfilepath)
 	helpers.LogError("thumbnail", err)
 	err = os.RemoveAll(thumbnailcachedir)

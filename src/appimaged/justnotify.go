@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/godbus/dbus"
+	"github.com/probonopd/appimage/internal/helpers"
 )
 
 // SimpleNotify sends a notification. It uses a very crude implementation
@@ -42,15 +43,28 @@ func JustNotify() {
 	log.Println(title)
 	log.Println(timeout)
 
-	conn, err := dbus.SessionBus()
+	conn, err := dbus.SessionBusPrivate() // When using SessionBusPrivate(), need to follow with Auth(nil) and Hello()
+	defer conn.Close()
 	if err != nil {
-		log.Println(os.Stderr, "Failed to connect to session bus:", err)
+		helpers.PrintError("SessionBusPrivate", err)
 		return
 	}
 	if conn == nil {
-		log.Println(os.Stderr, "Failed to get conn:", err)
+		helpers.PrintError("No conn", err)
 		return
 	}
+
+	if err = conn.Auth(nil); err != nil {
+		helpers.PrintError("Auth", err)
+		return
+	}
+
+	if err = conn.Hello(); err != nil {
+		conn.Close()
+		helpers.PrintError("Hello", err)
+		return
+	}
+
 	obj := conn.Object("org.freedesktop.Notifications", "/org/freedesktop/Notifications")
 	call := obj.Call("org.freedesktop.Notifications.Notify", 0, "", uint32(0),
 		"", title, body, []string{},

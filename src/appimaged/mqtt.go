@@ -57,18 +57,21 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 		// Need to do this immediately here, otherwise it comes too late
 		subscribedMQTTTopics = helpers.AppendIfMissing(subscribedMQTTTopics, updateinformation)
 	}
-	time.Sleep(time.Second * 60) // We get retained messages immediately when we subscribe;
+	time.Sleep(time.Second * 10) // We get retained messages immediately when we subscribe;
 	// at this point our AppImage may not be integrated yet...
 	// Also it's better user experience not to be bombarded with updates immediately at startup.
-	// 60 seconds should be plenty of time.
+	// 10 seconds should be plenty of time.
 	queryEscapedUpdateInformation := url.QueryEscape(updateinformation)
 	if queryEscapedUpdateInformation == "" {
 		return
 	}
 	topic := helpers.MQTTNamespace + "/" + queryEscapedUpdateInformation + "/#"
-	fmt.Println("mqtt: Subscribing for", updateinformation)
-	fmt.Println("mqtt: Waiting for messages on topic", helpers.MQTTNamespace+"/"+queryEscapedUpdateInformation+"/version")
 
+	if *verbosePtr == true {
+		log.Println("mqtt: Waiting for messages on topic", helpers.MQTTNamespace+"/"+queryEscapedUpdateInformation+"/version")
+	} else {
+		log.Println("Subscribing to updates for", updateinformation)
+	}
 	client.Subscribe(topic, 0, func(client mqtt.Client, msg mqtt.Message) {
 		// fmt.Printf("* [%s] %s\n", msg.Topic(), string(msg.Payload()))
 		// fmt.Println(topic)

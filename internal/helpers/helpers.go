@@ -303,6 +303,7 @@ func WriteStringIntoOtherFileAtOffset(inputstring string, outputfilepath string,
 // GetSectionData returns the contents of an ELF section and error
 func GetSectionData(filepath string, name string) ([]byte, error) {
 	r, err := os.Open(filepath)
+	defer r.Close()
 	f, err := elf.NewFile(r)
 	if err != nil {
 		return nil, err
