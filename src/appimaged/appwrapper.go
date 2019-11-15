@@ -66,6 +66,12 @@ func appwrap() {
 					// body = filepath.Base(os.Args[2]) + " could not be started because " + strings.TrimSpace(parts[2]) + " is missing"
 				}
 
+				// https://github.com/AppImage/AppImageKit/issues/1004
+				if strings.Contains(out.String(), "execv error") == true && ai.imagetype > 0 {
+					summary = "Error: Missing AppRun"
+					body = filepath.Base(os.Args[2]) + " is defective, AppRun is missing"
+				}
+
 				sendErrorDesktopNotification(summary, body)
 			}
 		} else {
