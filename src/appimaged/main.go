@@ -115,6 +115,8 @@ func main() {
 
 	checkPrerequisites()
 
+	installFilemanagerContextMenus()
+
 	ptrue := true // Nasty trick from https://code-review.googlesource.com/c/gocloud/+/26730/3/bigquery/query.go
 	overwritePtr = &ptrue
 
