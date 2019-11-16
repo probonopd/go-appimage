@@ -11,12 +11,26 @@ import (
 	"os"
 )
 
-func CalculateElfSize(filepath string) int64 {
+func CalculateElfSize(file string) int64 {
 
 	// Open given elf file
-	f, _ := ioReader(filepath)
+
+	f, err := os.Open(file)
+	PrintError("ioReader", err)
+	// defer f.Close()
+	if err != nil {
+		return 0
+	}
+
+	_, err = f.Stat()
+	PrintError("ioReader", err)
+	if err != nil {
+		return 0
+	}
+
 	e, err := elf.NewFile(f)
 	if err != nil {
+		PrintError("elfsize elf.NewFile", err)
 		return 0
 	}
 
@@ -24,6 +38,7 @@ func CalculateElfSize(filepath string) int64 {
 	var ident [16]uint8
 	_, err = f.ReadAt(ident[0:], 0)
 	if err != nil {
+		PrintError("elfsize read identifier", err)
 		return 0
 	}
 
@@ -45,6 +60,7 @@ func CalculateElfSize(filepath string) int64 {
 		sr.Seek(0, 0)
 		err = binary.Read(sr, e.ByteOrder, hdr)
 		if err != nil {
+			PrintError("elfsize", err)
 			return 0
 		}
 
@@ -56,6 +72,7 @@ func CalculateElfSize(filepath string) int64 {
 		sr.Seek(0, 0)
 		err = binary.Read(sr, e.ByteOrder, hdr)
 		if err != nil {
+			PrintError("elfsize", err)
 			return 0
 		}
 
@@ -69,20 +86,6 @@ func CalculateElfSize(filepath string) int64 {
 
 	// Calculate ELF size
 	elfsize := shoff + (shentsize * shnum)
+	log.Println("elfsize:", elfsize, file)
 	return elfsize
-}
-
-func ioReader(file string) (io.ReaderAt, int64) {
-	f, err := os.Open(file)
-	defer f.Close()
-	if err != nil {
-		return nil, 0
-	}
-
-	fi, err := f.Stat()
-	if err != nil {
-		return nil, 0
-	}
-
-	return f, fi.Size()
 }

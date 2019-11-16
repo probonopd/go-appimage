@@ -80,12 +80,13 @@ func NewAppImage(path string) AppImage {
 	if ai.imagetype < 1 {
 		return ai
 	}
-	ai.offset = helpers.CalculateElfSize(ai.path)
+	if ai.imagetype > 1 {
+		ai.offset = helpers.CalculateElfSize(ai.path)
+	}
 	ui, err := ai.ReadUpdateInformation()
 	if err == nil && ui != "" {
 		ai.updateinformation = ui
 	}
-
 	// ai.discoverContents() // Only do when really needed since this is slow
 	// log.Println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX rawcontents:", ai.rawcontents)
 	// Besides, for whatever reason it is not working properly yet

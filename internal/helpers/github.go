@@ -11,6 +11,10 @@ import (
 
 // GetCommitMessageForLatestCommit gets the commit message for the latest commit
 // (currently only on GitHub) using UpdateInformation. Returns commit string and err
+// Can get rather quickly:
+// 403 API rate limit exceeded for xxx.xxx.xxx.xxx.
+// (But here's the good news: Authenticated requests get a higher rate limit.
+// Check out the documentation for more details.) [rate reset in 59m39s]
 func GetCommitMessageForLatestCommit(ui UpdateInformation) (string, error) {
 
 	if ui.transportmechanism == "gh-releases-zsync" {
