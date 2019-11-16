@@ -115,6 +115,9 @@ func main() {
 
 	checkPrerequisites()
 
+	// Watch the filesystem for accesses using fanotify
+	// FANotifyMonitor() // fanotifymonitor error: operation not permitted
+
 	installFilemanagerContextMenus()
 
 	ptrue := true // Nasty trick from https://code-review.googlesource.com/c/gocloud/+/26730/3/bigquery/query.go
