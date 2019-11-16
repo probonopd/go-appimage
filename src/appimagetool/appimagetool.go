@@ -89,7 +89,10 @@ func main() {
 
 // GenerateAppImage converts an AppDir into an AppImage
 func GenerateAppImage(appdir string) {
-
+	if _, err := os.Stat(appdir + "/AppRun"); os.IsNotExist(err) {
+		os.Stderr.WriteString("AppRun is missing \n")
+		os.Exit(1)
+	}
 	// Guess update information
 	// Check if $VERSION is empty and git is on the path, if yes "git rev-parse --short HEAD"
 	version := ""
