@@ -1,7 +1,17 @@
+// Watches the filesystem for accesses similar to what an on-demand virus scanner would do
 // Heavily borrowed from
 // https://github.com/coolhacks/docker-hacks/blob/d7ea13522188233d5e8a97179d2b0a872239f58d/examples/docker-slim/src/launcher/main.go
+// This needs root permissions.
+// FIXME: Blocked by: How can I get root permissions from polkit for this?
+
+// FIXME: This builds on amd64 but not on arm64, getting:
+// fanotifymonitor.go:111:10: nd.Mark undefined (type *fanotify.NotifyFD has no field or method Mark)
+// https://travis-ci.com/probonopd/go-appimage/jobs/257232286
+// Hence the code is commented out for now.
 
 package main
+
+/*
 
 import (
 	"fmt"
@@ -311,3 +321,5 @@ func fanotifymonitor(stop_work chan bool, stop_work_ack chan bool, pids chan []i
 		stop_work_ack <- true
 	}()
 }
+
+*/
