@@ -3,6 +3,7 @@
 package helpers
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -57,4 +58,25 @@ func TestGit() {
 	// 	fmt.Println(c)
 	// }
 
+}
+
+// GetGitRepository returns a git Repository if cwd is a git repository, and error otherwise
+func GetGitRepository() (*git.Repository, error) {
+	var repo *git.Repository
+	cwd, err := os.Getwd()
+	if err != nil {
+		return repo, err
+	}
+
+	repo, err = git.PlainOpenWithOptions(cwd, &git.PlainOpenOptions{DetectDotGit: true})
+	if err != nil {
+		return repo, err
+	}
+
+	if repo == nil {
+		fmt.Println()
+		return repo, errors.New("Could not open repository. Please execute this command from within a git repository. " + cwd)
+	}
+
+	return repo, nil
 }

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/agriardyan/go-zsyncmake/zsync"
 	"gopkg.in/ini.v1"
 	"io/ioutil"
 	"os"
@@ -17,7 +18,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/agriardyan/go-zsyncmake/zsync"
 	"github.com/probonopd/appimage/internal/helpers"
 )
 
@@ -95,14 +95,27 @@ func GenerateAppImage(appdir string) {
 		os.Stderr.WriteString("AppRun is missing \n")
 		os.Exit(1)
 	}
+
+	gitRepo, err := helpers.GetGitRepository()
+	if err != nil {
+		fmt.Println("Apparently not in a git repository")
+	} else {
+		gitWt, err := gitRepo.Worktree()
+		if err == nil {
+			fmt.Println("git root:", gitWt.Filesystem.Root())
+		} else {
+			fmt.Println("Could not get root of git repository")
+		}
+	}
+
 	// Guess update information
-	// Check if $VERSION is empty and git is on the path, if yes "git rev-parse --short HEAD"
-	// TODO: Use native git in Go, and on Travis use Travis build numbers (too)
-	version := ""
+	// TODO: On Travis use Travis build numbers (too)
+	var version string
 	version = os.Getenv("VERSION")
-	_, err := exec.LookPath("git")
-	if version == "" && err == nil {
-		version, err := exec.Command("git", "rev-parse", "--short", "HEAD", appdir).Output()
+	// _, err = exec.LookPath("git")
+	if version == "" {
+		gitHead, _ := gitRepo.Head()
+		version = gitHead.Hash().String()[:7] // This equals 'git rev-parse --short HEAD'
 		if err != nil {
 			os.Stderr.WriteString("Could not determine version automatically, please supply the application version as $VERSION " + filepath.Base(os.Args[0]) + " ... \n")
 			os.Exit(1)

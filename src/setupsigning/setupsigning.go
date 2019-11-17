@@ -52,15 +52,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// FIXME: Question to Go experts.
-	// It would be neat if we could write
-	// clean, err := MustGet(r.Worktree().Status().IsClean())
-	// but that gives an error:
-	// multiple-value r.Worktree() in single-value context
-	// Is there a way to do this?
-
-	// For now we need to do it the complicated way
-
 	gitWorktree, _ := gitRepo.Worktree()
 	s, _ := gitWorktree.Status()
 	clean := s.IsClean()
@@ -83,7 +74,7 @@ func main() {
 	exitIfFileExists(helpers.PrivkeyFileName, "Private key")
 	exitIfFileExists(helpers.EncPrivkeyFileName, "Encrypted private key")
 
-	// Get repo_slug. TODO: Replace with native Go code
+	// Get repo_slug.
 	gitRemote, err := gitRepo.Remote("origin")
 	if err != nil {
 		fmt.Println("Could not get git remote")
