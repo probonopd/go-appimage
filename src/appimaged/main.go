@@ -17,7 +17,7 @@ import (
 	"github.com/adrg/xdg"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 
-	helpers "github.com/probonopd/appimage/internal/helpers"
+	"github.com/probonopd/appimage/internal/helpers"
 	"github.com/prometheus/procfs"
 )
 
@@ -258,18 +258,16 @@ func moveDesktopFiles() {
 
 	// If we do everything in parallel, we get "too many files open" errors
 	// Hence we limit the number of concurrent go routines
+	// using a counting semaphore
 	// https://stackoverflow.com/a/38825523
 	sem := make(chan struct{}, 8) // Maximum number of concurrent go routines // ***
-
-	// The next 3 lines limit the number of concurrent go routines
-	// using a counting semaphore
 	sem <- struct{}{}
 	defer func() { <-sem }()
-	defer wg.Done()
 
 	for _, path := range toBeIntegratedOrUnintegrated {
 		ai := NewAppImage(path)
 		go ai.IntegrateOrUnintegrate()
+		defer wg.Done()
 	}
 
 	wg.Wait() // Wait until all go routines since "var wg sync.WaitGroup" have been completed
