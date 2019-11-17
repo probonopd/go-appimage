@@ -96,13 +96,15 @@ func GenerateAppImage(appdir string) {
 		os.Exit(1)
 	}
 
+	gitRoot := ""
 	gitRepo, err := helpers.GetGitRepository()
 	if err != nil {
 		fmt.Println("Apparently not in a git repository")
 	} else {
 		gitWt, err := gitRepo.Worktree()
 		if err == nil {
-			fmt.Println("git root:", gitWt.Filesystem.Root())
+			gitRoot = gitWt.Filesystem.Root()
+			fmt.Println("git root:", gitRoot)
 		} else {
 			fmt.Println("Could not get root of git repository")
 		}
@@ -428,18 +430,16 @@ func GenerateAppImage(appdir string) {
 
 	// TODO: Signing.
 
-	// Embed public key into .sig_key section
-	// FIXME: Find out where the git top-level directory is and read the pubkey from there...
-	buf, err := ioutil.ReadFile(helpers.PubkeyFileName)
+	// Embed public key into .sig_key section if it exists
+	buf, err := ioutil.ReadFile(gitRoot + "/" + helpers.PubkeyFileName)
 	if err != nil {
-		fmt.Println("TODO: Find out where the git top-level directory is and read the pubkey from there...")
-		helpers.PrintError("Could not read pubkey", err)
-		os.Exit(0)
-	}
-	err = helpers.EmbedStringInSegment(target, ".sig_key", string(buf))
-	if err != nil {
-		helpers.PrintError("EmbedStringInSegment", err)
-		os.Exit(1)
+		helpers.PrintError("Could not read "+gitRoot+"/"+helpers.PubkeyFileName, err)
+	} else {
+		err = helpers.EmbedStringInSegment(target, ".sig_key", string(buf))
+		if err != nil {
+			helpers.PrintError("EmbedStringInSegment", err)
+			os.Exit(1)
+		}
 	}
 
 	if updateinformation == "" {
