@@ -83,6 +83,7 @@ func main() {
 	} else {
 		// TODO: If it is a file, then check if it is an AppImage and if yes, extract it
 		os.Stderr.WriteString("Supplied argument is not a directory \n")
+		os.Stderr.WriteString("To extract an AppImage, run it with --appimage-extract \n")
 		os.Exit(1)
 	}
 }
