@@ -1,0 +1,9 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="appimagetool" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="appimage" />
+    <working_directory value="$PROJECT_DIR$/" />
+    <kind value="PACKAGE" />
+    <package value="github.com/probonopd/appimage/src/appimagetool" />
+    <method v="2" />
+  </configuration>
+</component>
