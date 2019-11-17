@@ -259,12 +259,12 @@ func moveDesktopFiles() {
 	// using a counting semaphore
 	// https://stackoverflow.com/a/38825523
 	sem := make(chan struct{}, 8) // Maximum number of concurrent go routines // ***
-	sem <- struct{}{}
-	defer func() { <-sem }()
 
 	for _, path := range toBeIntegratedOrUnintegrated {
 		ai := NewAppImage(path)
 		go ai.IntegrateOrUnintegrate()
+		sem <- struct{}{}
+		defer func() { <-sem }() // FIXME: Possible resource leak, 'defer' is called in a for loop - is this bad?
 		defer wg.Done()
 	}
 
