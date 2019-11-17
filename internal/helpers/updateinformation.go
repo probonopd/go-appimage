@@ -113,7 +113,7 @@ func ValidateUpdateInformation(updateinformation string) error {
 		return errors.New("Scheme is missing, zsync needs e.,g,. http:// or https://")
 	}
 	if strings.HasSuffix(u.Path, ".zsync") == false {
-		return errors.New("Does not end in .zsync")
+		return errors.New(updateinformation + " does not end in .zsync")
 	}
 
 	return nil

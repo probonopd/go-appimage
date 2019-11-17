@@ -2,7 +2,6 @@ package main
 
 import (
 	"C"
-
 	"bytes"
 	"crypto/md5"
 	"encoding/hex"
@@ -228,13 +227,10 @@ func (ai AppImage) Validate() error {
 	}
 	// Check validity of the updateinformation in this AppImage, if it contains some
 	if ai.updateinformation != "" {
-		if *verbosePtr == true {
-			log.Println("Validating updateinformation in", ai.path)
-		}
+		log.Println("Validating updateinformation in", ai.path)
 		err := helpers.ValidateUpdateInformation(ai.updateinformation)
-		helpers.PrintError("appimage: updateinformation verification", err)
 		if err != nil {
-			sendDesktopNotification("Invalid AppImage", ai.niceName+"\ncontains invalid update information:\n"+ai.updateinformation+"\n"+err.Error()+"\nPlease ask the author to fix it.", 30000)
+			helpers.PrintError("appimage: updateinformation verification", err)
 			return err
 		}
 	}

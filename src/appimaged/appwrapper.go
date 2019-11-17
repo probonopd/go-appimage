@@ -39,8 +39,10 @@ func appwrap() {
 
 	if ai.imagetype > 0 {
 		// TODO: If we have an AppImage, then check the updateinformation inside the AppImage (or better: lint the AppImage)
-		ai.Validate() // It sends notifications itself, so we don't need to
-
+		err := ai.Validate()
+		if err != nil {
+			sendDesktopNotification(ai.niceName+" is not a proper AppImage", err.Error()+"\nPlease ask the author to fix it.", 30000)
+		}
 		// TODO: If we have an AppImage, then check the desktop file inside the AppImage (or better: lint the AppDir, reuse code from appimagetool)
 		// TODO: If we have an AppImage, then check that the .DirIcon  inside the AppImage exists (or better: lint the AppDir, reuse code from appimagetool)
 	}
