@@ -220,8 +220,8 @@ func (ai AppImage) setExecBit() {
 	// printError("appimage", err) // Do not print error since AppImages on read-only media are common
 }
 
-// CheckQualityAndNotify checks the quality of an AppImage and notifies about any issues found
-// Returns error or nil
+// Validate checks the quality of an AppImage and sends desktop notification, returns error or nil
+// TODO: Add more checks and reuse this in appimagetool
 func (ai AppImage) Validate() error {
 	if *verbosePtr == true {
 		log.Println("Validating AppImage", ai.path)
@@ -275,11 +275,11 @@ func (ai AppImage) _integrate() {
 	}
 
 	// Let's be evil and integrate only good AppImages...
-	err := ai.Validate()
-	if err != nil {
-		log.Println("AppImage did not pass validation:", ai.path)
-		return
-	}
+	// err := ai.Validate()
+	// if err != nil {
+	// 	log.Println("AppImage did not pass validation:", ai.path)
+	// 	return
+	// }
 
 	writeDesktopFile(ai) // Do not run with "go" as it would interfere with extractDirIconAsThumbnail
 

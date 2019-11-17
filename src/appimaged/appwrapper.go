@@ -35,6 +35,16 @@ func appwrap() {
 	// and check them with desktop-file-verify; display notification if verification fails
 	go checkDesktopFiles(os.Args[2])
 
+	ai := NewAppImage(os.Args[2])
+
+	if ai.imagetype > 0 {
+		// TODO: If we have an AppImage, then check the updateinformation inside the AppImage (or better: lint the AppImage)
+		ai.Validate() // It sends notifications itself, so we don't need to
+
+		// TODO: If we have an AppImage, then check the desktop file inside the AppImage (or better: lint the AppDir, reuse code from appimagetool)
+		// TODO: If we have an AppImage, then check that the .DirIcon  inside the AppImage exists (or better: lint the AppDir, reuse code from appimagetool)
+	}
+
 	if err := cmd.Start(); err != nil {
 		log.Fatalf("cmd.Start: %v", err)
 	}
