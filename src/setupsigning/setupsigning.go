@@ -122,6 +122,7 @@ func main() {
 	if err != nil {
 		fmt.Println("client.Authentication.UsingGithubToken:", err)
 		fmt.Println("This can mean that the token is invalid or has not enough rights in its scope")
+		fmt.Println("FIXME: Authentication seems to only work for .org but not for .com right now") # FIXME
 		os.Exit(1)
 	}
 
