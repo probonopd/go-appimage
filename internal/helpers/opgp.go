@@ -62,7 +62,7 @@ func createKeyPair() {
 	}
 	w.Close()
 
-	prf, err := os.Create("privkey")
+	prf, err := os.Create(PrivkeyFileName)
 	PrintError("ogpg", err)
 	defer prf.Close()
 	n2, err := prf.Write(buf.Bytes())
@@ -88,7 +88,7 @@ func createKeyPair() {
 	}
 	w.Close()
 
-	puf, err := os.Create("pubkey")
+	puf, err := os.Create(PubkeyFileName)
 	PrintError("ogpg", err)
 	defer puf.Close()
 	n2, err = puf.Write(buf.Bytes())

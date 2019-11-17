@@ -97,6 +97,7 @@ func GenerateAppImage(appdir string) {
 	}
 	// Guess update information
 	// Check if $VERSION is empty and git is on the path, if yes "git rev-parse --short HEAD"
+	// TODO: Use native git in Go, and on Travis use Travis build numbers (too)
 	version := ""
 	version = os.Getenv("VERSION")
 	_, err := exec.LookPath("git")
@@ -110,9 +111,6 @@ func GenerateAppImage(appdir string) {
 			fmt.Println("      Please set the $VERSION environment variable if this is not intended")
 		}
 	}
-
-	// Check if *.desktop file is present in source AppDir
-	// find_first_matching_file_nonrecursive(source, "*.desktop");
 
 	// If no desktop file found, exit
 	n := len(helpers.FilesWithSuffixInDirectory(appdir, ".desktop"))
@@ -137,7 +135,7 @@ func GenerateAppImage(appdir string) {
 
 	// Read information from .desktop file
 
-	// Check for presence of "Categories=" key and abort otherwise
+	// Check for presence of required keys and abort otherwise
 	d, err := ini.Load(desktopfile)
 	helpers.PrintError("ini.load", err)
 	neededKeys := []string{"Categories", "Name", "Exec", "Type", "Icon"}
@@ -413,6 +411,14 @@ func GenerateAppImage(appdir string) {
 	// TODO: Signing.
 
 	// Embed public key into .sig_key section
+	// FIXME: Find out where the git top-level directory is and read the pubkey from there...
+	buf, err := ioutil.ReadFile(helpers.PubkeyFileName)
+	if err != nil {
+		fmt.Println("TODO: Find out where the git top-level directory is and read the pubkey from there...")
+		helpers.PrintError("Could not read pubkey", err)
+		os.Exit(0)
+	}
+	embedStringInSegment(target, ".sig_key", string(buf))
 
 	if updateinformation == "" {
 		// No updateinformation was provided nor calculated, so the following steps make no sense

@@ -44,11 +44,11 @@ func main() {
 
 	gitRepo, err = git.PlainOpenWithOptions(cwd, &git.PlainOpenOptions{DetectDotGit: true})
 	if err != nil {
-		fmt.Println("git.PlainOpen:", err)
+		fmt.Println("git:", err)
 	}
 
 	if gitRepo == nil {
-		fmt.Println("Could not open repository", cwd)
+		fmt.Println("Could not open repository. Please execute this command from within a clean git repository.", cwd)
 		os.Exit(1)
 	}
 
@@ -79,9 +79,9 @@ func main() {
 	}
 
 	// Exit if the repo already contains the files we are about to add
-	exitIfFileExists("pubkey", "Public key")
-	exitIfFileExists("privkey", "Private key")
-	exitIfFileExists("privkey.enc", "Encrypted private key")
+	exitIfFileExists(helpers.PubkeyFileName, "Public key")
+	exitIfFileExists(helpers.PrivkeyFileName, "Private key")
+	exitIfFileExists(helpers.EncPrivkeyFileName, "Encrypted private key")
 
 	// Get repo_slug. TODO: Replace with native Go code
 	gitRemote, err := gitRepo.Remote("origin")
@@ -141,8 +141,8 @@ func main() {
 		existingVars = append(existingVars, *e.Name)
 	}
 
-	if Contains(existingVars, "super_secret_password") == true {
-		fmt.Println("Environment variable", "super_secret_password", "already exists on Travis CI")
+	if Contains(existingVars, helpers.EnvSuperSecret) == true {
+		fmt.Println("Environment variable", helpers.EnvSuperSecret, "already exists on Travis CI")
 		fmt.Println("You can check it on", travisSettingsURL)
 		fmt.Println("It looks like this repository is already set up for signing. Exiting")
 		os.Exit(1)
@@ -158,7 +158,7 @@ func main() {
 	helpers.CreateAndValidateKeyPair()
 
 	// Check if we succeeded until here
-	if _, err := os.Stat("privkey"); err != nil {
+	if _, err := os.Stat(helpers.PrivkeyFileName); err != nil {
 		fmt.Println("Could not create private key, exiting")
 		os.Exit(1)
 	}
@@ -195,7 +195,7 @@ func main() {
 
 	// Encrypt the private key using the password
 	// TODO: Replace with native Go code in ossl.go
-	cmd := "openssl aes-256-cbc -pass file:./secret -in ./privkey -out ./privkey.enc -a"
+	cmd := "openssl aes-256-cbc -pass file:./secret -in ./" + helpers.PrivkeyFileName + " -out ./" + helpers.EncPrivkeyFileName + " -a"
 	err = helpers.RunCmdStringTransparently(cmd)
 	if err != nil {
 		fmt.Println("Could not encrypt the private key using the password, exiting")
@@ -203,43 +203,37 @@ func main() {
 	}
 
 	// Check if we succeeded until here
-	if _, err := os.Stat("privkey.enc"); err != nil {
+	if _, err := os.Stat(helpers.EncPrivkeyFileName); err != nil {
 		fmt.Println("Could not encrypt private key, exiting")
 		os.Exit(1)
 	}
 
 	// Delete unneeded public key
-	err = os.Remove("privkey.pub")
-	if err != nil {
-		fmt.Println("Could not delete privkey.pub, exiting")
-		os.Exit(1)
-	}
+	/*
+		err = os.Remove("privkey.pub")
+		if err != nil {
+			fmt.Println("Could not delete privkey.pub, exiting")
+			os.Exit(1)
+		}
+	*/
 
 	// Delete unencrypted private key
-	err = os.Remove("secret")
-	if err == nil {
-		fmt.Println("Could not delete secret, exiting")
-		os.Exit(1)
-	}
+	os.Remove("secret") // Seemingly this gives an error even if it deleted the file...
 
 	// Delete unencrypted private key
-	err = os.Remove("privkey")
-	if err == nil {
-		fmt.Println("Could not delete unencrypted private key, exiting")
-		os.Exit(1)
-	}
+	os.Remove(helpers.PrivkeyFileName) // Seemingly this gives an error even if it deleted the file...
 
 	SetTravisEnv(client, repoSlug, existingVars, "GITHUB_TOKEN", token, travisSettingsURL)
-	SetTravisEnv(client, repoSlug, existingVars, "super_secret_password", superSecretPassword, travisSettingsURL)
+	SetTravisEnv(client, repoSlug, existingVars, helpers.EnvSuperSecret, superSecretPassword, travisSettingsURL)
 	// SetTravisEnv(client, repo_slug, existingVars, "FOO", "BAR")
 
-	_, err = gitWorktree.Add("privkey.enc")
+	_, err = gitWorktree.Add(helpers.EncPrivkeyFileName)
 	if err != nil {
 		fmt.Println("Could not add encrypted private key to git repository")
 		os.Exit(1)
 	}
 
-	_, err = gitWorktree.Add("pubkey")
+	_, err = gitWorktree.Add(helpers.PubkeyFileName)
 	if err != nil {
 		fmt.Println("Could not add public key to git repository")
 		os.Exit(1)
@@ -249,15 +243,15 @@ func main() {
 	fmt.Println("")
 	fmt.Println("Your super secret password is:")
 	fmt.Println(superSecretPassword)
-	fmt.Println("Store it in a safe location, along with your encrypted private key in privkey.enc.")
+	fmt.Println("Store it in a safe location, along with your encrypted private key in " + helpers.EncPrivkeyFileName + ".")
 	fmt.Println("")
 	fmt.Println("You can decrypt it with:")
-	fmt.Println("openssl aes-256-cbc -pass \"pass:" + superSecretPassword + "\" -in privkey.enc -out privkey -d -a")
+	fmt.Println("openssl aes-256-cbc -pass \"pass:" + superSecretPassword + "\" -in " + helpers.EncPrivkeyFileName + " -out " + helpers.PrivkeyFileName + " -d -a")
 	fmt.Println("")
 	fmt.Println("Please add to your .travis.yml file:")
 	fmt.Println("----------------------------------------------------------------------------------------------")
 	fmt.Println("before_install:")
-	fmt.Println("  - openssl aes-256-cbc -pass \"pass:$super_secret_password\" -in privkey.enc -out privkey -d -a")
+	fmt.Println("  - openssl aes-256-cbc -pass \"pass:$" + helpers.EnvSuperSecret + "\" -in " + helpers.EncPrivkeyFileName + " -out " + helpers.PrivkeyFileName + " -d -a")
 	fmt.Println("----------------------------------------------------------------------------------------------")
 	fmt.Println("Then, run 'git commit' and 'git push'")
 }
