@@ -201,7 +201,10 @@ func stopSystemdService(servicename string) {
 
 func exitIfBinfmtExists(path string) {
 	cmd := exec.Command("/bin/sh", "-c", "echo -1 | sudo tee "+path)
-	cmd.Run()
+	err := cmd.Run()
+	if err != nil {
+		helpers.PrintError("prerequisites: exitIfBinfmtExists", err)
+	}
 	if _, err := os.Stat(path); err == nil {
 		log.Println("ERROR:", path, "exists. Please remove it by running")
 		println("echo -1 | sudo tee", path)

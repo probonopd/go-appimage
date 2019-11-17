@@ -53,7 +53,10 @@ func takeCareOfCommandlineCommands() {
 			comnd = append(comnd, os.Args[3:]...)
 
 			if os.Args[1] == "run" {
-				helpers.RunCmdTransparently(comnd)
+				err = helpers.RunCmdTransparently(comnd)
+				if err != nil {
+					helpers.PrintError("LaunchMostRecentAppImage", err)
+				}
 			} else {
 				cmd := exec.Command(comnd[0], comnd[1:]...)
 				err := cmd.Start()

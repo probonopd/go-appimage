@@ -166,12 +166,12 @@ func (ai AppImage) determineImageType() int {
 	}
 
 	// Directories cannot be AppImages, so return fast
-	if err == nil && info.IsDir() {
+	if info.IsDir() {
 		return -1
 	}
 
 	// Very small files cannot be AppImages, so return fast
-	if err == nil && info.Size() < 100*1024 {
+	if info.Size() < 100*1024 {
 		return -1
 	}
 
@@ -408,7 +408,10 @@ func LaunchMostRecentAppImage(updateinformation string, args []string) {
 		log.Println("Launching", aipath, args)
 		cmd := []string{aipath}
 		cmd = append(cmd, args...)
-		helpers.RunCmdTransparently(cmd)
+		err := helpers.RunCmdTransparently(cmd)
+		if err != nil {
+			helpers.PrintError("LaunchMostRecentAppImage", err)
+		}
 
 	}
 }

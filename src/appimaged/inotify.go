@@ -35,7 +35,10 @@ func inotifyWatch(path string) {
 
 	if err == nil {
 
-		watcher.Add(path)
+		err = watcher.Add(path)
+		if err != nil {
+			helpers.PrintError("inotify: watcher.Add", err)
+		}
 		log.Println("inotify: Watching", path)
 
 		var done bool

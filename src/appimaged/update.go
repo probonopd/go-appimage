@@ -49,7 +49,8 @@ func update() {
 		cmd = append(cmd, "-n")
 		cmd = append(cmd, "-d")
 		cmd = append(cmd, os.Args[2:]...)
-		helpers.RunCmdTransparently(cmd)
+		err := helpers.RunCmdTransparently(cmd)
+		helpers.LogError("update", err)
 	}
 
 }

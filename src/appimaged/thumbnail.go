@@ -42,8 +42,10 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	// 	cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, ".DirIcon")
 	// 	runCommand(cmd)
 	// }
-	ai.ExtractFile(".DirIcon", thumbnailcachedir)
-
+	err := ai.ExtractFile(".DirIcon", thumbnailcachedir)
+	if err != nil {
+		sendErrorDesktopNotification(ai.niceName+" may be defective", "Could not read .DirIcon")
+	}
 	// What we have just extracted may well have been a symlink
 	// hence we try to resolve it
 	fileInfo, err := ioutil.ReadDir(thumbnailcachedir)
@@ -57,11 +59,14 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 				log.Println("TODO: Not yet implemented for type-1: We have a symlink, extract the original file")
 			} else if ai.imagetype == 2 {
 				cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, originFile)
-				runCommand(cmd)
+				_, err = runCommand(cmd)
+				if err != nil {
+					helpers.LogError("thumbnail", err)
+				}
 			}
 			err = os.RemoveAll(thumbnailcachedir + "/.DirIcon")                              // Remove the symlink
 			err = os.Rename(thumbnailcachedir+"/"+originFile, thumbnailcachedir+"/.DirIcon") // Put the real file there instead
-			helpers.LogError("appimage", err)
+			helpers.LogError("thumbnail", err)
 			// TODO: Rinse and repeat: May we still have a symlink at this point?
 		}
 	}
@@ -75,7 +80,10 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 			log.Println(".DirIcon extraction failed. Is it missing? Trying to figure out alternative")
 		}
 		cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, "*.desktop")
-		runCommand(cmd)
+		_, err = runCommand(cmd)
+		if err != nil {
+			helpers.LogError("thumbnail", err)
+		}
 		files, _ := ioutil.ReadDir(thumbnailcachedir)
 		for _, file := range files {
 			if filepath.Ext(thumbnailcachedir+file.Name()) == ".desktop" {
@@ -88,7 +96,10 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 					log.Println("iconname from desktop file:", iconvalue)
 					helpers.LogError("thumbnail: thumbnailcachedir", err)
 					cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, iconvalue)
-					runCommand(cmd)
+					_, err = runCommand(cmd)
+					if err != nil {
+						helpers.LogError("thumbnail", err)
+					}
 					err = os.Rename(thumbnailcachedir+"/"+iconvalue, thumbnailcachedir+"/.DirIcon")
 					helpers.LogError("thumbnail", err)
 					err = os.RemoveAll(thumbnailcachedir + "/" + file.Name())
@@ -112,11 +123,14 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 					log.Println("TODO: Not yet implemented for type-1: We have a symlink, extract the original file")
 				} else if ai.imagetype == 2 {
 					cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, originFile)
-					runCommand(cmd)
+					_, err = runCommand(cmd)
+					if err != nil {
+						helpers.LogError("thumbnail", err)
+					}
 				}
 				err = os.RemoveAll(thumbnailcachedir + "/.DirIcon")                              // Remove the symlink
 				err = os.Rename(thumbnailcachedir+"/"+originFile, thumbnailcachedir+"/.DirIcon") // Put the real file there instead
-				helpers.LogError("appimage", err)
+				helpers.LogError("thumbnail", err)
 				// TODO: Rinse and repeat: May we still have a symlink at this point?
 			}
 		}
@@ -149,7 +163,8 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	if err != nil {
 		return
 	} else if fi.Size() == 0 {
-		os.Remove(thumbnailcachedir + "/.DirIcon")
+		err = os.Remove(thumbnailcachedir + "/.DirIcon")
+		helpers.LogError("thumbnail", err)
 		return
 	}
 
@@ -158,7 +173,8 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 
 	if checkMagicAtOffset(f, "504e47", 1) == false {
 		log.Println("thumbnail: Not a PNG file, hence removing:", thumbnailcachedir+"/.DirIcon")
-		os.Remove(thumbnailcachedir + "/.DirIcon")
+		err = os.Remove(thumbnailcachedir + "/.DirIcon")
+		helpers.LogError("thumbnail", err)
 	}
 
 	// Write "Thumbnail Attributes" metadata as mandated by

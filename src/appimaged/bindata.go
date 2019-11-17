@@ -78,13 +78,13 @@ func dataAppimagePngBytes() ([]byte, error) {
 }
 
 func dataAppimagePng() (*asset, error) {
-	bytes, err := dataAppimagePngBytes()
+	bytes2, err := dataAppimagePngBytes()
 	if err != nil {
 		return nil, err
 	}
 
 	info := bindataFileInfo{name: "data/appimage.png", size: 11592, mode: os.FileMode(384), modTime: time.Unix(1572687023, 0)}
-	a := &asset{bytes: bytes, info: info}
+	a := &asset{bytes: bytes2, info: info}
 	return a, nil
 }
 

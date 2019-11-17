@@ -154,8 +154,10 @@ func main() {
 
 	// Disable desktop integration provided by scripts within AppImages
 	// as per https://github.com/AppImage/AppImageSpec/blob/master/draft.md#desktop-integration
-	os.Setenv("DESKTOPINTEGRATION", "go-appimaged")
-
+	err := os.Setenv("DESKTOPINTEGRATION", "go-appimaged")
+	if err != nil {
+		helpers.PrintError("main", err)
+	}
 	// TODO: Also react to network interfaces and network connections coming and going,
 	// refer to the official NetworkManager dbus specification:
 	// https://developer.gnome.org/NetworkManager/1.16/spec.html
@@ -359,8 +361,10 @@ func watchDirectories() {
 	// https://github.com/AppImage/appimaged#monitored-directories
 	home, _ := os.UserHomeDir()
 
-	os.MkdirAll(home+"/Applications", 0755)
-
+	err := os.MkdirAll(home+"/Applications", 0755)
+	if err != nil {
+		helpers.PrintError("main", err)
+	}
 	var watchedDirectories []string
 
 	candidateDirectories := []string{

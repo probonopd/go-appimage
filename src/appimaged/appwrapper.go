@@ -138,10 +138,10 @@ func findDesktopFilesPointingToExecutable(executablefilepath string) ([]string, 
 		if strings.HasSuffix(file.Name(), ".desktop") {
 			cfg, _ := ini.Load(xdg.DataHome + "/applications/" + file.Name())
 			// log.Println(xdg.DataHome + "/applications/" + file.Name())
-			exec := cfg.Section("Desktop Entry").Key("Exec").String()
+			s := cfg.Section("Desktop Entry").Key("Exec").String()
 			// dst = strings.Replace(dst, os.Args[0]+" "+os.Args[1]+" ", "", -1)
-			// log.Println(exec)
-			if strings.Contains(exec, executablefilepath) {
+			// log.Println(s)
+			if strings.Contains(s, executablefilepath) {
 				results = append(results, file.Name())
 			}
 

@@ -72,14 +72,20 @@ Name=Make executable
 	// https://github.com/Sadi58/nemo-actions
 	// http://www.bernaerts-nicolas.fr/linux/76-gnome/344-nautilus-new-document-creation-menu
 	// ~/.local/share/file-manager/actions/newfile-bash.desktop
-	os.MkdirAll(xdg.DataHome+"/file-manager/actions/", 0755)
+	err := os.MkdirAll(xdg.DataHome+"/file-manager/actions/", 0755)
+	if err != nil {
+		helpers.PrintError("filemanager", err)
+	}
 	d1 := []byte(GNOMEFileManagerActionEntry)
-	err := ioutil.WriteFile(xdg.DataHome+"/file-manager/actions/appimaged.desktop", d1, 0644)
+	err = ioutil.WriteFile(xdg.DataHome+"/file-manager/actions/appimaged.desktop", d1, 0644)
 	helpers.PrintError("filemanager", err)
 
 	// KDE
 	// $HOME/.local/share/kservices5/ServiceMenus/appimageupdate.desktop
-	os.MkdirAll(xdg.DataHome+"/kservices5/ServiceMenus/", 0755)
+	err = os.MkdirAll(xdg.DataHome+"/kservices5/ServiceMenus/", 0755)
+	if err != nil {
+		helpers.PrintError("filemanager", err)
+	}
 	d2 := []byte(KDEServiceMenuEntry)
 	err = ioutil.WriteFile(xdg.DataHome+"/kservices5/ServiceMenus/appimaged.desktop", d2, 0644)
 	helpers.PrintError("filemanager", err)
@@ -89,7 +95,10 @@ Name=Make executable
 	// (by the use of the thunar-uca plugin, part of the Thunar distribution, in the plugins/ subdirectory).
 	// FIXME: Do not overwrite pre-existing uca.xml file but insert the new action into it
 	// This is more complicated than needed. Can't Thunar handle one file per action?s
-	os.MkdirAll(xdg.ConfigHome+"/Thunar/", 0755)
+	err = os.MkdirAll(xdg.ConfigHome+"/Thunar/", 0755)
+	if err != nil {
+		helpers.PrintError("filemanager", err)
+	}
 	d3 := []byte(XFCEThunarAction)
 	err = ioutil.WriteFile(xdg.ConfigHome+"/Thunar/uca.xml", d3, 0644)
 	helpers.PrintError("filemanager", err)

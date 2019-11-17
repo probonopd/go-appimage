@@ -23,7 +23,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 	"strings"
 
 	"github.com/go-language-server/uri"
@@ -88,7 +87,7 @@ func monitorDbusSessionBus() {
 
 	call := conn.BusObject().Call("org.freedesktop.DBus.Monitoring.BecomeMonitor", 0, rules, flag)
 	if call.Err != nil {
-		log.Println(os.Stderr, "Failed to become monitor:", call.Err)
+		log.Println("Failed to become monitor:", call.Err)
 		return
 	}
 
