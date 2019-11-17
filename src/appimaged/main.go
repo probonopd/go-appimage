@@ -53,8 +53,6 @@ var toBeIntegratedOrUnintegrated []string
 
 var thisai AppImage // A reference to myself
 
-// var conn *dbus.Conn // MAYBE NOT SHARE IT?
-
 var MQTTclient mqtt.Client
 
 // To keep track of what we already have subscribed. Something like this is needed in order

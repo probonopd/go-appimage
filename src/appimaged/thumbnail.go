@@ -17,7 +17,7 @@ import (
 	"github.com/sabhiram/png-embed" // For embedding metadata into PNG
 	. "github.com/srwiley/oksvg"
 	. "github.com/srwiley/rasterx"
-	ini "gopkg.in/ini.v1"
+	"gopkg.in/ini.v1"
 )
 
 func (ai AppImage) extractDirIconAsThumbnail() {
@@ -44,7 +44,8 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	// }
 	err := ai.ExtractFile(".DirIcon", thumbnailcachedir)
 	if err != nil {
-		sendErrorDesktopNotification(ai.niceName+" may be defective", "Could not read .DirIcon")
+		// Too verbose
+		// sendErrorDesktopNotification(ai.niceName+" may be defective", "Could not read .DirIcon")
 	}
 	// What we have just extracted may well have been a symlink
 	// hence we try to resolve it

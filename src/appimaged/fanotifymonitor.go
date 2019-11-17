@@ -42,7 +42,17 @@ func FANotifyMonitor() {
 	if err != nil {
 		helpers.PrintError("fanotifymonitor: polkit.NewAuthority", err)
 	}
-	action := "org.freedesktop.policykit.exec"
+	action := "org.gtk.vfs.file-operations-helper"
+	// Why this one? Because
+	// sudo grep -r "sudo" /usr/share/polkit-1/
+	// indicates that it is granted when the user is in the sudoers group
+    // FIXME: Still getting:
+	// polkit: Is authorized: true org.gtk.vfs.file-operations-helper
+	// launcher: args => []string{"/tmp/___appimaged"}
+	// launcher: fanotifymonitor starting...
+	// fanotifymonitor: listen_events start
+	// fanotifymonitor error: operation not permitted
+
 	// FIXME: Looks like there is no action for fanotify
 	// Can we get root directly, e.g., using auth_admin_keep without a /etc/polkit-1/rules.d/51-pkexec-auth-admin-keep.rules file?
 	// Alternatively, can we get permission from polkit to write that file there?
