@@ -11,6 +11,8 @@
 !*.go
 !*.png
 !*.md
+!*.iml
+!*.xml
 
 # Everything below this line is redundant
 # and may be removed once everything works as intended

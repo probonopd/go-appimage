@@ -1,0 +1,10 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="go build main.go" type="GoApplicationRunConfiguration" factoryName="Go Application" nameIsGenerated="true">
+    <module name="go-appimage" />
+    <working_directory value="$PROJECT_DIR$/" />
+    <kind value="FILE" />
+    <filePath value="$PROJECT_DIR$/src/appimaged/main.go" />
+    <directory value="$PROJECT_DIR$/" />
+    <method v="2" />
+  </configuration>
+</component>
