@@ -34,7 +34,7 @@ func main() {
 	flag.Parse()
 
 	// Check if we are on a clean git repository. Exit as fast as possible if we are not.
-	var git_repo *git.Repository
+	var gitRepo *git.Repository
 
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -42,12 +42,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	git_repo, err = git.PlainOpenWithOptions(cwd, &git.PlainOpenOptions{DetectDotGit: true})
+	gitRepo, err = git.PlainOpenWithOptions(cwd, &git.PlainOpenOptions{DetectDotGit: true})
 	if err != nil {
 		fmt.Println("git.PlainOpen:", err)
 	}
 
-	if git_repo == nil {
+	if gitRepo == nil {
 		fmt.Println("Could not open repository", cwd)
 		os.Exit(1)
 	}
@@ -61,8 +61,8 @@ func main() {
 
 	// For now we need to do it the complicated way
 
-	git_worktree, _ := git_repo.Worktree()
-	s, _ := git_worktree.Status()
+	gitWorktree, _ := gitRepo.Worktree()
+	s, _ := gitWorktree.Status()
 	clean := s.IsClean()
 
 	if clean == false {
@@ -84,13 +84,13 @@ func main() {
 	exitIfFileExists("privkey.enc", "Encrypted private key")
 
 	// Get repo_slug. TODO: Replace with native Go code
-	git_remote, err := git_repo.Remote("origin")
+	gitRemote, err := gitRepo.Remote("origin")
 	if err != nil {
 		fmt.Println("Could not get git remote")
 		os.Exit(1)
 	}
-	components := strings.Split(git_remote.Config().URLs[0], "/")
-	repo_slug := components[len(components)-2] + "/" + components[len(components)-1]
+	components := strings.Split(gitRemote.Config().URLs[0], "/")
+	repoSlug := components[len(components)-2] + "/" + components[len(components)-1]
 	// fmt.Println(repo_slug)
 
 	// Ask user for GitHub token
@@ -111,11 +111,11 @@ func main() {
 	if AskForConfirmation() == true {
 		fmt.Println("Assuming your repository is on travis.com")
 		client = travis.NewClient(travis.ApiComUrl, "")
-		travisSettingsURL = "https://travis-ci.com/" + repo_slug + "/settings"
+		travisSettingsURL = "https://travis-ci.com/" + repoSlug + "/settings"
 	} else {
 		fmt.Println("Assuming your repository is on travis.org")
 		client = travis.NewClient(travis.ApiOrgUrl, "")
-		travisSettingsURL = "https://travis-ci.org/" + repo_slug + "/settings"
+		travisSettingsURL = "https://travis-ci.org/" + repoSlug + "/settings"
 	}
 
 	_, _, err = client.Authentication.UsingGithubToken(context.Background(), token)
@@ -126,19 +126,19 @@ func main() {
 	}
 
 	// Read existing environment variables on Travis CI
-	esList, resp, err := client.EnvVars.ListByRepoSlug(context.Background(), repo_slug)
+	esList, resp, err := client.EnvVars.ListByRepoSlug(context.Background(), repoSlug)
 	if err != nil {
 		fmt.Println("client.EnvVars.ListByRepoSlug:", err)
 		os.Exit(1)
 	}
 	if resp.StatusCode < 200 || 300 <= resp.StatusCode {
-		fmt.Printf("Could not read existing environment variables on Travis CI for repo %s: invalid http status: %s", repo_slug, resp.Status)
+		fmt.Printf("Could not read existing environment variables on Travis CI for repo %s: invalid http status: %s", repoSlug, resp.Status)
 	}
 
 	var existingVars []string
 	for _, e := range esList {
 		// fmt.Println("* Name:", *e.Name, "Public:", *e.Public, "Id:", *e.Id)
-		existingVars = append(existingVars, string(*e.Name))
+		existingVars = append(existingVars, *e.Name)
 	}
 
 	if Contains(existingVars, "super_secret_password") == true {
@@ -180,14 +180,14 @@ func main() {
 	// Generate the password which we will store as a
 	// private environment variable on Travis CI
 	// and will use to encrypt the private key
-	super_secret_password := generatePassword()
+	superSecretPassword := generatePassword()
 	f, err := os.Create("secret")
 	if err != nil {
 		fmt.Println("Could not open file for writing secret, exiting")
 		os.Exit(1)
 	}
 	defer f.Close()
-	f.WriteString(super_secret_password)
+	_, err = f.WriteString(superSecretPassword)
 	if err != nil {
 		fmt.Println("Could not write secret, exiting")
 		os.Exit(1)
@@ -196,7 +196,11 @@ func main() {
 	// Encrypt the private key using the password
 	// TODO: Replace with native Go code in ossl.go
 	cmd := "openssl aes-256-cbc -pass file:./secret -in ./privkey -out ./privkey.enc -a"
-	helpers.RunCmdStringTransparently(cmd)
+	err = helpers.RunCmdStringTransparently(cmd)
+	if err != nil {
+		fmt.Println("Could not encrypt the private key using the password, exiting")
+		os.Exit(1)
+	}
 
 	// Check if we succeeded until here
 	if _, err := os.Stat("privkey.enc"); err != nil {
@@ -205,43 +209,37 @@ func main() {
 	}
 
 	// Delete unneeded public key
-	os.Remove("privkey.pub")
-
-	// Check if we succeeded until here
-	if _, err := os.Stat("privkey.pub"); err == nil {
+	err = os.Remove("privkey.pub")
+	if err != nil {
 		fmt.Println("Could not delete privkey.pub, exiting")
 		os.Exit(1)
 	}
 
 	// Delete unencrypted private key
-	os.Remove("secret")
-
-	// Check if we succeeded until here
-	if _, err := os.Stat("secret"); err == nil {
+	err = os.Remove("secret")
+	if err == nil {
 		fmt.Println("Could not delete secret, exiting")
 		os.Exit(1)
 	}
 
 	// Delete unencrypted private key
-	os.Remove("privkey")
-
-	// Check if we succeeded until here
-	if _, err := os.Stat("privkey"); err == nil {
+	err = os.Remove("privkey")
+	if err == nil {
 		fmt.Println("Could not delete unencrypted private key, exiting")
 		os.Exit(1)
 	}
 
-	SetTravisEnv(client, repo_slug, existingVars, "GITHUB_TOKEN", token, travisSettingsURL)
-	SetTravisEnv(client, repo_slug, existingVars, "super_secret_password", super_secret_password, travisSettingsURL)
+	SetTravisEnv(client, repoSlug, existingVars, "GITHUB_TOKEN", token, travisSettingsURL)
+	SetTravisEnv(client, repoSlug, existingVars, "super_secret_password", superSecretPassword, travisSettingsURL)
 	// SetTravisEnv(client, repo_slug, existingVars, "FOO", "BAR")
 
-	_, err = git_worktree.Add("privkey.enc")
+	_, err = gitWorktree.Add("privkey.enc")
 	if err != nil {
 		fmt.Println("Could not add encrypted private key to git repository")
 		os.Exit(1)
 	}
 
-	_, err = git_worktree.Add("pubkey")
+	_, err = gitWorktree.Add("pubkey")
 	if err != nil {
 		fmt.Println("Could not add public key to git repository")
 		os.Exit(1)
@@ -250,11 +248,11 @@ func main() {
 	// TODO: Can we automate this?
 	fmt.Println("")
 	fmt.Println("Your super secret password is:")
-	fmt.Println(super_secret_password)
+	fmt.Println(superSecretPassword)
 	fmt.Println("Store it in a safe location, along with your encrypted private key in privkey.enc.")
 	fmt.Println("")
 	fmt.Println("You can decrypt it with:")
-	fmt.Println("openssl aes-256-cbc -pass \"pass:" + super_secret_password + "\" -in privkey.enc -out privkey -d -a")
+	fmt.Println("openssl aes-256-cbc -pass \"pass:" + superSecretPassword + "\" -in privkey.enc -out privkey -d -a")
 	fmt.Println("")
 	fmt.Println("Please add to your .travis.yml file:")
 	fmt.Println("----------------------------------------------------------------------------------------------")
@@ -265,14 +263,15 @@ func main() {
 }
 
 // SetTravisEnv sets a private variable on Travis CI
-func SetTravisEnv(client *travis.Client, repo_slug string, existingVars []string, name string, value string, travisSettingsURL string) {
+func SetTravisEnv(client *travis.Client, repoSlug string, existingVars []string, name string, value string, travisSettingsURL string) {
 	body := travis.EnvVarBody{Name: name, Value: value, Public: false}
 	if Contains(existingVars, name) == false {
 		fmt.Println("Set environment variable", name, "on Travis CI...")
-		_, resp, err := client.EnvVars.CreateByRepoSlug(context.Background(), repo_slug, &body)
-		fmt.Println(resp.Status)
+		_, resp, err := client.EnvVars.CreateByRepoSlug(context.Background(), repoSlug, &body)
 		if err != nil {
 			fmt.Println(err)
+		} else {
+			fmt.Println(resp.Status)
 		}
 	} else {
 		fmt.Println("Environment variable", name, "already exists on Travis CI, not changing it")
