@@ -261,14 +261,13 @@ func moveDesktopFiles() {
 	// https://stackoverflow.com/a/38825523
 	sem := make(chan struct{}, 8) // Maximum number of concurrent go routines // ***
 
+	// The next 3 lines limit the number of concurrent go routines
+	// using a counting semaphore
+	sem <- struct{}{}
+	defer func() { <-sem }()
+	defer wg.Done()
+
 	for _, path := range toBeIntegratedOrUnintegrated {
-
-		// The next 3 lines limit the number of concurrent go routines
-		// using a counting semaphore
-		sem <- struct{}{}
-		defer func() { <-sem }()
-		defer wg.Done()
-
 		ai := NewAppImage(path)
 		go ai.IntegrateOrUnintegrate()
 	}
