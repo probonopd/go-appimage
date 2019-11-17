@@ -94,6 +94,6 @@ func CalculateElfSize(file string) int64 {
 
 	// Calculate ELF size
 	elfsize := shoff + (shentsize * shnum)
-	log.Println("elfsize:", elfsize, file)
+	// log.Println("elfsize:", elfsize, file)
 	return elfsize
 }
