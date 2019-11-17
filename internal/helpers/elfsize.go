@@ -6,6 +6,7 @@ package helpers
 import (
 	"debug/elf"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -96,4 +97,56 @@ func CalculateElfSize(file string) int64 {
 	elfsize := shoff + (shentsize * shnum)
 	// log.Println("elfsize:", elfsize, file)
 	return elfsize
+}
+
+// EmbedStringInSegment embeds a string in an ELF segment, returns error
+func EmbedStringInSegment(path string, section string, s string) error {
+	fmt.Println("")
+	// Find offset and length of section
+	uidata, err := GetSectionData(path, section)
+	PrintError("GetSectionData for '"+section+"'", err)
+	if err != nil {
+		os.Stderr.WriteString("Could not find section " + section + " in runtime, exiting\n")
+		return (err)
+	}
+	fmt.Println("")
+	fmt.Println("Section " + section + " before embedding:")
+	fmt.Println(uidata)
+	fmt.Println("")
+	uioffset, uilength, err := GetSectionOffsetAndLength(path, section)
+	PrintError("GetSectionData for '"+section+"'", err)
+	if err != nil {
+		os.Stderr.WriteString("Could not determine offset and length of " + section + " in runtime, exiting\n")
+		return (err)
+	}
+	fmt.Println("Embedded "+section+" section offset:", uioffset)
+	fmt.Println("Embedded "+section+" section length:", uilength)
+	fmt.Println("")
+	// Exit if data exceeds available space in section
+	if len(s) > len(uidata) {
+		os.Stderr.WriteString("does not fit into " + section + " section, exiting\n")
+		return (err)
+	}
+	fmt.Println("Writing into "+section+" section...", uilength)
+	// Seek file to ui_offset and write it there
+	WriteStringIntoOtherFileAtOffset(s, path, uioffset)
+	PrintError("GetSectionData for '"+section+"'", err)
+	if err != nil {
+		os.Stderr.WriteString("Could write into " + section + " section, exiting\n")
+		return (err)
+	}
+	uidata, err = GetSectionData(path, section)
+	PrintError("GetSectionData for '"+section+"'", err)
+	if err != nil {
+		os.Stderr.WriteString("Could not find section " + section + " in runtime, exiting\n")
+		return (err)
+	}
+	fmt.Println("")
+	fmt.Println("Embedded " + section + " section after embedding:")
+	fmt.Println(uidata)
+	fmt.Println("")
+	fmt.Println("Embedded " + section + " section now contains:")
+	fmt.Println(string(uidata))
+	fmt.Println("")
+	return (nil)
 }

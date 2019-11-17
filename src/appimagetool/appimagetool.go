@@ -388,7 +388,12 @@ func GenerateAppImage(appdir string) {
 			os.Exit(1)
 		}
 
-		embedStringInSegment(target, ".upd_info", updateinformation)
+		helpers.EmbedStringInSegment(target, ".upd_info", updateinformation)
+		if err != nil {
+			helpers.PrintError("EmbedStringInSegment", err)
+			os.Exit(1)
+		}
+
 	}
 
 	// TODO: calculate and embed MD5 digest
@@ -418,7 +423,11 @@ func GenerateAppImage(appdir string) {
 		helpers.PrintError("Could not read pubkey", err)
 		os.Exit(0)
 	}
-	embedStringInSegment(target, ".sig_key", string(buf))
+	err = helpers.EmbedStringInSegment(target, ".sig_key", string(buf))
+	if err != nil {
+		helpers.PrintError("EmbedStringInSegment", err)
+		os.Exit(1)
+	}
 
 	if updateinformation == "" {
 		// No updateinformation was provided nor calculated, so the following steps make no sense
@@ -478,47 +487,6 @@ func GenerateAppImage(appdir string) {
 	fmt.Println("Please consider submitting your AppImage to AppImageHub, the crowd-sourced")
 	fmt.Println("central directory of available AppImages, by opening a pull request")
 	fmt.Println("at https://github.com/AppImage/appimage.github.io")
-}
-
-func embedStringInSegment(path string, segment string, s string) {
-	// Find offset and length of segment
-	uidata, err := helpers.GetSectionData(path, segment)
-	helpers.PrintError("GetSectionData for '"+segment+"'", err)
-	if err != nil {
-		os.Stderr.WriteString("Could not find section " + segment + " in runtime, exiting\n")
-		os.Exit(1)
-	}
-	fmt.Println("Embedded " + segment + " section before embedding:")
-	fmt.Println(uidata)
-	uioffset, uilength, err := helpers.GetSectionOffsetAndLength(path, ".upd_info")
-	helpers.PrintError("GetSectionData for '"+segment+"'", err)
-	if err != nil {
-		os.Stderr.WriteString("Could not determine offset and length of " + segment + " in runtime, exiting\n")
-		os.Exit(1)
-	}
-	fmt.Println("Embedded "+segment+" section offset:", uioffset)
-	fmt.Println("Embedded "+segment+" section length:", uilength)
-	// Exit if data exceeds available space in segment
-	if len(s) > len(uidata) {
-		os.Stderr.WriteString("does not fit into " + segment + " segment, exiting\n")
-		os.Exit(1)
-	}
-	fmt.Println("Writing into "+segment+" segment...", uilength)
-	// Seek file to ui_offset and write it there
-	helpers.WriteStringIntoOtherFileAtOffset(s, path, uioffset)
-	helpers.PrintError("GetSectionData for '"+segment+"'", err)
-	if err != nil {
-		os.Stderr.WriteString("Could write into " + segment + " segment, exiting\n")
-		os.Exit(1)
-	}
-	uidata, err = helpers.GetSectionData(path, segment)
-	helpers.PrintError("GetSectionData for '"+segment+"'", err)
-	if err != nil {
-		os.Stderr.WriteString("Could not find section " + segment + " in runtime, exiting\n")
-		os.Exit(1)
-	}
-	fmt.Println("Embedded " + segment + " section now contains:")
-	fmt.Println(string(uidata))
 }
 
 func constructMQTTPayload(name string, version string, FSTime time.Time) (string, error) {
