@@ -17,7 +17,7 @@ import (
 // sendUpdateDesktopNotification sends a desktop notification for an update.
 // Use this with "go" prefixed to it so that it runs in the background, because it waits
 // until the user clicks on "Update" or the timeout occurs
-func sendUpdateDesktopNotification(appname string, version string, changelog_url string) {
+func sendUpdateDesktopNotification(appname string, version string, changelogUrl string) {
 
 	conn, err := dbus.SessionBusPrivate() // When using SessionBusPrivate(), need to follow with Auth(nil) and Hello()
 	defer conn.Close()
@@ -48,7 +48,7 @@ func sendUpdateDesktopNotification(appname string, version string, changelog_url
 		ReplacesID:    uint32(0),
 		AppIcon:       iconName,
 		Summary:       "Update available",
-		Body:          appname + " can be updated to version " + version + ". \n<a href='" + changelog_url + "'>View Changelog</a>",
+		Body:          appname + " can be updated to version " + version + ". \n<a href='" + changelogUrl + "'>View Changelog</a>",
 		Actions:       []string{"update", "Update", "changelog", "View Changelog"}, // tuples of (action_key, label)
 		Hints:         map[string]dbus.Variant{},
 		ExpireTimeout: int32(120000),
@@ -134,7 +134,7 @@ func sendDesktopNotification(title string, body string, durationms int32) {
 
 	call := obj.Call("org.freedesktop.Notifications.Notify", 0, "", uint32(0),
 		"", title, body, []string{},
-		map[string]dbus.Variant{}, int32(durationms))
+		map[string]dbus.Variant{}, durationms)
 
 	if call.Err != nil {
 		log.Println("xxxxxxxxxxxxxxxxxxxx ERROR: notification:", call.Err)

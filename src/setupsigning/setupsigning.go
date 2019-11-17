@@ -26,7 +26,7 @@ import (
 	"gopkg.in/src-d/go-git.v4"
 )
 
-// var overwritePtr = flag.Bool("o", false, "Overwrite pre-existing files")
+var overwritePtr = flag.Bool("o", false, "Overwrite pre-existing files")
 
 func main() {
 

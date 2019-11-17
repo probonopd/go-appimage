@@ -13,7 +13,7 @@ import (
 
 	"github.com/adrg/xdg"
 	issvg "github.com/h2non/go-is-svg"
-	helpers "github.com/probonopd/appimage/internal/helpers"
+	"github.com/probonopd/appimage/internal/helpers"
 	"github.com/sabhiram/png-embed" // For embedding metadata into PNG
 	. "github.com/srwiley/oksvg"
 	. "github.com/srwiley/rasterx"

@@ -10,8 +10,8 @@ import (
 
 	"github.com/adrg/xdg"
 	"github.com/amenzhinsky/go-polkit"
-	systemd_dbus "github.com/coreos/go-systemd/dbus"
-	helpers "github.com/probonopd/appimage/internal/helpers"
+	systemddbus "github.com/coreos/go-systemd/dbus"
+	"github.com/probonopd/appimage/internal/helpers"
 )
 
 func checkPrerequisites() {
@@ -123,7 +123,7 @@ func checkPrerequisites() {
 
 func checkIfSystemdServiceRunning(servicenames []string) bool {
 
-	conn, err := systemd_dbus.NewUserConnection()
+	conn, err := systemddbus.NewUserConnection()
 	defer conn.Close()
 	helpers.PrintError("pre: checkIfSystemdServiceRunning", err)
 	if err != nil {
@@ -179,7 +179,7 @@ func stopSystemdService(servicename string) {
 	// 	*cleanPtr = true // Clean up pre-existing desktop files from the other AppImage system integration daemon
 	// }
 
-	conn, err := systemd_dbus.NewUserConnection()
+	conn, err := systemddbus.NewUserConnection()
 	defer conn.Close()
 	helpers.PrintError("pre: checkIfSystemdServiceRunning", err)
 	if err != nil {

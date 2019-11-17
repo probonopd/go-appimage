@@ -11,7 +11,7 @@ import (
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	helpers "github.com/probonopd/appimage/internal/helpers"
+	"github.com/probonopd/appimage/internal/helpers"
 )
 
 func connect(clientId string, uri *url.URL) mqtt.Client {

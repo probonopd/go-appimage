@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"gopkg.in/ini.v1"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,7 +18,6 @@ import (
 
 	"github.com/agriardyan/go-zsyncmake/zsync"
 	"github.com/probonopd/appimage/internal/helpers"
-	"gopkg.in/ini.v1"
 )
 
 // https://blog.kowalczyk.info/article/vEja/embedding-build-number-in-go-executable.html
@@ -100,9 +100,10 @@ func GenerateAppImage(appdir string) {
 	_, err := exec.LookPath("git")
 	if version == "" && err == nil {
 		version, err := exec.Command("git", "rev-parse", "--short", "HEAD", appdir).Output()
-		os.Stderr.WriteString("Could not determine version automatically, please supply the application version as $VERSION " + filepath.Base(os.Args[0]) + " ... \n")
-		os.Exit(1) ////////////// Temporarily disabled for debugging
-		if err == nil {
+		if err != nil {
+			os.Stderr.WriteString("Could not determine version automatically, please supply the application version as $VERSION " + filepath.Base(os.Args[0]) + " ... \n")
+			os.Exit(1)
+		} else {
 			fmt.Println("NOTE: Using", version, "from 'git rev-parse --short HEAD' as the version")
 			fmt.Println("      Please set the $VERSION environment variable if this is not intended")
 		}
@@ -284,7 +285,7 @@ func GenerateAppImage(appdir string) {
 	// We supply our own fstime rather than letting mksquashfs determine it
 	// so that we know its value for being able to publish it
 	FSTime := time.Now()
-	fstime := string(strconv.FormatInt(FSTime.Unix(), 10)) // Seconds since epoch.  Default to current time
+	fstime := strconv.FormatInt(FSTime.Unix(), 10) // Seconds since epoch.  Default to current time
 
 	// Turns out that using time.Now() is more precise than a Unix timestamp (seconds precision).
 	// Hence we convert back from the Unix timestamp to be consistent.

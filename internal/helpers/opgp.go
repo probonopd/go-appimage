@@ -94,11 +94,11 @@ func createKeyPair() {
 func validate(keystring string) error {
 	data, err := base64.StdEncoding.DecodeString(keystring)
 	if err != nil {
-		return (err)
+		return err
 	}
 	_, err = openpgp.ReadEntity(packet.NewReader(bytes.NewBuffer(data)))
 	if err != nil {
-		return (err)
+		return err
 	}
 	fmt.Println("PASSED")
 	return nil

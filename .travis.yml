@@ -1,5 +1,5 @@
 dist: xenial
-language: none
+language: minimal
 
 arch:
   - amd64

@@ -91,14 +91,14 @@ func ValidateUpdateInformation(updateinformation string) error {
 	}
 	// Check for allowed transport mechanisms,
 	// https://github.com/AppImage/AppImageSpec/blob/master/draft.md#update-information
-	transport_mechanisms := []string{"zsync", "bintray-zsync", "gh-releases-zsync"}
-	detected_tm := ""
-	for _, tm := range transport_mechanisms {
+	transportMechanisms := []string{"zsync", "bintray-zsync", "gh-releases-zsync"}
+	detectedTm := ""
+	for _, tm := range transportMechanisms {
 		if parts[0] != tm {
-			detected_tm = tm
+			detectedTm = tm
 		}
 	}
-	if detected_tm == "" {
+	if detectedTm == "" {
 		return errors.New("Invalid transport mechanism")
 	}
 
@@ -109,7 +109,7 @@ func ValidateUpdateInformation(updateinformation string) error {
 	if err != nil {
 		return errors.New("Cannot parse URL")
 	}
-	if detected_tm == "zsync" && u.Scheme == "" { // FIXME: This apparently never triggers, why?
+	if detectedTm == "zsync" && u.Scheme == "" { // FIXME: This apparently never triggers, why?
 		return errors.New("Scheme is missing, zsync needs e.,g,. http:// or https://")
 	}
 	if strings.HasSuffix(u.Path, ".zsync") == false {

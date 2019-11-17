@@ -22,7 +22,7 @@ import (
 
 	"github.com/adrg/xdg"
 	"github.com/go-language-server/uri"
-	helpers "github.com/probonopd/appimage/internal/helpers"
+	"github.com/probonopd/appimage/internal/helpers"
 )
 
 // Handles AppImage files.

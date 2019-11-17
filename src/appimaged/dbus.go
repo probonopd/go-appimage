@@ -40,8 +40,8 @@ func removeDuplicatesUnordered(elements []string) []string {
 	}
 
 	// Place all keys from the map into a slice.
-	result := []string{}
-	for key, _ := range encountered {
+	var result []string
+	for key := range encountered {
 		result = append(result, key)
 	}
 	return result
@@ -237,5 +237,5 @@ func getFilepath(uristring string) string {
 		log.Println("To be imlpemented:", uristring[:7])
 		return ""
 	}
-	return (uri.New(uristring).Filename())
+	return uri.New(uristring).Filename()
 }

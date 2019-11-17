@@ -21,7 +21,7 @@ import (
 	"log"
 	"os"
 
-	helpers "github.com/probonopd/appimage/internal/helpers"
+	"github.com/probonopd/appimage/internal/helpers"
 	"gopkg.in/fsnotify.v1"
 )
 
