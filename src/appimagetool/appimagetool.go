@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"gopkg.in/ini.v1"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -218,9 +219,21 @@ func GenerateAppImage(appdir string) {
 	// since thumbails need to be in png format
 	if helpers.CheckIfFileExists(appdir+"/"+iconname+".png") == true {
 		iconfile = appdir + "/" + iconname + ".png"
+	} else if helpers.CheckIfFileExists(appdir + "/usr/share/icons/hicolor/256x256/" + iconname + ".png") {
+		// Search in usr/share/icons/hicolor/256x256 and copy from there
+		input, err := ioutil.ReadFile(appdir + "/usr/share/icons/hicolor/256x256/" + iconname + ".png")
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		err = ioutil.WriteFile(appdir+".DirIcon", input, 0644)
+		if err != nil {
+			fmt.Println("Error copying ticon to", appdir+".DirIcon")
+			fmt.Println(err)
+			return
+		}
 	} else {
 		os.Stderr.WriteString("Could not find icon file at " + appdir + "/" + iconname + ".png" + ", exiting\n")
-		fmt.Println("TODO: As a fallback, search in usr/share/icons/hicolor/256x256 and copy from there")
 		os.Exit(1)
 	}
 	fmt.Println(iconfile)
@@ -377,49 +390,7 @@ func GenerateAppImage(appdir string) {
 			os.Exit(1)
 		}
 
-		// Find offset and length of updateinformation
-		uidata, err := helpers.GetSectionData(target, ".upd_info")
-		helpers.PrintError("GetSectionData for '.upd_info'", err)
-		if err != nil {
-			os.Stderr.WriteString("Could not find section .upd_info in runtime, exiting\n")
-			os.Exit(1)
-		}
-		fmt.Println("Embedded .upd-info section before embedding updateinformation:")
-		fmt.Println(uidata)
-
-		uioffset, uilength, err := helpers.GetSectionOffsetAndLength(target, ".upd_info")
-		helpers.PrintError("GetSectionData for '.upd_info'", err)
-		if err != nil {
-			os.Stderr.WriteString("Could not determine offset and length of .upd_info in runtime, exiting\n")
-			os.Exit(1)
-		}
-		fmt.Println("Embedded .upd-info section offset:", uioffset)
-		fmt.Println("Embedded .upd-info section length:", uilength)
-
-		// Exit if updateinformation exceeds available space
-		if len(updateinformation) > len(uidata) {
-			os.Stderr.WriteString("updateinformation does not fit into .upd_info segment, exiting\n")
-			os.Exit(1)
-		}
-
-		fmt.Println("Writing updateinformation into .upd_info segment...", uilength)
-
-		// Seek file to ui_offset and write it there
-		helpers.WriteStringIntoOtherFileAtOffset(updateinformation, target, uioffset)
-		helpers.PrintError("GetSectionData for '.upd_info'", err)
-		if err != nil {
-			os.Stderr.WriteString("Could write into .upd_info segment, exiting\n")
-			os.Exit(1)
-		}
-
-		uidata, err = helpers.GetSectionData(target, ".upd_info")
-		helpers.PrintError("GetSectionData for '.upd_info'", err)
-		if err != nil {
-			os.Stderr.WriteString("Could not find section .upd_info in runtime, exiting\n")
-			os.Exit(1)
-		}
-		fmt.Println("Embedded .upd-info section now contains:")
-		fmt.Println(string(uidata))
+		embedStringInSegment(target, ".upd_info", updateinformation)
 	}
 
 	// TODO: calculate and embed MD5 digest
@@ -439,8 +410,9 @@ func GenerateAppImage(appdir string) {
 	// ought to be skipped, too
 	md5.New()
 
-	// TODO: Signing. It is pretty convoluted and hardly anyone is using it.
-	//  Can we make it much simpler to use? Check how goreleaser does it.
+	// TODO: Signing.
+
+	// Embed public key into .sig_key section
 
 	if updateinformation == "" {
 		// No updateinformation was provided nor calculated, so the following steps make no sense
@@ -500,6 +472,47 @@ func GenerateAppImage(appdir string) {
 	fmt.Println("Please consider submitting your AppImage to AppImageHub, the crowd-sourced")
 	fmt.Println("central directory of available AppImages, by opening a pull request")
 	fmt.Println("at https://github.com/AppImage/appimage.github.io")
+}
+
+func embedStringInSegment(path string, segment string, s string) {
+	// Find offset and length of segment
+	uidata, err := helpers.GetSectionData(path, segment)
+	helpers.PrintError("GetSectionData for '"+segment+"'", err)
+	if err != nil {
+		os.Stderr.WriteString("Could not find section " + segment + " in runtime, exiting\n")
+		os.Exit(1)
+	}
+	fmt.Println("Embedded " + segment + " section before embedding:")
+	fmt.Println(uidata)
+	uioffset, uilength, err := helpers.GetSectionOffsetAndLength(path, ".upd_info")
+	helpers.PrintError("GetSectionData for '"+segment+"'", err)
+	if err != nil {
+		os.Stderr.WriteString("Could not determine offset and length of " + segment + " in runtime, exiting\n")
+		os.Exit(1)
+	}
+	fmt.Println("Embedded "+segment+" section offset:", uioffset)
+	fmt.Println("Embedded "+segment+" section length:", uilength)
+	// Exit if data exceeds available space in segment
+	if len(s) > len(uidata) {
+		os.Stderr.WriteString("does not fit into " + segment + " segment, exiting\n")
+		os.Exit(1)
+	}
+	fmt.Println("Writing into "+segment+" segment...", uilength)
+	// Seek file to ui_offset and write it there
+	helpers.WriteStringIntoOtherFileAtOffset(s, path, uioffset)
+	helpers.PrintError("GetSectionData for '"+segment+"'", err)
+	if err != nil {
+		os.Stderr.WriteString("Could write into " + segment + " segment, exiting\n")
+		os.Exit(1)
+	}
+	uidata, err = helpers.GetSectionData(path, segment)
+	helpers.PrintError("GetSectionData for '"+segment+"'", err)
+	if err != nil {
+		os.Stderr.WriteString("Could not find section " + segment + " in runtime, exiting\n")
+		os.Exit(1)
+	}
+	fmt.Println("Embedded " + segment + " section now contains:")
+	fmt.Println(string(uidata))
 }
 
 func constructMQTTPayload(name string, version string, FSTime time.Time) (string, error) {
