@@ -349,7 +349,7 @@ func containsString(slice []string, element string) bool {
 // https://stackoverflow.com/a/22892986
 func generatePassword() string {
 	rand.Seed(time.Now().UnixNano())
-	var letters = []rune("1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ?!=%?§#")
+	var letters = []rune("1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	b := make([]rune, 24)
 	for i := range b {
 		b[i] = letters[rand.Intn(len(letters))]
