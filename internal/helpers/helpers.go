@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/adrg/xdg"
-	version "github.com/hashicorp/go-version"
+	"github.com/hashicorp/go-version"
 	"gopkg.in/ini.v1"
 )
 
@@ -60,14 +60,17 @@ func HereArgs0() string {
 		log.Println(err)
 		return ""
 	}
-	return (dir)
+	return dir
 }
 
 // AddHereToPath adds the location of the executable to the $PATH
 func AddHereToPath() {
 	// The directory we run from is added to the $PATH so that we find helper
 	// binaries there, too
-	os.Setenv("PATH", Here()+":"+os.Getenv("PATH"))
+	err := os.Setenv("PATH", Here()+":"+os.Getenv("PATH"))
+	if err != nil {
+		PrintError("helpers: AddHereToPath", err)
+	}
 	// log.Println("main: PATH:", os.Getenv("PATH"))
 }
 
@@ -263,8 +266,10 @@ func WriteFileIntoOtherFileAtOffset(inputfilepath string, outputfilepath string,
 		return err
 	}
 	defer fo.Close()
-	fo.Seek(int64(offset), 0)
-
+	_, err = fo.Seek(int64(offset), 0)
+	if err != nil {
+		return err
+	}
 	// make a buffer to keep chunks that are read
 	buf := make([]byte, 1024)
 	for {
@@ -291,7 +296,10 @@ func WriteStringIntoOtherFileAtOffset(inputstring string, outputfilepath string,
 	if err != nil {
 		return err
 	}
-	fo.Seek(int64(offset), 0)
+	_, err = fo.Seek(int64(offset), 0)
+	if err != nil {
+		return err
+	}
 	defer fo.Close()
 	buf := bytes.NewBufferString(inputstring)
 	if _, err := buf.WriteTo(fo); err != nil {
@@ -303,7 +311,9 @@ func WriteStringIntoOtherFileAtOffset(inputstring string, outputfilepath string,
 // GetSectionData returns the contents of an ELF section and error
 func GetSectionData(filepath string, name string) ([]byte, error) {
 	r, err := os.Open(filepath)
-	defer r.Close()
+	if err == nil {
+		defer r.Close()
+	}
 	f, err := elf.NewFile(r)
 	if err != nil {
 		return nil, err
@@ -322,7 +332,9 @@ func GetSectionData(filepath string, name string) ([]byte, error) {
 // GetSectionOffsetAndLength returns the offset and length of an ELF section and error
 func GetSectionOffsetAndLength(filepath string, name string) (uint64, uint64, error) {
 	r, err := os.Open(filepath)
-	defer r.Close()
+	if err == nil {
+		defer r.Close()
+	}
 	f, err := elf.NewFile(r)
 	if err != nil {
 		return 0, 0, err
@@ -337,7 +349,9 @@ func GetSectionOffsetAndLength(filepath string, name string) (uint64, uint64, er
 // GetElfArchitecture returns the architecture of a file, and err
 func GetElfArchitecture(filepath string) (string, error) {
 	r, err := os.Open(filepath)
-	defer r.Close()
+	if err == nil {
+		defer r.Close()
+	}
 	f, err := elf.NewFile(r)
 	if err != nil {
 		return "", err

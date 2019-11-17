@@ -57,7 +57,11 @@ func CalculateElfSize(file string) int64 {
 	switch e.Class.String() {
 	case "ELFCLASS64":
 		hdr := new(elf.Header64)
-		sr.Seek(0, 0)
+		_, err = sr.Seek(0, 0)
+		if err != nil {
+			PrintError("elfsize", err)
+			return 0
+		}
 		err = binary.Read(sr, e.ByteOrder, hdr)
 		if err != nil {
 			PrintError("elfsize", err)
@@ -69,7 +73,11 @@ func CalculateElfSize(file string) int64 {
 		shentsize = int64(hdr.Shentsize)
 	case "ELFCLASS32":
 		hdr := new(elf.Header32)
-		sr.Seek(0, 0)
+		_, err = sr.Seek(0, 0)
+		if err != nil {
+			PrintError("elfsize", err)
+			return 0
+		}
 		err = binary.Read(sr, e.ByteOrder, hdr)
 		if err != nil {
 			PrintError("elfsize", err)
