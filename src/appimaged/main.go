@@ -252,21 +252,23 @@ func moveDesktopFiles() {
 	// https://nathanleclaire.com/blog/2014/02/15/how-to-wait-for-all-goroutines-to-finish-executing-before-continuing/
 	// For this we use "var wg sync.WaitGroup" before we start the go routines,
 	// and "wg.Wait()" then waits until they have all done their job. Neat!
-	sem := make(chan struct{}, 8) // Maximum number of concurrent go routines // ***
 	var wg sync.WaitGroup
+
 	// If we do everything in parallel, we get "too many files open" errors
 	// Hence we limit the number of concurrent go routines
-	// using a counting semaphore
 	// https://stackoverflow.com/a/38825523
+	sem := make(chan struct{}, 8) // Maximum number of concurrent go routines // ***
 
 	for _, path := range toBeIntegratedOrUnintegrated {
+
+		// The next 3 lines limit the number of concurrent go routines
+		// using a counting semaphore
+		sem <- struct{}{}
+		defer func() { <-sem }()
 		defer wg.Done()
+
 		ai := NewAppImage(path)
 		go ai.IntegrateOrUnintegrate()
-
-		defer func() { <-sem }() // FIXME: Possible resource leak, 'defer' is called in a for loop - is this bad?
-
-		sem <- struct{}{}
 	}
 
 	wg.Wait() // Wait until all go routines since "var wg sync.WaitGroup" have been completed
