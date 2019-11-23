@@ -12,7 +12,7 @@ const (
 	EnvSuperSecret     = "super_secret_password" // Name of the secret environment variable stored on Travis CI
 )
 
-func CalculateSHA256Digest(path string, err error) {
+func CalculateSHA256Digest(path string) {
 	// Calculate AppImage MD5 digest according to
 	// https://github.com/AppImage/libappimage/blob/4d6f5f3d5b6c8c01c39b8ce0364b74cd6e4043c7/src/libappimage_shared/digest.c
 	// The ELF sections

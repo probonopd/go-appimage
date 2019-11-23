@@ -44,8 +44,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "\n")
 		fmt.Fprintf(os.Stderr, "Usage:\n")
 		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" <path to AppDir>\n")
+		fmt.Fprintf(os.Stderr, "\tConvert the supplied AppDir into an AppImage and \n\t(if running on Travis CI) sign, upload, and publish it\n")
+		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" validate <path to Image>\n")
+		fmt.Fprintf(os.Stderr, "\tCalculate the sha256 digest and check whether the signature is valid\n")
 		fmt.Fprintf(os.Stderr, "\n")
-
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -55,6 +57,25 @@ func main() {
 
 	// Add the location of the executable to the $PATH
 	helpers.AddHereToPath()
+
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "validate":
+			if len(os.Args) > 2 {
+				if helpers.CheckIfFileExists(os.Args[2]) {
+					helpers.CalculateSHA256Digest(os.Args[2])
+					fmt.Println("TODO: Implement the actual signature validation")
+				} else {
+					fmt.Println(os.Args[2], "does not exist")
+					os.Exit(1)
+				}
+			} else {
+				fmt.Println("Please specify an AppImage to validate")
+				os.Exit(1)
+			}
+			os.Exit(0)
+		}
+	}
 
 	// Check for needed files on $PATH
 	tools := []string{"file", "mksquashfs", "desktop-file-validate", "uploadtool"}
@@ -417,7 +438,7 @@ func GenerateAppImage(appdir string) {
 	// This is actually very useful for PubSub notifications, to find out whether we have already have
 	// an identical AppImage on the local machine or not
 
-	helpers.CalculateSHA256Digest(target, err)
+	helpers.CalculateSHA256Digest(target)
 
 	// TODO: Signing.
 
