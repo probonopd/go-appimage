@@ -63,7 +63,8 @@ func main() {
 		case "validate":
 			if len(os.Args) > 2 {
 				if helpers.CheckIfFileExists(os.Args[2]) {
-					helpers.CalculateSHA256Digest(os.Args[2])
+					d := helpers.CalculateSHA256Digest(os.Args[2])
+					fmt.Println("Calculated sha256 digest:", d)
 					fmt.Println("TODO: Implement the actual signature validation")
 				} else {
 					fmt.Println(os.Args[2], "does not exist")

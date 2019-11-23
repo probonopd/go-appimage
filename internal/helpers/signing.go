@@ -40,6 +40,5 @@ func CalculateSHA256Digest(path string) string {
 	}
 	defer f.Close()
 	h := CalculateDigestSkippingRanges(f, byteRangesToBeAssumedEmpty)
-	fmt.Printf("Calculated sha256 digest: %x\n", h.Sum(nil))
-	return fmt.Sprint("x", h.Sum(nil))
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
