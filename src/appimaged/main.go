@@ -268,6 +268,7 @@ func moveDesktopFiles() {
 		defer wg.Done()
 
 		ai := NewAppImage(path)
+		wg.Add(1) // need to add one to the counter for each go routine we are starting, or else we get 'panic: sync: negative WaitGroup counter'
 		go ai.IntegrateOrUnintegrate()
 	}
 
