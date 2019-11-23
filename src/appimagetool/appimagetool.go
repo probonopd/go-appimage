@@ -429,20 +429,24 @@ func GenerateAppImage(appdir string) {
 			helpers.PrintError("EmbedStringInSegment", err)
 			os.Exit(1)
 		}
-
 	}
 
-	// TODO: calculate and embed MD5 digest
+	// Embed SHA256 digest into '.sha256_sig' section if it exists
+	// This is not part of the AppImageSpec yet, but in the future we will want to put this into the AppImageSpec:
+	// If an AppImage is not signed, it should have the SHA256 digest in the '.sha256_sig' section; this might
+	// eventually remove the need for an extra '.digest_md5' section and hence simplify the format
+	digest := helpers.CalculateSHA256Digest(target)
+	err = helpers.EmbedStringInSegment(target, ".sha256_sig", digest)
+	if err != nil {
+		helpers.PrintError("EmbedStringInSegment", err)
+		os.Exit(1)
+	}
+
+	// TODO: calculate and embed MD5 digest (in case we want to use it)
 	// https://github.com/AppImage/AppImageKit/blob/801e789390d0e6848aef4a5802cd52da7f4abafb/src/appimagetool.c#L961
 	// Blocked by https://github.com/AppImage/AppImageSpec/issues/29
-	// This is actually very useful for PubSub notifications, to find out whether we have already have
-	// an identical AppImage on the local machine or not
 
-	helpers.CalculateSHA256Digest(target)
-
-	// TODO: Signing.
-
-	// Embed public key into .sig_key section if it exists
+	// Embed public key into '.sig_key' section if it exists
 	buf, err := ioutil.ReadFile(gitRoot + "/" + helpers.PubkeyFileName)
 	if err != nil {
 		helpers.PrintError("Could not read "+gitRoot+"/"+helpers.PubkeyFileName, err)
@@ -454,8 +458,11 @@ func GenerateAppImage(appdir string) {
 		}
 	}
 
+	// TODO: The actual signing
+
 	if updateinformation == "" {
-		// No updateinformation was provided nor calculated, so the following steps make no sense
+		// No updateinformation was provided nor calculated, so the following steps make no sense.
+		// Hence we print an information message and exit.
 		fmt.Println("Almost a success")
 		fmt.Println("")
 		fmt.Println("The AppImage was created, but is lacking update information.")
