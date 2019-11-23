@@ -109,11 +109,16 @@ func main() {
 		travisSettingsURL = "https://travis-ci.org/" + repoSlug + "/settings"
 	}
 
-	_, _, err = client.Authentication.UsingGithubToken(context.Background(), token)
+	_, response, err := client.Authentication.UsingGithubToken(context.Background(), token)
+	if got, want := response.StatusCode, 200; got != want {
+		fmt.Println("UsingGithubToken fails: invalid http response %s", response.Status)
+	}
+
 	if err != nil {
 		fmt.Println("client.Authentication.UsingGithubToken:", err)
 		fmt.Println("This can mean that the token is invalid or has not enough rights in its scope")
 		fmt.Println("FIXME: Authentication seems to only work for .org but not for .com right now") // FIXME
+		fmt.Println(response.Body)
 		os.Exit(1)
 	}
 

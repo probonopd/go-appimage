@@ -60,7 +60,7 @@ func hashRange(f *os.File, h hash.Hash, offset int64, length int64) {
 	if length == 0 {
 		return
 	}
-	fmt.Println("...hashing for", strconv.FormatInt(length, 10), "bytes")
+	fmt.Println("...hashing", strconv.FormatInt(length, 10), "bytes")
 	s := io.NewSectionReader(f, offset, length)
 	if _, err := io.Copy(h, s); err != nil {
 		log.Fatal(err)
@@ -71,7 +71,7 @@ func hashDummyRange(h hash.Hash, length int) {
 	if length == 0 {
 		return
 	}
-	fmt.Println("...hashing for", strconv.Itoa(length), "bytes as if they were 0x00")
+	fmt.Println("...hashing", strconv.Itoa(length), "bytes as if they were 0x00")
 	h.Write(bytes.Repeat([]byte{0x00}, length))
 }
 
@@ -87,7 +87,7 @@ func CalculateSHA256Digest(path string) string {
 	// ought to be skipped, too
 	fmt.Println("Calculating the sha256 digest...")
 	var byteRangesToBeAssumedEmpty []ByteRange
-	sectionsToBeSkipped := []string{".digest_md5", ".sha256_sig", ".sig_key"}
+	sectionsToBeSkipped := []string{".digest_md5", ".sha256_sig"} // ".sig_key"???
 	for _, s := range sectionsToBeSkipped {
 		offset, length, err := GetSectionOffsetAndLength(path, s)
 		if err == nil {

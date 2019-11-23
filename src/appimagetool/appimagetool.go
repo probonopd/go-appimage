@@ -35,19 +35,31 @@ func main() {
 		version = "unsupported custom build"
 	}
 
+	sections := []string{".upd_info", ".sha256_sig", ".sig_key", ".digest_md5"}
+
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "\n")
 		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" "+version+"\n")
 		fmt.Fprintf(os.Stderr, "\n")
+
 		fmt.Fprintf(os.Stderr, "Tool to convert an AppDir into an AppImage.\n")
 		fmt.Fprintf(os.Stderr, "If it is running on Travis CI, it also uploads the AppImage\nto GitHub Releases, creates update and publishes the information needed\nfor updating the AppImage.\n")
 		fmt.Fprintf(os.Stderr, "\n")
+
 		fmt.Fprintf(os.Stderr, "Usage:\n")
 		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" <path to AppDir>\n")
 		fmt.Fprintf(os.Stderr, "\tConvert the supplied AppDir into an AppImage and \n\t(if running on Travis CI) sign, upload, and publish it\n")
-		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" validate <path to Image>\n")
+
+		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" validate <path to AppImage>\n")
 		fmt.Fprintf(os.Stderr, "\tCalculate the sha256 digest and check whether the signature is valid\n")
+
+		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" sections <path to AppImage>\n")
+		fmt.Fprintf(os.Stderr, "\tPrint the AppImage specific sections (for debugging), namely\n\t")
+		for _, section := range sections {
+			fmt.Print(section, " ")
+		}
 		fmt.Fprintf(os.Stderr, "\n")
+
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -75,6 +87,45 @@ func main() {
 				os.Exit(1)
 			}
 			os.Exit(0)
+		case "sections":
+			if len(os.Args) > 2 {
+				if helpers.CheckIfFileExists(os.Args[2]) {
+
+					fmt.Println("")
+					for _, section := range sections {
+						offset, length, err := helpers.GetSectionOffsetAndLength(os.Args[2], section)
+						if err != nil {
+							fmt.Println("Error getting", section, err)
+						} else {
+							uidata, err := helpers.GetSectionData(os.Args[2], section)
+							fmt.Println("")
+							if err != nil {
+								os.Stderr.WriteString("Could not find section " + section + " in runtime, exiting\n")
+								fmt.Println("Error getting", section, err)
+							} else {
+								fmt.Println("Section", section, "offset", offset, "length", length)
+								fmt.Println("")
+								fmt.Println(uidata)
+								fmt.Println("")
+								fmt.Println("Which is as a string:")
+								fmt.Println("")
+								fmt.Println(string(uidata))
+								fmt.Println("")
+								fmt.Println("===========================================================")
+								fmt.Println("")
+							}
+						}
+					}
+				} else {
+					fmt.Println(os.Args[2], "does not exist")
+					os.Exit(1)
+				}
+			} else {
+				fmt.Println("Please specify an AppImage to print the sections")
+				os.Exit(1)
+			}
+			os.Exit(0)
+
 		}
 	}
 
