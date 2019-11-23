@@ -104,7 +104,7 @@ func EmbedStringInSegment(path string, section string, s string) error {
 	fmt.Println("")
 	// Find offset and length of section
 	uidata, err := GetSectionData(path, section)
-	PrintError("GetSectionData for '"+section+"'", err)
+	// PrintError("GetSectionData for '"+section+"'", err)
 	if err != nil {
 		os.Stderr.WriteString("Could not find section " + section + " in runtime, exiting\n")
 		return (err)
