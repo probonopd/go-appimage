@@ -224,7 +224,7 @@ func CopyFile(src string, dst string) error {
 }
 
 // CheckIfSquashfsVersionSufficient checks whether mksquashfs/unsquashfs
-// is recent enough to use -offset, prints an error message otherwise
+// is recent enough to use -Offset, prints an error message otherwise
 // Returns true if sufficient, false otherwise
 func CheckIfSquashfsVersionSufficient(toolname string) bool {
 	cmd := exec.Command(toolname, "-version")
@@ -250,7 +250,7 @@ func CheckIfSquashfsVersionSufficient(toolname string) bool {
 	return true
 }
 
-// WriteFileIntoOtherFileAtOffset writes the content of inputfile into outputfile at offset, without truncating
+// WriteFileIntoOtherFileAtOffset writes the content of inputfile into outputfile at Offset, without truncating
 // Returns error in case of errors, otherwise returns nil
 func WriteFileIntoOtherFileAtOffset(inputfilepath string, outputfilepath string, offset uint64) error {
 	// open input file
@@ -289,7 +289,7 @@ func WriteFileIntoOtherFileAtOffset(inputfilepath string, outputfilepath string,
 	return nil
 }
 
-// WriteStringIntoOtherFileAtOffset writes the content of inputstring into outputfile at offset, without truncating
+// WriteStringIntoOtherFileAtOffset writes the content of inputstring into outputfile at Offset, without truncating
 // Returns error in case of errors, otherwise returns nil
 func WriteStringIntoOtherFileAtOffset(inputstring string, outputfilepath string, offset uint64) error {
 	fo, err := os.OpenFile(outputfilepath, os.O_WRONLY, 0644)
@@ -330,7 +330,7 @@ func GetSectionData(filepath string, name string) ([]byte, error) {
 	return data, nil
 }
 
-// GetSectionOffsetAndLength returns the offset and length of an ELF section and error
+// GetSectionOffsetAndLength returns the Offset and Length of an ELF section and error
 func GetSectionOffsetAndLength(filepath string, name string) (uint64, uint64, error) {
 	r, err := os.Open(filepath)
 	if err == nil {

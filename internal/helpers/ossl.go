@@ -66,7 +66,7 @@ func DecryptBase64(passphrase, encryptedBase64 []byte) ([]byte, error) {
 // Decrypt decrypts a []byte that was encrypted using OpenSSL and AES-256-CBC.
 func Decrypt(passphrase, encrypted []byte) ([]byte, error) {
 	if len(encrypted) < aes.BlockSize {
-		return nil, fmt.Errorf("Cipher data length less than aes block size")
+		return nil, fmt.Errorf("Cipher data Length less than aes block size")
 	}
 	saltHeader := encrypted[:aes.BlockSize]
 	if !bytes.Equal(saltHeader[:8], openSSLSaltHeader) {

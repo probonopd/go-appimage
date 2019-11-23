@@ -4,7 +4,7 @@
 package main
 
 import (
-	"crypto/md5"
+	// "crypto/md5"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -426,7 +426,25 @@ func GenerateAppImage(appdir string) {
 	// need to be skipped, although I think
 	// .upd_info
 	// ought to be skipped, too
-	md5.New()
+
+	var byteRangesToBeAssumedEmpty []helpers.ByteRange
+	sectionsToBeSkipped := []string{".digest_md5", ".sha256_sig", ".sig_key"}
+	for _, s := range sectionsToBeSkipped {
+		offset, length, err := helpers.GetSectionOffsetAndLength(target, s)
+		if err == nil {
+			br := helpers.ByteRange{int64(offset), int64(length)}
+			byteRangesToBeAssumedEmpty = append(byteRangesToBeAssumedEmpty, br)
+		}
+	}
+
+	f, err := os.Open(target)
+	if err != nil {
+		helpers.PrintError("Cannot open file", err)
+		os.Exit(1)
+	}
+	defer f.Close()
+	h := helpers.CalculateDigestSkippingRanges(f, byteRangesToBeAssumedEmpty)
+	fmt.Printf("Calculated sha256 digest: %x\n", h.Sum(nil))
 
 	// TODO: Signing.
 

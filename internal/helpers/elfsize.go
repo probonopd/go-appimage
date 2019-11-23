@@ -102,7 +102,7 @@ func CalculateElfSize(file string) int64 {
 // EmbedStringInSegment embeds a string in an ELF segment, returns error
 func EmbedStringInSegment(path string, section string, s string) error {
 	fmt.Println("")
-	// Find offset and length of section
+	// Find Offset and Length of section
 	uidata, err := GetSectionData(path, section)
 	// PrintError("GetSectionData for '"+section+"'", err)
 	if err != nil {
@@ -116,11 +116,11 @@ func EmbedStringInSegment(path string, section string, s string) error {
 	uioffset, uilength, err := GetSectionOffsetAndLength(path, section)
 	PrintError("GetSectionData for '"+section+"'", err)
 	if err != nil {
-		os.Stderr.WriteString("Could not determine offset and length of " + section + " in runtime, exiting\n")
+		os.Stderr.WriteString("Could not determine Offset and Length of " + section + " in runtime, exiting\n")
 		return (err)
 	}
-	fmt.Println("Embedded "+section+" section offset:", uioffset)
-	fmt.Println("Embedded "+section+" section length:", uilength)
+	fmt.Println("Embedded "+section+" section Offset:", uioffset)
+	fmt.Println("Embedded "+section+" section Length:", uilength)
 	fmt.Println("")
 	// Exit if data exceeds available space in section
 	if len(s) > len(uidata) {
