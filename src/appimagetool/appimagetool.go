@@ -54,7 +54,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "\tCalculate the sha256 digest and check whether the signature is valid\n")
 
 		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" sections <path to AppImage>\n")
-		fmt.Fprintf(os.Stderr, "\tPrint the AppImage specific sections (for debugging), namely\n\t")
+		fmt.Fprintf(os.Stderr, "\tPrint the AppImage specific ELF sections (for debugging), namely\n\t")
 		for _, section := range sections {
 			fmt.Print(section, " ")
 		}
@@ -95,15 +95,15 @@ func main() {
 					for _, section := range sections {
 						offset, length, err := helpers.GetSectionOffsetAndLength(os.Args[2], section)
 						if err != nil {
-							fmt.Println("Error getting", section, err)
+							fmt.Println("Error getting ELF section", section, err)
 						} else {
 							uidata, err := helpers.GetSectionData(os.Args[2], section)
 							fmt.Println("")
 							if err != nil {
-								os.Stderr.WriteString("Could not find section " + section + " in runtime, exiting\n")
-								fmt.Println("Error getting", section, err)
+								os.Stderr.WriteString("Could not find  ELF section " + section + ", exiting\n")
+								fmt.Println("Error getting ELF section", section, err)
 							} else {
-								fmt.Println("Section", section, "offset", offset, "length", length)
+								fmt.Println("ELF section", section, "offset", offset, "length", length)
 								fmt.Println("")
 								fmt.Println(uidata)
 								fmt.Println("")

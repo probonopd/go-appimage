@@ -94,7 +94,7 @@ func CalculateSHA256Digest(path string) string {
 			if length == 0 {
 				continue
 			}
-			fmt.Println("Section", s, "offset", offset, "length", length)
+			fmt.Println("Assuming section", s, "offset", offset, "length", length, "to contain only '0x00's")
 			br := ByteRange{int64(offset), int64(length)}
 			byteRangesToBeAssumedEmpty = append(byteRangesToBeAssumedEmpty, br)
 		}
