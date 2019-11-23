@@ -450,7 +450,7 @@ func GenerateAppImage(appdir string) {
 	// Embed public key into '.sig_key' section if it exists
 	buf, err := ioutil.ReadFile(gitRoot + "/" + helpers.PubkeyFileName)
 	if err != nil {
-		helpers.PrintError("Could not read "+gitRoot+"/"+helpers.PubkeyFileName, err)
+		fmt.Println("Could not read "+gitRoot+"/"+helpers.PubkeyFileName+":", err)
 	} else {
 		err = helpers.EmbedStringInSegment(target, ".sig_key", string(buf))
 		if err != nil {
