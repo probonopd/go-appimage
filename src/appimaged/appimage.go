@@ -263,7 +263,9 @@ func (ai AppImage) _integrate() {
 				if diff > (time.Duration(0) * time.Second) {
 					// Do nothing if the desktop file is already newer than the AppImage file
 					// but subscribe
-					go SubscribeMQTT(MQTTclient, ai.updateinformation)
+					if CheckIfConnectedToNetwork() == true {
+						go SubscribeMQTT(MQTTclient, ai.updateinformation)
+					}
 					return
 				}
 			}
@@ -281,7 +283,9 @@ func (ai AppImage) _integrate() {
 
 	// Subscribe to MQTT messages for this application
 	if ai.updateinformation != "" {
-		go SubscribeMQTT(MQTTclient, ai.updateinformation)
+		if CheckIfConnectedToNetwork() == true {
+			go SubscribeMQTT(MQTTclient, ai.updateinformation)
+		}
 	}
 
 	// SimpleNotify(ai.path, "Integrated", 3000)
