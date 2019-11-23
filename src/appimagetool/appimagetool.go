@@ -433,7 +433,7 @@ func GenerateAppImage(appdir string) {
 	for _, s := range sectionsToBeSkipped {
 		offset, length, err := helpers.GetSectionOffsetAndLength(target, s)
 		if err == nil {
-			fmt.Println("Section", s, "offset", string(offset), "length", string(length))
+			fmt.Println("Section", s, "offset", offset, "length", length)
 			br := helpers.ByteRange{int64(offset), int64(length)}
 			byteRangesToBeAssumedEmpty = append(byteRangesToBeAssumedEmpty, br)
 		}
