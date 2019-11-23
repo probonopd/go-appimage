@@ -224,7 +224,7 @@ func CopyFile(src string, dst string) error {
 }
 
 // CheckIfSquashfsVersionSufficient checks whether mksquashfs/unsquashfs
-// is recent enough to use -Offset, prints an error message otherwise
+// is recent enough to use -offset, prints an error message otherwise
 // Returns true if sufficient, false otherwise
 func CheckIfSquashfsVersionSufficient(toolname string) bool {
 	cmd := exec.Command(toolname, "-version")

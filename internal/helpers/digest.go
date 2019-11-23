@@ -3,11 +3,13 @@ package helpers
 import (
 	"bytes"
 	"crypto/sha256"
+	"fmt"
 	"hash"
 	"io"
 	"log"
 	"os"
 	"sort"
+	"strconv"
 )
 
 type ByteRange struct {
@@ -55,7 +57,7 @@ func CalculateDigestSkippingRanges(f *os.File, ranges []ByteRange) hash.Hash {
 }
 
 func hashRange(f *os.File, h hash.Hash, offset int64, length int64) {
-	// fmt.Println("...continuing with checksum from Offset", strconv.FormatInt(Offset, 10), "for", strconv.FormatInt(Length, 10), "bytes")
+	fmt.Println("...hashing from offset", strconv.FormatInt(offset, 10), "for", strconv.FormatInt(length, 10), "bytes")
 	s := io.NewSectionReader(f, offset, length)
 	if _, err := io.Copy(h, s); err != nil {
 		log.Fatal(err)
@@ -63,6 +65,6 @@ func hashRange(f *os.File, h hash.Hash, offset int64, length int64) {
 }
 
 func hashDummyRange(h hash.Hash, length int) {
-	// fmt.Println("Checksum for", strconv.Itoa(Length), "bytes as if they were 0x00")
+	fmt.Println("...hashing for", strconv.Itoa(length), "bytes as if they were 0x00")
 	h.Write(bytes.Repeat([]byte{0x00}, length))
 }
