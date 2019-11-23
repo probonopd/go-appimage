@@ -57,7 +57,7 @@ func CalculateDigestSkippingRanges(f *os.File, ranges []ByteRange) hash.Hash {
 }
 
 func hashRange(f *os.File, h hash.Hash, offset int64, length int64) {
-	fmt.Println("...hashing from offset", strconv.FormatInt(offset, 10), "for", strconv.FormatInt(length, 10), "bytes")
+	fmt.Println("...hashing for", strconv.FormatInt(length, 10), "bytes")
 	s := io.NewSectionReader(f, offset, length)
 	if _, err := io.Copy(h, s); err != nil {
 		log.Fatal(err)

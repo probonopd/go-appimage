@@ -427,11 +427,13 @@ func GenerateAppImage(appdir string) {
 	// .upd_info
 	// ought to be skipped, too
 
+	fmt.Println("Calculating the sha256 digest...")
 	var byteRangesToBeAssumedEmpty []helpers.ByteRange
 	sectionsToBeSkipped := []string{".digest_md5", ".sha256_sig", ".sig_key"}
 	for _, s := range sectionsToBeSkipped {
 		offset, length, err := helpers.GetSectionOffsetAndLength(target, s)
 		if err == nil {
+			fmt.Println("Section", s, "offset", string(offset), "length", string(length))
 			br := helpers.ByteRange{int64(offset), int64(length)}
 			byteRangesToBeAssumedEmpty = append(byteRangesToBeAssumedEmpty, br)
 		}
