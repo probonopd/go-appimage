@@ -28,6 +28,9 @@ func CalculateSHA256Digest(path string) string {
 	for _, s := range sectionsToBeSkipped {
 		offset, length, err := GetSectionOffsetAndLength(path, s)
 		if err == nil {
+			if length == 0 {
+				continue
+			}
 			fmt.Println("Section", s, "offset", offset, "length", length)
 			br := ByteRange{int64(offset), int64(length)}
 			byteRangesToBeAssumedEmpty = append(byteRangesToBeAssumedEmpty, br)
