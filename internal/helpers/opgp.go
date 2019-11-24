@@ -135,7 +135,7 @@ func SignAppImage(path string) error {
 
 	block, err := armor.Decode(in)
 	if err != nil {
-		fmt.Println("Error decoding OpenPGP Armor:", err)
+		fmt.Println("Error decoding OpenPGP Armor for public key:", err)
 		return err
 	}
 
@@ -162,7 +162,7 @@ func SignAppImage(path string) error {
 
 	block, err = armor.Decode(in)
 	if err != nil {
-		fmt.Println("Error decoding OpenPGP Armor:", err)
+		fmt.Println("Error decoding OpenPGP Armor for private key:", err)
 		return err
 	}
 
