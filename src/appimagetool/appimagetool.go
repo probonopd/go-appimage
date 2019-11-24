@@ -536,7 +536,11 @@ func GenerateAppImage(appdir string) {
 			fmt.Println("Could not get secure environment variable $" + helpers.EnvSuperSecret + ", exiting")
 			os.Exit(1)
 		}
-		cmd := "openssl aes-256-cbc -pass pass:" + superSecret + " -in " + helpers.EncPrivkeyFileName + " -out " + helpers.PrivkeyFileName + " -d -a"
+		// Note: 06065064:digital envelope routines:EVP_DecryptFinal_ex:bad decrypt:evp_enc.c:539
+		// OpenSSL 1.1.0 changed from MD5 to SHA-256; they broke stuff (again). Adding '-md sha256' seems to solve it
+		// TODO: Replace OpenSSL call with native Go code
+		// https://stackoverflow.com/a/43847627
+		cmd := "openssl aes-256-cbc -pass pass:" + superSecret + " -in " + helpers.EncPrivkeyFileName + " -out " + helpers.PrivkeyFileName + " -d -a -md sha256"
 		err = helpers.RunCmdStringTransparently(cmd)
 		if err != nil {
 			fmt.Println("Could not decrypt the private key using the password in $" + helpers.EnvSuperSecret + ", exiting")
