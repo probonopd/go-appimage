@@ -378,6 +378,8 @@ func AppendIfMissing(slice []string, s string) []string {
 			return slice
 		}
 	}
+	// fmt.Println("Appending", s)
+	// fmt.Println( "Slice now contains", slice)
 	return append(slice, s)
 }
 

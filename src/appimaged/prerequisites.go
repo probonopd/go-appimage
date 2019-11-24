@@ -200,7 +200,8 @@ func exitIfBinfmtExists(path string) {
 	cmd := exec.Command("/bin/sh", "-c", "echo -1 | sudo tee "+path)
 	err := cmd.Run()
 	if err != nil {
-		helpers.PrintError("prerequisites: exitIfBinfmtExists", err)
+		// helpers.PrintError("prerequisites: exitIfBinfmtExists", err)
+		// If these binfmts are not there, that is actually not an error and should not be reported as that
 	}
 	if _, err := os.Stat(path); err == nil {
 		log.Println("ERROR:", path, "exists. Please remove it by running")

@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/adrg/xdg"
@@ -237,6 +236,7 @@ func checkMQTTConnected(MQTTclient mqtt.Client) {
 func moveDesktopFiles() {
 
 	// log.Println("main: xxxxxxxxxxxxxxx Ticktock")
+	// log.Println("toBeIntegratedOrUnintegrated:", toBeIntegratedOrUnintegrated)
 
 	// log.Println("Subscriptions:", subscribedMQTTTopics)
 
@@ -247,29 +247,17 @@ func moveDesktopFiles() {
 
 	// We want to know that all go routines have been completed,
 	// and only then move in all desktop files at once
-	// https://nathanleclaire.com/blog/2014/02/15/how-to-wait-for-all-goroutines-to-finish-executing-before-continuing/
-	// For this we use "var wg sync.WaitGroup" before we start the go routines,
-	// and "wg.Wait()" then waits until they have all done their job. Neat!
-	var wg sync.WaitGroup
-
-	// If we do everything in parallel, we get "too many files open" errors
+	// https://medium.com/@deckarep/gos-extended-concurrency-semaphores-part-1-5eeabfa351ce
 	// Hence we limit the number of concurrent go routines
-	// https://stackoverflow.com/a/38825523
-	sem := make(chan struct{}, 8) // Maximum number of concurrent go routines // ***
-	// The next 3 lines limit the number of concurrent go routines
-	// using a counting semaphore
-	sem <- struct{}{}
+	// sem is a channel that will allow up to 8 concurrent operations, a "Bounded channel"
+	var sem = make(chan int, 8)
 
 	for _, path := range toBeIntegratedOrUnintegrated {
 		ai := NewAppImage(path)
-		defer func() { <-sem }()
-		defer wg.Done()
-		wg.Add(1) // need to add one to the counter for each go routine we are starting, or else we get 'panic: sync: negative WaitGroup counter'
+		sem <- 1
 		go ai.IntegrateOrUnintegrate()
+		<-sem
 	}
-
-	wg.Wait() // Wait until all go routines since "var wg sync.WaitGroup" have been completed
-	close(sem)
 
 	time.Sleep(time.Second * 1) // And wait one second longer to catch other AppImages that may have been come in the meantime
 
