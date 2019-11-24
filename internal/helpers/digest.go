@@ -87,7 +87,10 @@ func CalculateSHA256Digest(path string) string {
 	// ought to be skipped, too
 	fmt.Println("Calculating the sha256 digest...")
 	var byteRangesToBeAssumedEmpty []ByteRange
-	sectionsToBeSkipped := []string{".digest_md5", ".sha256_sig", ".sig_key"} // ???
+
+	// TheAssassin's implementation of the signature checking only zeros ".sha256_sig", ".sig_key"
+	// according to him, and if we do the same then we get the same results as his tools
+	sectionsToBeSkipped := []string{".sha256_sig", ".sig_key"} // Why not the non-spec-conforming ".digest_md5" ???
 	for _, s := range sectionsToBeSkipped {
 		offset, length, err := GetSectionOffsetAndLength(path, s)
 		if err == nil {
