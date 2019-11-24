@@ -250,10 +250,9 @@ func TerminateOtherInstances() {
 	procs, _ := process.Processes()
 	for _, p := range procs {
 		cmdline, _ := p.Cmdline()
-		// FIXME: We must take care not to terminating the AppImage runtime that we are running ourselves from;
-		// we do this by not terminating anything with ".AppImage" in its filename. This logic should be changed to
-		// exclusively use PIDs instead, so that it works independent of file suffixes
-		if strings.Contains(cmdline, filepath.Base(myself)) == true && strings.Contains(cmdline, "wrap") == false && strings.Contains(cmdline, ".AppImage") == false {
+		// Do not terminate instances that were called with a verb, and our own AppImage
+		appImageEnv, _ := os.LookupEnv("APPIMAGE")
+		if strings.Contains(cmdline, filepath.Base(myself)) == true && strings.Contains(cmdline, "wrap") == false && strings.Contains(cmdline, "run") == false && strings.Contains(cmdline, appImageEnv) == false {
 			procusername, err := p.Username()
 			if err != nil {
 				panic(err)
