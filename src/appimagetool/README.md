@@ -18,14 +18,14 @@ https://github.com/probonopd/appimage/releases/tag/continuous has builds for 32-
 Implemented
 
 * Creates AppImage
-* If running on GitHub, determines updateinformation, embeds updateinformation, and writes zsync file
+* If running on GitHub, determines updateinformation, embeds updateinformation, signs, and writes zsync file
+* Simplified signing
 
 Envisioned
 
 * Automatic upload to GitHub Releases
 * GitLab support
 * OBS support
-* Simplified signing
 * ...
 
 ## Building
