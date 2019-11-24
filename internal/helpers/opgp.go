@@ -7,7 +7,9 @@ package helpers
 import (
 	"bytes"
 	"encoding/base64"
+	"errors"
 	"fmt"
+	"strings"
 
 	//	"io/ioutil"
 	"log"
@@ -97,19 +99,6 @@ func createKeyPair() {
 
 }
 
-func validate(keystring string) error {
-	data, err := base64.StdEncoding.DecodeString(keystring)
-	if err != nil {
-		return err
-	}
-	_, err = openpgp.ReadEntity(packet.NewReader(bytes.NewBuffer(data)))
-	if err != nil {
-		return err
-	}
-	fmt.Println("PASSED")
-	return nil
-}
-
 func readPGP(armoredKey []byte) (string, error) {
 	keyReader := bytes.NewReader(armoredKey)
 	entityList, err := openpgp.ReadArmoredKeyRing(keyReader)
@@ -123,4 +112,27 @@ func readPGP(armoredKey []byte) (string, error) {
 	}
 
 	return base64.StdEncoding.EncodeToString(serializedEntity.Bytes()), nil
+}
+
+// CheckSignature checks the signature embedded in an AppImage at path,
+// returns the entity that has signed the AppImage and error
+// based on https://stackoverflow.com/a/34008326
+func CheckSignature(path string) (*openpgp.Entity, error) {
+	var ent *openpgp.Entity
+	err := errors.New("could not verify AppImage signature") // Be pessimistic by default, unless we can positively verify the signature
+	pubkeybytes, err := GetSectionData(path, ".sig_key")
+
+	keyring, err := openpgp.ReadArmoredKeyRing(bytes.NewReader(pubkeybytes))
+	if err != nil {
+		return ent, err
+	}
+
+	sigbytes, err := GetSectionData(path, ".sha256_sig")
+
+	ent, err = openpgp.CheckArmoredDetachedSignature(keyring, strings.NewReader(CalculateSHA256Digest(path)), bytes.NewReader(sigbytes))
+	if err != nil {
+		return ent, err
+	}
+
+	return ent, nil
 }

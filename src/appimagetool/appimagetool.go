@@ -77,7 +77,19 @@ func main() {
 				if helpers.CheckIfFileExists(os.Args[2]) {
 					d := helpers.CalculateSHA256Digest(os.Args[2])
 					fmt.Println("Calculated sha256 digest:", d)
-					fmt.Println("TODO: Implement the actual signature validation")
+					ent, err := helpers.CheckSignature(os.Args[2])
+					if err == nil {
+						fmt.Println(os.Args[2], "has a valid signature")
+						// TODO: Do something useful with this information
+						fmt.Println("Identities:", ent.Identities)
+						fmt.Println("KeyIdShortString:", ent.PrimaryKey.KeyIdShortString())
+						fmt.Println("CreationTime:", ent.PrimaryKey.CreationTime)
+						fmt.Println("KeyId:", ent.PrimaryKey.KeyId)
+						fmt.Println("Fingerprint:", ent.PrimaryKey.Fingerprint)
+					} else {
+						fmt.Println("Could not validate signature of", os.Args[2]+":", err)
+						os.Exit(1)
+					}
 				} else {
 					fmt.Println(os.Args[2], "does not exist")
 					os.Exit(1)
