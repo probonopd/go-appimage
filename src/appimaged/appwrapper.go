@@ -80,8 +80,12 @@ func appwrap() {
 
 				// https://github.com/AppImage/AppImageKit/issues/1004
 				if strings.Contains(out.String(), "execv error") == true && ai.imagetype > 0 {
-					summary = "Error: Missing AppRun"
-					body = filepath.Base(os.Args[2]) + " is defective, AppRun is missing"
+					body = filepath.Base(os.Args[2]) + " is defective, AppRun is missing. \nPlease ask the author to fix it."
+				}
+
+				// https://github.com/pinnaculum/galacteek/issues/6
+				if strings.Contains(out.String(), "Could not load the Qt platform plugin") == true && ai.imagetype > 0 {
+					body = filepath.Base(os.Args[2]) + " is defective, could not load the Qt platform plugin. \nPlease run on the command line with 'QT_DEBUG_PLUGINS=1' \nto see error messages and ask the author to fix it."
 				}
 
 				sendErrorDesktopNotification(summary, body)
