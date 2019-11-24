@@ -7,7 +7,6 @@ package helpers
 import (
 	"bytes"
 	"crypto"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"strings"
@@ -98,21 +97,6 @@ func createKeyPair() {
 	PrintError("ogpg", err)
 	fmt.Printf("wrote %d bytes\n", n2)
 
-}
-
-func readPGP(armoredKey []byte) (string, error) {
-	keyReader := bytes.NewReader(armoredKey)
-	entityList, err := openpgp.ReadArmoredKeyRing(keyReader)
-	if err != nil {
-		log.Fatalf("error reading armored key %s", err)
-	}
-	serializedEntity := bytes.NewBuffer(nil)
-	err = entityList[0].Serialize(serializedEntity)
-	if err != nil {
-		return "", fmt.Errorf("error serializing entity for file %s", err)
-	}
-
-	return base64.StdEncoding.EncodeToString(serializedEntity.Bytes()), nil
 }
 
 // CheckSignature checks the signature embedded in an AppImage at path,
@@ -207,6 +191,8 @@ func SignAppImage(path string) error {
 		fmt.Println("Error signing input:", err)
 		return err
 	}
+
+	fmt.Println("TODO: Right now we signed to Stdout; instead we need to put the result into", path)
 
 	return nil
 }
