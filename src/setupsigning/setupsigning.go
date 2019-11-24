@@ -245,11 +245,13 @@ func main() {
 	fmt.Println("You can decrypt it with:")
 	fmt.Println("openssl aes-256-cbc -pass \"pass:" + superSecretPassword + "\" -in " + helpers.EncPrivkeyFileName + " -out " + helpers.PrivkeyFileName + " -d -a")
 	fmt.Println("")
-	fmt.Println("Please add to your .travis.yml file:")
-	fmt.Println("----------------------------------------------------------------------------------------------")
-	fmt.Println("before_install:")
-	fmt.Println("  - openssl aes-256-cbc -pass \"pass:$" + helpers.EnvSuperSecret + "\" -in " + helpers.EncPrivkeyFileName + " -out " + helpers.PrivkeyFileName + " -d -a")
-	fmt.Println("----------------------------------------------------------------------------------------------")
+	/*	Actually let appimagetool do this... no need for this in .travis.yml
+		fmt.Println("Please add to your .travis.yml file:")
+		fmt.Println("----------------------------------------------------------------------------------------------")
+		fmt.Println("before_install:")
+		fmt.Println("  - openssl aes-256-cbc -pass \"pass:$" + helpers.EnvSuperSecret + "\" -in " + helpers.EncPrivkeyFileName + " -out " + helpers.PrivkeyFileName + " -d -a")
+		fmt.Println("----------------------------------------------------------------------------------------------")
+	*/
 	fmt.Println("Then, run 'git commit' and 'git push'")
 }
 

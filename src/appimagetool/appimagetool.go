@@ -519,7 +519,36 @@ func GenerateAppImage(appdir string) {
 		Technically it may not make so much sense
 	*/
 
-	// TODO: The actual signing
+	// The actual signing
+
+	// Decrypt the private key which we need for signing
+	if helpers.CheckIfFileExists(helpers.EncPrivkeyFileName) == true {
+		_, ok := os.LookupEnv(helpers.EnvSuperSecret)
+		if ok != true {
+			fmt.Println("Environment variable", helpers.EnvSuperSecret, "not present, cannot sign")
+			os.Exit(1)
+		}
+
+		fmt.Println("Attempting to decrypt the private key...")
+		// TODO: Replace with native Go code in ossl.go
+		cmd := "openssl aes-256-cbc -pass \"pass:$" + helpers.EnvSuperSecret + "\" -in " + helpers.EncPrivkeyFileName + " -out " + helpers.PrivkeyFileName + " -d -a"
+		err = helpers.RunCmdStringTransparently(cmd)
+		if err != nil {
+			fmt.Println("Could not decrypt the private key using the password, exiting")
+			os.Exit(1)
+		}
+	}
+
+	if helpers.CheckIfFileExists(helpers.PrivkeyFileName) == true {
+		fmt.Println("Attempting to sign the AppImage...")
+		err = helpers.SignAppImage(target)
+		if err != nil {
+			helpers.PrintError("SignAppImage", err)
+			os.Remove(helpers.PrivkeyFileName)
+			os.Exit(1)
+		}
+		os.Remove(helpers.PrivkeyFileName)
+	}
 
 	// Embed public key into '.sig_key' section if it exists
 	buf, err := ioutil.ReadFile(gitRoot + "/" + helpers.PubkeyFileName)
