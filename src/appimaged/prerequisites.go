@@ -250,17 +250,16 @@ func TerminateOtherInstances() {
 	procs, _ := process.Processes()
 	for _, p := range procs {
 		cmdline, _ := p.Cmdline()
-		if strings.Contains(cmdline, filepath.Base(myself)) == true && strings.Contains(cmdline, "wrap") == false {
+		// FIXME: We must take care not to terminating the AppImage runtime that we are running ourselves from;
+		// we do this by not terminating anything with ".AppImage" in its filename. This logic should be changed to
+		// exclusively use PIDs instead, so that it works independent of file suffixes
+		if strings.Contains(cmdline, filepath.Base(myself)) == true && strings.Contains(cmdline, "wrap") == false && strings.Contains(cmdline, ".AppImage") == false {
 			procusername, err := p.Username()
 			if err != nil {
 				panic(err)
 			}
 
-			// Terminate processes with the name of the currently running process in their process name
-			// that do not have as their PID the process ID or parent process ID of the currently running process
-			// (the parents are important, otherwise we are
-			// killing the AppImage runtime of the AppImage from which we may be running
-			if user.Username == procusername && p.Pid != int32(os.Getpid()) && p.Pid != int32(os.Getppid()) {
+			if user.Username == procusername && p.Pid != int32(os.Getpid()) {
 				pids = append(pids, p.Pid)
 				for _, pid := range pids {
 					fmt.Println("Sending SIGTERM to", pid)

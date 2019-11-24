@@ -133,9 +133,7 @@ func main() {
 
 		MQTTclient = connect("sub", uri)
 		log.Println("MQTT client connected:", MQTTclient.IsConnected())
-		if thisai.imagetype > 0 {
-			go SubscribeMQTT(MQTTclient, thisai.updateinformation)
-		}
+
 	}
 
 	// go monitorDbusSessionBus() // If used, then nothing else can use DBus anymore? FIXME #####################
