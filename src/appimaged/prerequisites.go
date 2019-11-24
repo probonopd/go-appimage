@@ -162,7 +162,8 @@ func stopSystemdService(servicename string) {
 	action := "org.freedesktop.systemd1.manage-units"
 	result, err := authority.CheckAuthorization(action, nil, polkit.CheckAuthorizationAllowUserInteraction, "")
 	if err != nil {
-		helpers.PrintError("stopSystemdService", err)
+		// helpers.PrintError("stopSystemdService", err)
+		// This is not really an error; hence intentionally do nothing here
 	}
 
 	log.Printf("polkit: Is authorized: %t %s\n", result.IsAuthorized, action)
@@ -178,7 +179,7 @@ func stopSystemdService(servicename string) {
 
 	conn, err := systemddbus.NewUserConnection()
 	defer conn.Close()
-	helpers.PrintError("pre: checkIfSystemdServiceRunning", err)
+	// helpers.PrintError("pre: checkIfSystemdServiceRunning", err)
 	if err != nil {
 		return
 	}

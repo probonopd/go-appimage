@@ -108,7 +108,7 @@ func monitorUdisks() {
 	satisfied := false
 	e := conn.Object("org.gtk.vfs.UDisks2VolumeMonitor", "/").Call("org.freedesktop.DBus.Introspectable.Introspect", 0).Store(&s)
 	if e != nil {
-		log.Println("Failed to introspect org.gtk.vfs.UDisks2VolumeMonitor", e)
+		log.Println("Notice: Cannot introspect org.gtk.vfs.UDisks2VolumeMonitor on this system", e)
 	} else {
 		satisfied = true
 	}
@@ -116,13 +116,13 @@ func monitorUdisks() {
 	// (which we actually care about), so we check the next best thing
 	e = conn.Object("org.kde.Solid.PowerManagement", "/").Call("org.freedesktop.DBus.Introspectable.Introspect", 0).Store(&s)
 	if e != nil {
-		log.Println("Failed to introspect org.kde.Solid", e)
+		log.Println("Notice: Cannot introspect org.kde.Solid on this system", e)
 	} else {
 		satisfied = true
 	}
 
 	if satisfied == false {
-		log.Println("Don't know how to get notified about mounted and unmounted devices on this system", e)
+		log.Println("ERROR: Don't know how to get notified about mounted and unmounted devices on this system", e)
 		log.Println("using dbus. Every system seems to do it differently.", e)
 		os.Exit(1)
 	}
