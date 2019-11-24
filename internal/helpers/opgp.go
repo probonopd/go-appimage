@@ -128,7 +128,7 @@ func SignAppImage(path string, digest string) error {
 	// Read in public key
 	keyringFileBuffer, _ := os.Open(PubkeyFileName)
 	defer keyringFileBuffer.Close()
-	entityList, err := openpgp.ReadKeyRing(keyringFileBuffer)
+	entityList, err := openpgp.ReadArmoredKeyRing(keyringFileBuffer)
 	if err != nil {
 		fmt.Println("openpgp.ReadKeyRing error:", err)
 		return err
