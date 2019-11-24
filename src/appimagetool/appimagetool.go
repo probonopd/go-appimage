@@ -353,7 +353,7 @@ func GenerateAppImage(appdir string) {
 
 	// Check if AppStream upstream metadata is present in source AppDir
 	// If yes, use ximion's appstreamcli to make sure that desktop file and appdata match together and are valid
-	appstreamfile := appdir + "/usr/share/metainfo/" + filepath.Base(desktopfile) + ".appdata.xml"
+	appstreamfile := appdir + "/usr/share/metainfo/" + strings.Replace(filepath.Base(desktopfile), ".desktop", ".appdata.xml", -1)
 	if helpers.CheckIfFileExists(appstreamfile) == false {
 		fmt.Println("WARNING: AppStream upstream metadata is missing, please consider creating it in")
 		fmt.Println("         " + appdir + "/usr/share/metainfo/" + filepath.Base(desktopfile) + ".appdata.xml")
