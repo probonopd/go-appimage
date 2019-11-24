@@ -322,7 +322,7 @@ func (ai AppImage) _removeIntegration() {
 
 	// Unsubscribe to MQTT messages for this application
 	if ai.updateinformation != "" {
-		go UnSubscribeMQTT(MQTTclient, ai.updateinformation)
+		UnSubscribeMQTT(MQTTclient, ai.updateinformation)
 	}
 
 	err = os.Remove(ai.desktopfilepath)
