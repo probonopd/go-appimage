@@ -58,7 +58,7 @@ func inotifyWatch(path string) {
 					log.Println("inotify:", event.Op, event.Name)
 				}
 
-				if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Create == fsnotify.Create {
+				if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Create == fsnotify.Create || event.Op&fsnotify.Chmod == fsnotify.Chmod {
 					// log.Println("inotify: Should check whether to register file:", event.Name)
 					// We would be interesting in "write complete", file closed
 					// IN_CLOSE https://stackoverflow.com/questions/2895187/which-inotify-event-signals-the-completion-of-a-large-file-operation
