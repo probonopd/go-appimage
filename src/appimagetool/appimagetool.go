@@ -508,7 +508,18 @@ func GenerateAppImage(appdir string) {
 
 	// TODO: calculate and embed MD5 digest (in case we want to use it)
 	// https://github.com/AppImage/AppImageKit/blob/801e789390d0e6848aef4a5802cd52da7f4abafb/src/appimagetool.c#L961
-	// Blocked by https://github.com/AppImage/AppImageSpec/issues/29
+
+	/*
+		TA sez:
+		First, embed the update information
+		Then comes the MD5 digest, don't ask me why
+		then comes the signature
+		and then the key
+		So only signature and key must be zeroed for the signature checking
+		Technically it may not make so much sense
+	*/
+
+	// TODO: The actual signing
 
 	// Embed public key into '.sig_key' section if it exists
 	buf, err := ioutil.ReadFile(gitRoot + "/" + helpers.PubkeyFileName)
@@ -521,8 +532,6 @@ func GenerateAppImage(appdir string) {
 			os.Exit(1)
 		}
 	}
-
-	// TODO: The actual signing
 
 	if updateinformation == "" {
 		// No updateinformation was provided nor calculated, so the following steps make no sense.
