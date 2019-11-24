@@ -186,14 +186,19 @@ func SignAppImage(path string) error {
 
 	signer := createEntityFromKeys(pubKey, privKey)
 
-	err = openpgp.ArmoredDetachSign(os.Stdout, signer, os.Stdin, nil)
+	buf := new(bytes.Buffer)
+
+	err = openpgp.ArmoredDetachSign(buf, signer, os.Stdin, nil)
 	if err != nil {
 		fmt.Println("Error signing input:", err)
 		return err
 	}
 
-	fmt.Println("TODO: Right now we signed to Stdout; instead we need to put the result into", path)
-
+	err = EmbedStringInSegment(path, ".sha256_sig", buf.String())
+	if err != nil {
+		PrintError("EmbedStringInSegment", err)
+		return err
+	}
 	return nil
 }
 
