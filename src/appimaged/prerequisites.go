@@ -1,17 +1,23 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/adrg/xdg"
 	"github.com/amenzhinsky/go-polkit"
 	systemddbus "github.com/coreos/go-systemd/dbus"
 	"github.com/probonopd/appimage/internal/helpers"
+	"github.com/shirou/gopsutil/host"
+	"github.com/shirou/gopsutil/load"
+	"github.com/shirou/gopsutil/process"
 )
 
 func checkPrerequisites() {
@@ -35,16 +41,7 @@ func checkPrerequisites() {
 
 	// Poor man's singleton
 	// Ensure that no other processes with the same name are already runing under the same user
-	// Turns out that this is too simplistic because it prevents launching appimaged
-	// while we have processes running using "apppimaged wrap"
-	// FIXME: How to do this properly?
-	// u, _ := user.Current()
-	// res, _ := exec.Command("pgrep", "-u", u.Uid, filepath.Base(os.Args[0])).Output()
-	// pids := strings.Split(string(bytes.TrimSpace(res)), "\n")
-	// if (len(pids)) != 1 {
-	// 	log.Println("Other processes with the name", filepath.Base(os.Args[0]), "are already running. Please stop them first.")
-	// 	os.Exit(1)
-	// }
+	TerminateOtherInstances()
 
 	// We really don't want users to run this in any other way than from an AppImage
 	// because it only creates support issues and we can't update this AppImage
@@ -228,5 +225,43 @@ func ensureRunningFromLiveSystem() {
 	if found == false && gcEnvIsThere == false {
 		sendDesktopNotification("Not running on one of the supported Live systems", "Grab a Ubuntu, Debian, Deepin, Fedora, openSUSE, elementary OS, KDE neon,... Live ISO and try from there.", -1)
 		os.Exit(1)
+	}
+}
+
+// TerminateOtherInstances sends the SIGTERM signal to all other processes of the same user
+// that have the same process name as the current one in their name
+func TerminateOtherInstances() {
+	infoStat, _ := host.Info()
+	fmt.Printf("Total processes: %d\n", infoStat.Procs)
+
+	miscStat, _ := load.Misc()
+	fmt.Printf("Running processes: %d\n", miscStat.ProcsRunning)
+
+	user, err := user.Current()
+	if err != nil {
+		panic(err)
+	}
+
+	myself, _ := os.Readlink("/proc/self/exe")
+	fmt.Println("Process name based on /proc/self/exe:", filepath.Base(myself))
+	fmt.Println("Terminating other running processes with that name...")
+
+	var pids []int32
+	procs, _ := process.Processes()
+	for _, p := range procs {
+		cmdline, _ := p.Cmdline()
+		if strings.Contains(cmdline, filepath.Base(myself)) == true && strings.Contains(cmdline, "wrap") == false {
+			procusername, err := p.Username()
+			if err != nil {
+				panic(err)
+			}
+			if user.Username == procusername && p.Pid != int32(os.Getpid()) {
+				pids = append(pids, p.Pid)
+				for _, pid := range pids {
+					fmt.Println("Sending SIGTERM to", pid)
+					syscall.Kill(int(pid), syscall.SIGTERM)
+				}
+			}
+		}
 	}
 }
