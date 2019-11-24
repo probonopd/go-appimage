@@ -6,7 +6,6 @@ package helpers
 
 import (
 	"bytes"
-	"crypto"
 	"errors"
 	"fmt"
 	"strings"
@@ -126,65 +125,14 @@ func CheckSignature(path string) (*openpgp.Entity, error) {
 // Based on https://gist.github.com/eliquious/9e96017f47d9bd43cdf9
 func SignAppImage(path string, digest string) error {
 
-	in, err := os.Open(PubkeyFileName)
-	defer in.Close()
+	// Read in public key
+	keyringFileBuffer, _ := os.Open(PubkeyFileName)
+	defer keyringFileBuffer.Close()
+	entityList, err := openpgp.ReadKeyRing(keyringFileBuffer)
 	if err != nil {
-		fmt.Println("Error opening public key:", err)
+		fmt.Println("openpgp.ReadKeyRing error:", err)
 		return err
 	}
-
-	block, err := armor.Decode(in)
-	if err != nil {
-		fmt.Println("Error decoding OpenPGP Armor for public key:", err)
-		return err
-	}
-
-	reader := packet.NewReader(block.Body)
-	pkt, err := reader.Next()
-	if err != nil {
-		fmt.Println("Error reading private key:", err)
-		return err
-	}
-
-	pubKey, ok := pkt.(*packet.PublicKey)
-	if !ok {
-		fmt.Println("Error parsing public key:", pubKey)
-		return errors.New("Error parsing public key")
-	}
-
-	// open ascii armored private key
-	in, err = os.Open(PrivkeyFileName)
-	defer in.Close()
-	if err != nil {
-		fmt.Println("Error opening private key:", err)
-		return err
-	}
-
-	block, err = armor.Decode(in)
-	if err != nil {
-		fmt.Println("Error decoding OpenPGP Armor for private key:", err)
-		return err
-	}
-
-	if block.Type != openpgp.PrivateKeyType {
-		fmt.Println("Error parsing private key:", block.Type)
-		return errors.New("Error parsing private key")
-	}
-
-	reader = packet.NewReader(block.Body)
-	pkt, err = reader.Next()
-	if err != nil {
-		fmt.Println("Error reading private key:", err)
-		return err
-	}
-
-	privKey, ok := pkt.(*packet.PrivateKey)
-	if !ok {
-		fmt.Println("Error parsing private key:", pubKey)
-		return errors.New("Error parsing private key")
-	}
-
-	signer := createEntityFromKeys(pubKey, privKey)
 
 	buf := new(bytes.Buffer)
 
@@ -192,7 +140,7 @@ func SignAppImage(path string, digest string) error {
 	// FIXME: Use the digest we have already calculated earlier on (let's not do it twice)
 	whatToSignReader := strings.NewReader(digest)
 
-	err = openpgp.ArmoredDetachSign(buf, signer, whatToSignReader, nil)
+	err = openpgp.ArmoredDetachSign(buf, entityList[0], whatToSignReader, nil)
 	if err != nil {
 		fmt.Println("Error signing input:", err)
 		return err
@@ -204,64 +152,4 @@ func SignAppImage(path string, digest string) error {
 		return err
 	}
 	return nil
-}
-
-// Based on https://gist.github.com/eliquious/9e96017f47d9bd43cdf9
-func createEntityFromKeys(pubKey *packet.PublicKey, privKey *packet.PrivateKey) *openpgp.Entity {
-
-	config := packet.Config{
-		DefaultHash:            crypto.SHA256,
-		DefaultCipher:          packet.CipherAES256,
-		DefaultCompressionAlgo: packet.CompressionZLIB,
-		CompressionConfig: &packet.CompressionConfig{
-			Level: 9,
-		},
-		RSABits: 4096,
-	}
-	currentTime := config.Now()
-	uid := packet.NewUserId("", "", "") // FIXME: use some Travis CI and/or GitHub variables here for name and email?
-
-	e := openpgp.Entity{
-		PrimaryKey: pubKey,
-		PrivateKey: privKey,
-		Identities: make(map[string]*openpgp.Identity),
-	}
-	isPrimaryId := false
-
-	e.Identities[uid.Id] = &openpgp.Identity{
-		Name:   uid.Name,
-		UserId: uid,
-		SelfSignature: &packet.Signature{
-			CreationTime: currentTime,
-			SigType:      packet.SigTypePositiveCert,
-			PubKeyAlgo:   packet.PubKeyAlgoRSA,
-			Hash:         config.Hash(),
-			IsPrimaryId:  &isPrimaryId,
-			FlagsValid:   true,
-			FlagSign:     true,
-			FlagCertify:  true,
-			IssuerKeyId:  &e.PrimaryKey.KeyId,
-		},
-	}
-
-	keyLifetimeSecs := uint32(86400 * 365)
-
-	e.Subkeys = make([]openpgp.Subkey, 1)
-	e.Subkeys[0] = openpgp.Subkey{
-		PublicKey:  pubKey,
-		PrivateKey: privKey,
-		Sig: &packet.Signature{
-			CreationTime:              currentTime,
-			SigType:                   packet.SigTypeSubkeyBinding,
-			PubKeyAlgo:                packet.PubKeyAlgoRSA,
-			Hash:                      config.Hash(),
-			PreferredHash:             []uint8{8}, // SHA-256
-			FlagsValid:                true,
-			FlagEncryptStorage:        true,
-			FlagEncryptCommunications: true,
-			IssuerKeyId:               &e.PrimaryKey.KeyId,
-			KeyLifetimeSecs:           &keyLifetimeSecs,
-		},
-	}
-	return &e
 }
