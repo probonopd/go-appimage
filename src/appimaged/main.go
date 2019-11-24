@@ -259,7 +259,7 @@ func moveDesktopFiles() {
 		<-sem
 	}
 
-	time.Sleep(time.Second * 1) // And wait one second longer to catch other AppImages that may have been come in the meantime
+	time.Sleep(time.Second * 3) // And wait a bit longer to catch other AppImages that may have been come in the meantime
 
 	toBeIntegratedOrUnintegrated = nil
 
@@ -377,8 +377,13 @@ func watchDirectories() {
 			// strings.HasPrefix(mount.MountPoint, "/run") == false && // Manjaro mounts the device on which the Live ISO is in /run, so we cannot exclude that
 			strings.HasPrefix(mount.MountPoint, "/tmp") == false &&
 			strings.HasPrefix(mount.MountPoint, "/proc") == false {
+			fmt.Println(mount.SuperOptions)
 			if Exists(mount.MountPoint + "/Applications") {
-				watchedDirectories = helpers.AppendIfMissing(watchedDirectories, mount.MountPoint+"/Applications")
+				if _, ok := mount.SuperOptions["showexec"]; ok {
+					go sendErrorDesktopNotification("UDisks mounted "+mount.MountPoint+" with showexec", "This UDisks issue prevents applications from running\n from this volume. \nPlease see \nhttps://github.com/storaged-project/udisks/issues/707")
+				} else {
+					watchedDirectories = helpers.AppendIfMissing(watchedDirectories, mount.MountPoint+"/Applications")
+				}
 			}
 		}
 	}

@@ -125,7 +125,7 @@ func monitorDbusSessionBus() {
 				log.Println("org.gtk.vfs.Metadata", str)
 				// time.Sleep(1 * time.Second)
 				ai := NewAppImage(str)
-				go ai.IntegrateOrUnintegrate()
+				ai.IntegrateOrUnintegrate()
 			}
 
 		}
@@ -143,7 +143,7 @@ func monitorDbusSessionBus() {
 			fp := v.Body[2].(string)
 			log.Println("monitor: ResourceScoreUpdated: ", fp)
 			ai := NewAppImage(fp)
-			go ai.IntegrateOrUnintegrate()
+			ai.IntegrateOrUnintegrate()
 		}
 
 		// KDE
@@ -193,7 +193,7 @@ func monitorDbusSessionBus() {
 					fp := getFilepath(s)
 					log.Println("monitor: MoveTo: ", fp)
 					ai := NewAppImage(fp)
-					go ai.IntegrateOrUnintegrate()
+					ai.IntegrateOrUnintegrate()
 				}
 			}
 		}
@@ -211,7 +211,7 @@ func monitorDbusSessionBus() {
 					fp := getFilepath(s)
 					log.Println("monitor: CopyTo: ", fp)
 					ai := NewAppImage(fp)
-					go ai.IntegrateOrUnintegrate()
+					ai.IntegrateOrUnintegrate()
 				}
 			}
 		}
