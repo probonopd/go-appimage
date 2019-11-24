@@ -28,7 +28,7 @@ import (
 
 var overwritePtr = flag.Bool("o", false, "Overwrite pre-existing files")
 
-func main() {
+func setupSigning() {
 
 	// Parse command line arguments
 	flag.Parse()
@@ -48,7 +48,7 @@ func main() {
 	}
 
 	if gitRepo == nil {
-		fmt.Println("Could not open repository. Please execute this command from within a clean git repository.", cwd)
+		fmt.Println("Could not open git repository at", cwd+". \nPlease execute this command from within a clean git repository.")
 		os.Exit(1)
 	}
 

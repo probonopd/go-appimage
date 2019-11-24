@@ -53,6 +53,9 @@ func main() {
 		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" validate <path to AppImage>\n")
 		fmt.Fprintf(os.Stderr, "\tCalculate the sha256 digest and check whether the signature is valid\n")
 
+		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" setupsigning\n")
+		fmt.Fprintf(os.Stderr, "\tPrepare a git repository that is used with Travis CI \n\tfor signing AppImages\n")
+
 		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" sections <path to AppImage>\n")
 		fmt.Fprintf(os.Stderr, "\tPrint the AppImage specific ELF sections (for debugging), namely\n\t")
 		for _, section := range sections {
@@ -65,7 +68,9 @@ func main() {
 	flag.Parse()
 
 	// Always show version
-	fmt.Println(filepath.Base(os.Args[0]), version)
+	fmt.Fprintf(os.Stderr, "\n")
+	fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" "+version+"\n")
+	fmt.Fprintf(os.Stderr, "\n")
 
 	// Add the location of the executable to the $PATH
 	helpers.AddHereToPath()
@@ -98,6 +103,9 @@ func main() {
 				fmt.Println("Please specify an AppImage to validate")
 				os.Exit(1)
 			}
+			os.Exit(0)
+		case "setupsigning":
+			setupSigning()
 			os.Exit(0)
 		case "sections":
 			if len(os.Args) > 2 {
