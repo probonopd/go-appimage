@@ -261,11 +261,11 @@ func moveDesktopFiles() {
 	// The next 3 lines limit the number of concurrent go routines
 	// using a counting semaphore
 	sem <- struct{}{}
-	defer func() { <-sem }()
-	defer wg.Done()
 
 	for _, path := range toBeIntegratedOrUnintegrated {
 		ai := NewAppImage(path)
+		defer func() { <-sem }()
+		defer wg.Done()
 		wg.Add(1) // need to add one to the counter for each go routine we are starting, or else we get 'panic: sync: negative WaitGroup counter'
 		go ai.IntegrateOrUnintegrate()
 	}
