@@ -112,7 +112,9 @@ func monitorDbusSessionBus() {
 	// Noteworthy: s.Body[2].(string)
 
 	for v := range c {
-		// log.Println(v.Headers)
+		if *verbosePtr == true {
+			log.Println(v.Headers)
+		}
 		if v.Headers[2].Value() == "org.gtk.vfs.Metadata" {
 			// log.Println("Something is going on in VFS Metadata")
 			// log.Println("# v.Headers:", v.Headers)
