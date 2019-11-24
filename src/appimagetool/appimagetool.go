@@ -550,7 +550,7 @@ func GenerateAppImage(appdir string) {
 
 	if helpers.CheckIfFileExists(helpers.PrivkeyFileName) == true {
 		fmt.Println("Attempting to sign the AppImage...")
-		err = helpers.SignAppImage(target)
+		err = helpers.SignAppImage(target, digest)
 		if err != nil {
 			helpers.PrintError("SignAppImage", err)
 			os.Remove(helpers.PrivkeyFileName)

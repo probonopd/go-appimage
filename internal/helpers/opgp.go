@@ -124,7 +124,7 @@ func CheckSignature(path string) (*openpgp.Entity, error) {
 
 // SignAppImage signs an AppImage (wip), returns error - NOT TESTED YET
 // Based on https://gist.github.com/eliquious/9e96017f47d9bd43cdf9
-func SignAppImage(path string) error {
+func SignAppImage(path string, digest string) error {
 
 	in, err := os.Open(PubkeyFileName)
 	defer in.Close()
@@ -188,7 +188,11 @@ func SignAppImage(path string) error {
 
 	buf := new(bytes.Buffer)
 
-	err = openpgp.ArmoredDetachSign(buf, signer, os.Stdin, nil)
+	// Get the digest we want to sign into an io.Reader
+	// FIXME: Use the digest we have already calculated earlier on (let's not do it twice)
+	whatToSignReader := strings.NewReader(digest)
+
+	err = openpgp.ArmoredDetachSign(buf, signer, whatToSignReader, nil)
 	if err != nil {
 		fmt.Println("Error signing input:", err)
 		return err
