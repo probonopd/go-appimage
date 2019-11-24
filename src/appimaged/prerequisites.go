@@ -255,7 +255,12 @@ func TerminateOtherInstances() {
 			if err != nil {
 				panic(err)
 			}
-			if user.Username == procusername && p.Pid != int32(os.Getpid()) {
+
+			// Terminate processes with the name of the currently running process in their process name
+			// that do not have as their PID the process ID or parent process ID of the currently running process
+			// (the parents are important, otherwise we are
+			// killing the AppImage runtime of the AppImage from which we may be running
+			if user.Username == procusername && p.Pid != int32(os.Getpid()) && p.Pid != int32(os.Getppid()) {
 				pids = append(pids, p.Pid)
 				for _, pid := range pids {
 					fmt.Println("Sending SIGTERM to", pid)
