@@ -531,7 +531,12 @@ func GenerateAppImage(appdir string) {
 
 		fmt.Println("Attempting to decrypt the private key...")
 		// TODO: Replace with native Go code in ossl.go
-		cmd := "openssl aes-256-cbc -pass pass:$" + helpers.EnvSuperSecret + " -in " + helpers.EncPrivkeyFileName + " -out " + helpers.PrivkeyFileName + " -d -a"
+		superSecret := os.Getenv(helpers.EnvSuperSecret)
+		if superSecret == "" {
+			fmt.Println("Could not get secure environment variable $" + helpers.EnvSuperSecret + ", exiting")
+			os.Exit(1)
+		}
+		cmd := "openssl aes-256-cbc -pass \"pass:" + superSecret + "\" -in " + helpers.EncPrivkeyFileName + " -out " + helpers.PrivkeyFileName + " -d -a"
 		err = helpers.RunCmdStringTransparently(cmd)
 		if err != nil {
 			fmt.Println("Could not decrypt the private key using the password in $" + helpers.EnvSuperSecret + ", exiting")
