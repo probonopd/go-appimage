@@ -292,19 +292,19 @@ func (ai AppImage) _integrate() {
 
 	// For performance reasons, we stop working immediately
 	// in case a thumbnail file already exists at that location
-	if *overwritePtr == false {
-		// Compare mtime of thumbnail file and AppImage, similar to
-		// https://specifications.freedesktop.org/thumbnail-spec/thumbnail-spec-latest.html#MODIFICATIONS
-		if thumbnailFileInfo, err := os.Stat(ai.thumbnailfilepath); err == nil {
-			if appImageInfo, err := os.Stat(ai.path); err == nil {
-				diff := thumbnailFileInfo.ModTime().Sub(appImageInfo.ModTime())
-				if diff > (time.Duration(0) * time.Second) {
-					// Do nothing if the thumbnail file is already newer than the AppImage file
-					return
-				}
+	// if *overwritePtr == false {
+	// Compare mtime of thumbnail file and AppImage, similar to
+	// https://specifications.freedesktop.org/thumbnail-spec/thumbnail-spec-latest.html#MODIFICATIONS
+	if thumbnailFileInfo, err := os.Stat(ai.thumbnailfilepath); err == nil {
+		if appImageInfo, err := os.Stat(ai.path); err == nil {
+			diff := thumbnailFileInfo.ModTime().Sub(appImageInfo.ModTime())
+			if diff > (time.Duration(0) * time.Second) {
+				// Do nothing if the thumbnail file is already newer than the AppImage file
+				return
 			}
 		}
 	}
+	// }
 
 	ai.extractDirIconAsThumbnail() // Do not run with "go" as it would interfere with writeDesktopFile
 
