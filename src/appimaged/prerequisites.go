@@ -2,6 +2,13 @@ package main
 
 import (
 	"fmt"
+	"github.com/adrg/xdg"
+	"github.com/amenzhinsky/go-polkit"
+	systemddbus "github.com/coreos/go-systemd/dbus"
+	"github.com/probonopd/appimage/internal/helpers"
+	"github.com/shirou/gopsutil/host"
+	"github.com/shirou/gopsutil/load"
+	"github.com/shirou/gopsutil/process"
 	"io/ioutil"
 	"log"
 	"os"
@@ -10,14 +17,6 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
-
-	"github.com/adrg/xdg"
-	"github.com/amenzhinsky/go-polkit"
-	systemddbus "github.com/coreos/go-systemd/dbus"
-	"github.com/probonopd/appimage/internal/helpers"
-	"github.com/shirou/gopsutil/host"
-	"github.com/shirou/gopsutil/load"
-	"github.com/shirou/gopsutil/process"
 )
 
 func checkPrerequisites() {
@@ -248,24 +247,26 @@ func TerminateOtherInstances() {
 	fmt.Println("Terminating other running processes with that name...")
 
 	var pids []int32
+	appImageEnv, _ := os.LookupEnv("APPIMAGE")
 	procs, _ := process.Processes()
 	for _, p := range procs {
 		cmdline, _ := p.Cmdline()
 		// Do not terminate instances that were called with a verb, and our own AppImage
-		appImageEnv, _ := os.LookupEnv("APPIMAGE")
 		if strings.Contains(cmdline, filepath.Base(myself)) == true && strings.Contains(cmdline, "wrap") == false && strings.Contains(cmdline, "run") == false && strings.Contains(cmdline, appImageEnv) == false {
 			procusername, err := p.Username()
 			if err != nil {
 				panic(err)
 			}
-
 			if user.Username == procusername && p.Pid != int32(os.Getpid()) {
 				pids = append(pids, p.Pid)
-				for _, pid := range pids {
-					fmt.Println("Sending SIGTERM to", pid)
-					syscall.Kill(int(pid), syscall.SIGTERM)
-				}
 			}
+		}
+	}
+	for _, pid := range pids {
+		fmt.Println("Sending SIGTERM to", pid)
+		err = syscall.Kill(int(pid), syscall.SIGTERM)
+		if err != nil {
+			panic(err)
 		}
 	}
 }

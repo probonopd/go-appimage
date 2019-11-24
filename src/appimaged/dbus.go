@@ -216,6 +216,8 @@ func monitorDbusSessionBus() {
 			}
 		}
 
+		// FIXME: It seems like Move and Copy are not sufficient as they don't catch e.g., Chrome downloads
+
 		if v.Headers[3].String() == "\"Cleanup\"" || v.Headers[3].String() == "\"Delete\"" {
 			if len(v.Body) >= 1 {
 				files := removeDuplicatesUnordered(v.Body[0].([]string))
