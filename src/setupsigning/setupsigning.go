@@ -149,7 +149,8 @@ func main() {
 	// Unattended GPG key generation
 	// We could have used something like
 	// co = exec.Command("ssh-keygen", "-f", "id_rsa", "-t", "rsa", "-f", "./privkey", "-P", "")
-	// But it gets messy real quick, hence we use native Go instead.
+	// ssh-keygen -f id_rsa -t rsa -b 4096 -f ./privkey -P ""
+	// But it gets messy real quick (see that empty argument?), hence we use native Go instead.
 
 	fmt.Println("Generating key pair...")
 	helpers.CreateAndValidateKeyPair()
