@@ -536,7 +536,7 @@ func GenerateAppImage(appdir string) {
 			fmt.Println("Could not get secure environment variable $" + helpers.EnvSuperSecret + ", exiting")
 			os.Exit(1)
 		}
-		cmd := "openssl aes-256-cbc -pass pass:" + superSecret + " -in " + helpers.EncPrivkeyFileName + " -out " + helpers.PrivkeyFileName
+		cmd := "openssl aes-256-cbc -pass pass:" + superSecret + " -in " + helpers.EncPrivkeyFileName + " -out " + helpers.PrivkeyFileName + " -d -a"
 		err = helpers.RunCmdStringTransparently(cmd)
 		if err != nil {
 			fmt.Println("Could not decrypt the private key using the password in $" + helpers.EnvSuperSecret + ", exiting")
