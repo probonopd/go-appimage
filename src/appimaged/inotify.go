@@ -17,17 +17,48 @@ package main
 // It was merged to kernel v5.1-rc1.
 // Currently fanotify needs root rights (CAP_ADMIN privileges)
 
-import (
-	"log"
-	"os"
+// Not using the "gopkg.in/fsnotify.v1" package because it does not implement
+// a way to find out when a complete is completed, since the needed IN_CLOSE_WRITE
+// us Unix specific and not cross-platform. Therefore, we are using https://github.com/rjeczalik/notify
 
+import (
 	"github.com/probonopd/appimage/internal/helpers"
-	"gopkg.in/fsnotify.v1"
+	"github.com/rjeczalik/notify"
+	"log"
 )
 
 // Can we watch files with a certain file name extension only
 // and how would this improve performance?
 
+func inotifyWatch(path string) {
+	// Make the channel buffered to ensure no event is dropped. Notify will drop
+	// an event if the receiver is not able to keep up the sending pace.
+	c := make(chan notify.EventInfo, 1)
+
+	// Set up a watchpoint listening for inotify-specific events within a
+	// current working directory. Dispatch each InCloseWrite and InMovedTo
+	// events separately to c.
+	if err := notify.Watch(path, c, notify.InCloseWrite, notify.InMovedTo, notify.InMovedFrom, notify.InDelete, notify.InDeleteSelf); err != nil {
+		log.Fatal(err)
+	}
+	defer notify.Stop(c)
+
+	for {
+		// Block until an event is received.
+		switch ei := <-c; ei.Event() {
+		case notify.InDeleteSelf:
+			log.Println("TODO:", ei.Path(), "was deleted, un-integrate all AppImages that were conteined herein")
+			ToBeIntegratedOrUnintegrated = helpers.AppendIfMissing(ToBeIntegratedOrUnintegrated, ei.Path())
+			// log.Println("ToBeIntegratedOrUnintegrated now contains:", ToBeIntegratedOrUnintegrated)
+		default:
+			log.Println("inotifyWatch:", ei.Path(), ei.Event())
+			ToBeIntegratedOrUnintegrated = helpers.AppendIfMissing(ToBeIntegratedOrUnintegrated, ei.Path())
+			// log.Println("ToBeIntegratedOrUnintegrated now contains:", ToBeIntegratedOrUnintegrated)
+		}
+	}
+}
+
+/*
 // Watch a directory using inotify
 func inotifyWatch(path string) {
 	watcher, err := fsnotify.NewWatcher()
@@ -67,13 +98,13 @@ func inotifyWatch(path string) {
 						dirs = append(dirs, event.Name)
 						watchDirectoriesReally(dirs) // If a directory has been created, watch that directory as well
 					} else {
-						toBeIntegratedOrUnintegrated = helpers.AppendIfMissing(toBeIntegratedOrUnintegrated, event.Name)
+						ToBeIntegratedOrUnintegrated = helpers.AppendIfMissing(ToBeIntegratedOrUnintegrated, event.Name)
 					}
 				}
 				if event.Op&fsnotify.Remove == fsnotify.Remove || event.Op&fsnotify.Rename == fsnotify.Rename {
 					// log.Println("inotify: Should check whether to unregister file:", event.Name)
 					// May want to check filesystem whether it was integrated at all before doing anything
-					toBeIntegratedOrUnintegrated = helpers.AppendIfMissing(toBeIntegratedOrUnintegrated, event.Name)
+					ToBeIntegratedOrUnintegrated = helpers.AppendIfMissing(ToBeIntegratedOrUnintegrated, event.Name)
 					log.Println("inotify: TODO: If it was a directory (too late to find out), then also check if AppImages were in", event.Name, "that need to be unintegrated")
 					// TODO: When a directory is deleted, we need to find all applications that
 					// live inside that directory. Maybe we need to parse the already-installed desktop files
@@ -83,3 +114,4 @@ func inotifyWatch(path string) {
 		}
 	}
 }
+*/

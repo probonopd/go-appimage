@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/adrg/xdg"
@@ -41,14 +42,13 @@ var verbosePtr = flag.Bool("v", false, "Print verbose log messages")
 // TODO: Instead of overwriting the desktop files and getting all
 // information from AppImages (slow), we could just rewrite the path to this
 // program in all desktop files. That should be much faster.
-// var overwritePtr = flag.Bool("o", false, "Overwrite existing desktop integration")
-var overwritePtr *bool
-var cleanPtr = flag.Bool("c", false, "Clean pre-existing desktop files")
+var overwritePtr = flag.Bool("o", false, "Overwrite existing desktop integration files (slower)")
+var cleanPtr = flag.Bool("c", true, "Clean pre-existing desktop files")
 
 var quietPtr = flag.Bool("q", false, "Do not send desktop notifications")
 var noZeroconfPtr = flag.Bool("nz", false, "Do not announce this service on the network using Zeroconf")
 
-var toBeIntegratedOrUnintegrated []string
+var ToBeIntegratedOrUnintegrated []string
 
 var thisai AppImage // A reference to myself
 
@@ -72,6 +72,19 @@ const ExecLocationKey = helpers.ExecLocationKey
 // The build script needs to set, e.g.,
 // go build -ldflags "-X main.commit=$TRAVIS_BUILD_NUMBER"
 var commit string
+
+var watchedDirectories []string
+
+var home, _ = os.UserHomeDir()
+var candidateDirectories = []string{
+	xdg.UserDirs.Download,
+	xdg.UserDirs.Desktop,
+	home + "/.local/bin",
+	home + "/bin",
+	home + "/Applications",
+	home + "/opt",
+	home + "/usr/local/bin",
+}
 
 func main() {
 
@@ -110,6 +123,12 @@ func main() {
 	// Always show version
 	fmt.Println(filepath.Base(os.Args[0]), version)
 
+	for _, dir := range candidateDirectories {
+		if Exists(dir) {
+			watchedDirectories = append(watchedDirectories, dir)
+		}
+	}
+
 	checkPrerequisites()
 
 	// Watch the filesystem for accesses using fanotify
@@ -117,8 +136,8 @@ func main() {
 
 	installFilemanagerContextMenus()
 
-	ptrue := true // Nasty trick from https://code-review.googlesource.com/c/gocloud/+/26730/3/bigquery/query.go
-	overwritePtr = &ptrue
+	// ptrue := true // Nasty trick from https://code-review.googlesource.com/c/gocloud/+/26730/3/bigquery/query.go
+	// overwritePtr = &ptrue
 
 	// Connect to MQTT server and subscribe to the topic for ourselves
 	if CheckIfConnectedToNetwork() == true {
@@ -207,8 +226,6 @@ func main() {
 		}
 	}()
 
-	quit := make(chan struct{})
-
 	<-quit
 
 }
@@ -235,8 +252,11 @@ func checkMQTTConnected(MQTTclient mqtt.Client) {
 // into the menu, so that the menu does not get rebuilt all the time
 func moveDesktopFiles() {
 
-	// log.Println("main: xxxxxxxxxxxxxxx Ticktock")
-	// log.Println("toBeIntegratedOrUnintegrated:", toBeIntegratedOrUnintegrated)
+	// log.Println("main: Ticktock")
+
+	if *verbosePtr == true {
+		log.Println("ToBeIntegratedOrUnintegrated:", ToBeIntegratedOrUnintegrated)
+	}
 
 	// log.Println("Subscriptions:", subscribedMQTTTopics)
 
@@ -245,23 +265,38 @@ func moveDesktopFiles() {
 	// 	log.Println(w.Path)
 	// }
 
-	// We want to know that all go routines have been completed,
-	// and only then move in all desktop files at once
-	// https://medium.com/@deckarep/gos-extended-concurrency-semaphores-part-1-5eeabfa351ce
-	// Hence we limit the number of concurrent go routines
+	/*
+		We want to know that all go routines have been completed,
+		nd only then move in all desktop files at once
+		To use sync.WaitGroup we:
+		    Create a new instance of a sync.WaitGroup (we’ll call it wg)
+		    Call wg.Add(n) where n is the number of goroutines to wait for (we can also call wg.Add(1) n times)
+		    Execute defer wg.Done() in each goroutine to indicate that goroutine is finished executing to the WaitGroup (see defer)
+		    Call wg.Wait() where we want to block
+			https://nathanleclaire.com/blog/2014/02/15/how-to-wait-for-all-goroutines-to-finish-executing-before-continuing/
+	*/
+	var wg sync.WaitGroup
+
+	// We limit the number of concurrent go routines
 	// sem is a channel that will allow up to 8 concurrent operations, a "Bounded channel"
+	// so that we won't get "too many files open" errors
 	var sem = make(chan int, 8)
 
-	for _, path := range toBeIntegratedOrUnintegrated {
+	for _, path := range ToBeIntegratedOrUnintegrated {
 		ai := NewAppImage(path)
 		sem <- 1
-		go ai.IntegrateOrUnintegrate()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ToBeIntegratedOrUnintegrated = RemoveFromSlice(ToBeIntegratedOrUnintegrated, ai.path)
+			ai.IntegrateOrUnintegrate()
+		}()
 		<-sem
 	}
 
+	wg.Wait()                   // Wait until all go functions have completed
 	time.Sleep(time.Second * 3) // And wait a bit longer to catch other AppImages that may have been come in the meantime
-
-	toBeIntegratedOrUnintegrated = nil
+	// If this wait is too short, then we may be running into race conditions which can lead to crashes?
 
 	desktopcachedir := xdg.CacheHome + "/applications/" // FIXME: Do not hardcode here and in other places
 
@@ -335,6 +370,7 @@ func moveDesktopFiles() {
 				}
 			}
 		*/
+
 	}
 }
 
@@ -343,21 +379,9 @@ func watchDirectories() {
 	// Register AppImages from well-known locations
 	// https://github.com/AppImage/appimaged#monitored-directories
 	home, _ := os.UserHomeDir()
-
 	err := os.MkdirAll(home+"/Applications", 0755)
 	if err != nil {
 		helpers.PrintError("main", err)
-	}
-	var watchedDirectories []string
-
-	candidateDirectories := []string{
-		xdg.UserDirs.Download,
-		xdg.UserDirs.Desktop,
-		home + "/.local/bin",
-		home + "/bin",
-		home + "/Applications",
-		home + "/opt",
-		home + "/usr/local/bin",
 	}
 
 	for _, dir := range candidateDirectories {
@@ -380,7 +404,8 @@ func watchDirectories() {
 			fmt.Println(mount.SuperOptions)
 			if Exists(mount.MountPoint + "/Applications") {
 				if _, ok := mount.SuperOptions["showexec"]; ok {
-					go sendErrorDesktopNotification("UDisks mounted "+mount.MountPoint+" with showexec", "This UDisks issue prevents applications from running\n from this volume. \nPlease see \nhttps://github.com/storaged-project/udisks/issues/707")
+					go sendErrorDesktopNotification("UDisks showexec issue", "Applications cannot run from \n"+mount.MountPoint+". \nSee \nhttps://github.com/storaged-project/udisks/issues/707")
+					printUdisksShowexecHint()
 				} else {
 					watchedDirectories = helpers.AppendIfMissing(watchedDirectories, mount.MountPoint+"/Applications")
 				}
@@ -422,4 +447,13 @@ func watchDirectoriesReally(watchedDirectories []string) {
 		}
 		helpers.LogError("main: watchDirectoriesReally", err)
 	}
+}
+
+func RemoveFromSlice(s []string, r string) []string {
+	for i, v := range s {
+		if v == r {
+			return append(s[:i], s[i+1:]...)
+		}
+	}
+	return s
 }

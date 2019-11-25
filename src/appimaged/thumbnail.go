@@ -2,6 +2,13 @@ package main
 
 import (
 	"bufio"
+	"github.com/adrg/xdg"
+	issvg "github.com/h2non/go-is-svg"
+	"github.com/probonopd/appimage/internal/helpers"
+	"github.com/sabhiram/png-embed" // For embedding metadata into PNG
+	. "github.com/srwiley/oksvg"
+	. "github.com/srwiley/rasterx"
+	"gopkg.in/ini.v1"
 	"image"
 	"image/png"
 	"io/ioutil"
@@ -10,15 +17,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
-
-	"github.com/adrg/xdg"
-	issvg "github.com/h2non/go-is-svg"
-	"github.com/probonopd/appimage/internal/helpers"
-	"github.com/sabhiram/png-embed" // For embedding metadata into PNG
-	. "github.com/srwiley/oksvg"
-	. "github.com/srwiley/rasterx"
-	"gopkg.in/ini.v1"
+	"time"
 )
+
+/* The thumbnail cache directory is prefixed with $XDG_CACHE_DIR/ and the leading dot removed
+(since $XDG_CACHE_DIR is normally $HOME/.cache).
+The glib ChangeLog indicates the path for large sizes was "fixed" (Added $XDG_CACHE_DIR) starting with 2.35.3 */
+var ThumbnailsDirNormal = xdg.CacheHome + "/thumbnails/normal/"
 
 func (ai AppImage) extractDirIconAsThumbnail() {
 	// log.Println("thumbnail: extract DirIcon as thumbnail")
@@ -201,8 +206,20 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	}
 	helpers.LogError("thumbnail "+thumbnailcachedir+"/.DirIcon", err)
 	data, err := pngembed.EmbedFile(thumbnailcachedir+"/.DirIcon", "Thumb::URI", ai.uri)
-	// TODO: Thumb::MTime
 	helpers.LogError("thumbnail", err)
+
+	/* Set 'Thumb::MTime' metadata of the thumbnail file to the mtime of the AppImage.
+	NOTE: https://specifications.freedesktop.org/thumbnail-spec/thumbnail-spec-latest.html#MODIFICATIONS says:
+	It is not sufficient to do a file.mtime > thumb.MTime check.
+	If the user moves another file over the original, where the mtime changes but is in fact lower
+	than the thumbnail stored mtime, we won't recognize this modification.
+	If for some reason the thumbnail doesn't have the 'Thumb::MTime' key (although it's required)
+	it should be recreated in any case. */
+	if appImageInfo, err := os.Stat(ai.path); err == nil {
+		_, err := pngembed.EmbedFile(thumbnailcachedir+"/.DirIcon", "Thumb::MTime", appImageInfo.ModTime())
+		helpers.LogError("thumbnail", err)
+	}
+
 	if err == nil {
 		err = ioutil.WriteFile(thumbnailcachedir+"/.DirIcon", data, 600)
 		helpers.LogError("thumbnail", err)
@@ -215,15 +232,24 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 
 	// After all the processing is done, move the icons to their real location
 	// where they are (hopefully) picked up by the desktop environment
-	home, _ := os.UserHomeDir()
-	err = os.MkdirAll(home+"/.thumbnails/normal/", os.ModePerm)
+	err = os.MkdirAll(ThumbnailsDirNormal, os.ModePerm)
 	helpers.LogError("thumbnail", err)
 
 	if *verbosePtr == true {
 		log.Println("thumbnail: Moving", thumbnailcachedir+"/.DirIcon", "to", ai.thumbnailfilepath)
 	}
+
 	err = os.Rename(thumbnailcachedir+"/.DirIcon", ai.thumbnailfilepath)
 	helpers.LogError("thumbnail", err)
+
+	/* Also set mtime of the thumbnail file to the mtime of the AppImage. Quite possibly this is not needed.
+	TODO: Perhaps we can remove it.
+	See https://specifications.freedesktop.org/thumbnail-spec/thumbnail-spec-latest.html#MODIFICATIONS  */
+	if appImageInfo, err := os.Stat(ai.path); err == nil {
+		err := os.Chtimes(ai.thumbnailfilepath, time.Now().Local(), appImageInfo.ModTime())
+		helpers.LogError("thumbnail", err)
+	}
+
 	err = os.RemoveAll(thumbnailcachedir)
 	helpers.LogError("thumbnail", err)
 

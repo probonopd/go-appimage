@@ -73,11 +73,11 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 		log.Println("Subscribing to updates for", updateinformation)
 	}
 	client.Subscribe(topic, 0, func(client mqtt.Client, msg mqtt.Message) {
-		// fmt.Printf("* [%s] %s\n", msg.Topic(), string(msg.Payload()))
-		// fmt.Println(topic)
+		// log.Printf("* [%s] %s\n", msg.Topic(), string(msg.Payload()))
+		// log.Println(topic)
 		short := strings.Replace(msg.Topic(), helpers.MQTTNamespace+"/", "", -1)
 		parts := strings.Split(short, "/")
-		fmt.Println("mqtt: received:", parts)
+		log.Println("mqtt: received:", parts)
 		if len(parts) < 2 {
 			return
 		}
@@ -95,7 +95,7 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 				return
 			}
 			queryEscapedUpdateInformation := parts[0]
-			fmt.Println("mqtt:", queryEscapedUpdateInformation, "reports version", version)
+			log.Println("mqtt:", queryEscapedUpdateInformation, "reports version", version)
 			unescapedui, _ := url.QueryUnescape(queryEscapedUpdateInformation)
 			if unescapedui == thisai.updateinformation {
 				log.Println("++++++++++++++++++++++++++++++++++++++++++++++++++")
@@ -110,7 +110,7 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 			ai := NewAppImage(mostRecent)
 
 			fstime := ai.getFSTime()
-			fmt.Println("mqtt:", updateinformation, "reports version", version, "with FSTime", data.FSTime.Unix(), "- we have", mostRecent, "with FSTime", fstime.Unix())
+			log.Println("mqtt:", updateinformation, "reports version", version, "with FSTime", data.FSTime.Unix(), "- we have", mostRecent, "with FSTime", fstime.Unix())
 
 			// FIXME: Only notify if the version is newer than what we already have.
 			// More precisely, if the AppImage being offered is *different* from the one we already have
@@ -140,7 +140,7 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 					}
 				}
 			} else {
-				fmt.Println("mqtt: Not taking action on", ai.niceName, "because FStime is identical")
+				log.Println("mqtt: Not taking action on", ai.niceName, "because FStime is identical")
 
 			}
 		}

@@ -16,7 +16,6 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
-	"syscall"
 )
 
 func checkPrerequisites() {
@@ -32,6 +31,9 @@ func checkPrerequisites() {
 
 	// Check for needed files on $PATH
 	helpers.AddHereToPath() // Add the location of the executable to the $PATH
+	// Add the watched directories to the $PATH
+	helpers.AddDirsToPath(watchedDirectories)
+
 	tools := []string{"bsdtar", "unsquashfs", "desktop-file-validate"}
 	err := helpers.CheckForNeededTools(tools)
 	if err != nil {
@@ -39,7 +41,7 @@ func checkPrerequisites() {
 	}
 
 	// Poor man's singleton
-	// Ensure that no other processes with the same name are already runing under the same user
+	// Ensure that no other processes with the same name are already running under the same user
 	TerminateOtherInstances()
 
 	// We really don't want users to run this in any other way than from an AppImage
@@ -101,11 +103,27 @@ func checkPrerequisites() {
 	// the desktop needing to be restarted
 	err = os.MkdirAll(xdg.DataHome+"/applications/", os.ModePerm)
 	helpers.LogError("main:", err)
-	err = os.MkdirAll(xdg.CacheHome+"/thumbnails/normal", os.ModePerm)
+	err = os.MkdirAll(ThumbnailsDirNormal, os.ModePerm)
 	helpers.LogError("main:", err)
 	home, _ := os.UserHomeDir()
 	err = os.MkdirAll(home+"/.cache/applications/", os.ModePerm)
 	helpers.LogError("main:", err)
+
+	// Some systems may expect thumbnails in another (old?) location
+
+	if Exists(home+"/.thumbnails/normal/") && Exists(ThumbnailsDirNormal) {
+		sendDesktopNotification("Error", "Two potential locations for thumbanils found. TODO: Handle this case", -1)
+		os.Exit(1)
+	}
+
+	if Exists(home+"/.thumbnails/normal/") == true {
+		log.Println("Using", ThumbnailsDirNormal, "as the location for thumbnails")
+		ThumbnailsDirNormal = home + "/.thumbnails/normal/"
+	} else {
+		log.Println("Symlinking", home+"/.thumbnails/normal/", ""+
+			"to", ThumbnailsDirNormal, "as the location for thumbnails")
+		os.Symlink(ThumbnailsDirNormal, home+"/.thumbnails/normal/")
+	}
 
 	// Create $HOME/.local/share/appimagekit/no_desktopintegration
 	// so that AppImages know they should not do desktop integration themselves
@@ -231,6 +249,7 @@ func ensureRunningFromLiveSystem() {
 
 // TerminateOtherInstances sends the SIGTERM signal to all other processes of the same user
 // that have the same process name as the current one in their name
+// FIXME: Since this is not working properly yet, we are just printing for now but not acting
 func TerminateOtherInstances() {
 	infoStat, _ := host.Info()
 	fmt.Printf("Total processes: %d\n", infoStat.Procs)
@@ -242,9 +261,8 @@ func TerminateOtherInstances() {
 	if err != nil {
 		panic(err)
 	}
-
 	myself, _ := os.Readlink("/proc/self/exe")
-	fmt.Println("Process name based on /proc/self/exe:", filepath.Base(myself))
+	fmt.Println("This process based on /proc/self/exe:", myself)
 	fmt.Println("Terminating other running processes with that name...")
 
 	var pids []int32
@@ -253,7 +271,11 @@ func TerminateOtherInstances() {
 	for _, p := range procs {
 		cmdline, _ := p.Cmdline()
 		// Do not terminate instances that were called with a verb, and our own AppImage
-		if strings.Contains(cmdline, filepath.Base(myself)) == true && strings.Contains(cmdline, "wrap") == false && strings.Contains(cmdline, "run") == false && strings.Contains(cmdline, appImageEnv) == false {
+		if strings.Contains(cmdline, filepath.Base(myself)) == true &&
+			strings.Contains(cmdline, "wrap") == false &&
+			strings.Contains(cmdline, "run") == false &&
+			strings.Contains(cmdline, appImageEnv) == false &&
+			strings.Contains(cmdline, myself) == false {
 			procusername, err := p.Username()
 			if err != nil {
 				panic(err)
@@ -264,10 +286,30 @@ func TerminateOtherInstances() {
 		}
 	}
 	for _, pid := range pids {
-		fmt.Println("Sending SIGTERM to", pid)
-		err = syscall.Kill(int(pid), syscall.SIGTERM)
-		if err != nil {
-			panic(err)
-		}
+		fmt.Println("In the future, would send SIGTERM to", pid)
+		/*
+			err = syscall.Kill(int(pid), syscall.SIGTERM)
+			if err != nil {
+				panic(err)
+			}
+		*/
 	}
+}
+
+func printUdisksShowexecHint() {
+	fmt.Println(`You could run the following as a workaround. USE AT YOUR OWN RISK:
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+sudo su
+systemctl stop udisks2
+if [ -e /usr/lib/udisks/udisks-daemon ] ; then
+  sed -i -e 's|showexec|\x00\x00\x00\x00\x00\x00\x00\x00|g' /usr/lib/udisks/udisks-daemon
+fi
+if [ -e /usr/lib/udisks2/udisksd ] ; then
+  sed -i -e 's|showexec|\x00\x00\x00\x00\x00\x00\x00\x00|g' /usr/lib/udisks2/udisksd
+fi
+if [ -e /usr/libexec/udisks2/udisksd ] ; then
+  sed -i -e 's|showexec|\x00\x00\x00\x00\x00\x00\x00\x00|g' /usr/libexec/udisks2/udisksd
+fi
+systemctl restart udisks2
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++`)
 }

@@ -67,6 +67,7 @@ Name=Make executable
 </action>
 </actions>
 `
+	// TODO: Nautilus (also) has $HOME/.local/share/nautilus/scripts
 
 	// GNOME
 	// https://github.com/Sadi58/nemo-actions

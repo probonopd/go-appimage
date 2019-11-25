@@ -124,7 +124,7 @@ func sendDesktopNotification(title string, body string, durationms int32) {
 		return
 	}
 
-	log.Println("notification: Want to send:", title, body)
+	log.Println("Desktop notification: ", title, body)
 
 	obj := conn.Object("org.freedesktop.Notifications", "/org/freedesktop/Notifications")
 	if obj == nil {

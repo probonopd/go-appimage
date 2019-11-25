@@ -11,9 +11,7 @@ Assuming you are using a 64-bit Intel machine (arm64, also known as x86_64), you
 systemctl --user stop appimaged.service || true
 sudo apt-get -y remove appimagelauncher || true
 
-# Clear caches
-rm "$HOME"/.thumbnails/normal/*
-rm "$HOME"/.thumbnails/large/*
+# Clear cache
 rm "$HOME"/.local/share/applications/appimage*
 
 # Put Firejail and AppImageUpdate on your $PATH (with those exact names)

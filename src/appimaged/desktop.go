@@ -66,8 +66,8 @@ func writeDesktopFile(ai AppImage) {
 	// so that renaming the file in the file manager results in a changed name in the menu
 
 	cfg.Section("Desktop Entry").Key("Name").SetValue(ai.niceName)
-	home, _ := os.UserHomeDir()
-	thumbnail := home + "/.thumbnails/normal/" + ai.md5 + ".png"
+
+	thumbnail := ThumbnailsDirNormal + ai.md5 + ".png"
 	// FIXME: If the thumbnail is not generated here but by another external thumbnailer, it may not be fast enough
 	time.Sleep(1 * time.Second)
 	// For icons, use absolute paths. This way icons start working

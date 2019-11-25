@@ -63,6 +63,17 @@ func HereArgs0() string {
 	return dir
 }
 
+// AddDirsToPath adds the directories in []string to the $PATH
+func AddDirsToPath(dirs []string) {
+	for _, dir := range dirs {
+		err := os.Setenv("PATH", dir+":"+os.Getenv("PATH"))
+		if err != nil {
+			PrintError("helpers: AddHereToPath", err)
+		}
+	}
+	log.Println("main: PATH:", os.Getenv("PATH"))
+}
+
 // AddHereToPath adds the location of the executable to the $PATH
 func AddHereToPath() {
 	// The directory we run from is added to the $PATH so that we find helper
@@ -378,9 +389,10 @@ func AppendIfMissing(slice []string, s string) []string {
 			return slice
 		}
 	}
-	// fmt.Println("Appending", s)
-	// fmt.Println( "Slice now contains", slice)
-	return append(slice, s)
+	// fmt.Println("*** Appending", s)
+	slice = append(slice, s)
+	// fmt.Println( "*** Slice now contains", slice)
+	return slice
 }
 
 // ReplaceTextInFile replaces search string with replce string in a file.
