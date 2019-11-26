@@ -38,7 +38,9 @@ func inotifyWatch(path string) {
 	// Set up a watchpoint listening for inotify-specific events within a
 	// current working directory. Dispatch each InCloseWrite and InMovedTo
 	// events separately to c.
-	if err := notify.Watch(path, c, notify.InCloseWrite, notify.InMovedTo, notify.InMovedFrom, notify.InDelete, notify.InDeleteSelf); err != nil {
+	if err := notify.Watch(path, c, notify.InCloseWrite, notify.InMovedTo,
+		notify.InMovedFrom, notify.InDelete,
+		notify.InDeleteSelf); err != nil {
 		log.Fatal(err)
 	}
 	defer notify.Stop(c)
@@ -57,61 +59,3 @@ func inotifyWatch(path string) {
 		}
 	}
 }
-
-/*
-// Watch a directory using inotify
-func inotifyWatch(path string) {
-	watcher, err := fsnotify.NewWatcher()
-	helpers.LogError("inotify, probably already watching", err)
-
-	if err == nil {
-
-		err = watcher.Add(path)
-		if err != nil {
-			helpers.PrintError("inotify: watcher.Add", err)
-		}
-		log.Println("inotify: Watching", path)
-
-		var done bool
-
-		for {
-			select {
-			case event, ok := <-watcher.Events:
-				if !ok {
-					if done {
-						return
-					}
-					done = true
-					continue
-				}
-
-				if *verbosePtr == true {
-					log.Println("inotify:", event.Op, event.Name)
-				}
-
-				if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Create == fsnotify.Create || event.Op&fsnotify.Chmod == fsnotify.Chmod {
-					// log.Println("inotify: Should check whether to register file:", event.Name)
-					// We would be interesting in "write complete", file closed
-					// IN_CLOSE https://stackoverflow.com/questions/2895187/which-inotify-event-signals-the-completion-of-a-large-file-operation
-					if info, err := os.Stat(event.Name); err == nil && info.IsDir() {
-						var dirs []string
-						dirs = append(dirs, event.Name)
-						watchDirectoriesReally(dirs) // If a directory has been created, watch that directory as well
-					} else {
-						ToBeIntegratedOrUnintegrated = helpers.AppendIfMissing(ToBeIntegratedOrUnintegrated, event.Name)
-					}
-				}
-				if event.Op&fsnotify.Remove == fsnotify.Remove || event.Op&fsnotify.Rename == fsnotify.Rename {
-					// log.Println("inotify: Should check whether to unregister file:", event.Name)
-					// May want to check filesystem whether it was integrated at all before doing anything
-					ToBeIntegratedOrUnintegrated = helpers.AppendIfMissing(ToBeIntegratedOrUnintegrated, event.Name)
-					log.Println("inotify: TODO: If it was a directory (too late to find out), then also check if AppImages were in", event.Name, "that need to be unintegrated")
-					// TODO: When a directory is deleted, we need to find all applications that
-					// live inside that directory. Maybe we need to parse the already-installed desktop files
-					// to find those efficiently
-				}
-			}
-		}
-	}
-}
-*/

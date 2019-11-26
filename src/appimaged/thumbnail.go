@@ -85,7 +85,7 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 		if *verbosePtr == true {
 			log.Println(".DirIcon extraction failed. Is it missing? Trying to figure out alternative")
 		}
-		cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, "*.desktop")
+		cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", "/tmp", ai.path, "*.desktop")
 		_, err = runCommand(cmd)
 		if err != nil {
 			helpers.LogError("thumbnail", err)
@@ -93,7 +93,7 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 		files, _ := ioutil.ReadDir(thumbnailcachedir)
 		for _, file := range files {
 			if filepath.Ext(thumbnailcachedir+file.Name()) == ".desktop" {
-				log.Println("Determine iconname from desktop file:", thumbnailcachedir+"/"+file.Name())
+				log.Println("Determine iconname from desktop file:", "/tmp"+"/"+file.Name())
 				cfg, err := ini.Load(thumbnailcachedir + "/" + file.Name())
 				if err == nil {
 					section, _ := cfg.GetSection("Desktop Entry")

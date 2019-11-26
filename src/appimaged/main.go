@@ -251,7 +251,6 @@ func checkMQTTConnected(MQTTclient mqtt.Client) {
 // Periodically move desktop files from their temporary location
 // into the menu, so that the menu does not get rebuilt all the time
 func moveDesktopFiles() {
-
 	// log.Println("main: Ticktock")
 
 	if *verbosePtr == true {
@@ -280,7 +279,7 @@ func moveDesktopFiles() {
 	// We limit the number of concurrent go routines
 	// sem is a channel that will allow up to 8 concurrent operations, a "Bounded channel"
 	// so that we won't get "too many files open" errors
-	var sem = make(chan int, 8)
+	var sem = make(chan int, 1024)
 
 	for _, path := range ToBeIntegratedOrUnintegrated {
 		ai := NewAppImage(path)
@@ -288,14 +287,14 @@ func moveDesktopFiles() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			ToBeIntegratedOrUnintegrated = RemoveFromSlice(ToBeIntegratedOrUnintegrated, ai.path)
 			ai.IntegrateOrUnintegrate()
+			ToBeIntegratedOrUnintegrated = RemoveFromSlice(ToBeIntegratedOrUnintegrated, ai.path)
 		}()
 		<-sem
 	}
 
-	wg.Wait()                   // Wait until all go functions have completed
-	time.Sleep(time.Second * 3) // And wait a bit longer to catch other AppImages that may have been come in the meantime
+	wg.Wait() // Wait until all go functions have completed
+
 	// If this wait is too short, then we may be running into race conditions which can lead to crashes?
 
 	desktopcachedir := xdg.CacheHome + "/applications/" // FIXME: Do not hardcode here and in other places
@@ -376,6 +375,8 @@ func moveDesktopFiles() {
 
 func watchDirectories() {
 
+	watchedDirectories = []string{} // Start fresh here, because old ones may have been unmounted in the meantime
+
 	// Register AppImages from well-known locations
 	// https://github.com/AppImage/appimaged#monitored-directories
 	home, _ := os.UserHomeDir()
@@ -441,7 +442,9 @@ func watchDirectoriesReally(watchedDirectories []string) {
 			} else if info.IsDir() == false {
 				ai := NewAppImage(v + "/" + info.Name())
 				if ai.imagetype > 0 {
-					go ai.IntegrateOrUnintegrate()
+					// We must not process too many in parallel here either, so instead of starting a routine
+					// here we just put it into ToBeIntegratedOrUnintegrated and let the main timer function take care of it
+					ToBeIntegratedOrUnintegrated = helpers.AppendIfMissing(ToBeIntegratedOrUnintegrated, ai.path)
 				}
 			}
 		}

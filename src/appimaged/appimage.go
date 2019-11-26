@@ -334,7 +334,9 @@ func (ai AppImage) _removeIntegration() {
 
 // IntegrateOrUnintegrate integrates or unintegrates
 // (registers or unregisters) an AppImage from the system,
-// depending on whether the file exists on disk
+// depending on whether the file exists on disk. NEVER call this directly,
+// ONLY have this called from a function that limits parallelism and ensures
+// uniqueness of the AppImages to be processed
 func (ai AppImage) IntegrateOrUnintegrate() {
 	if _, err := os.Stat(ai.path); os.IsNotExist(err) {
 		ai._removeIntegration()

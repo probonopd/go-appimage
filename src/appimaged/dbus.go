@@ -125,7 +125,7 @@ func monitorDbusSessionBus() {
 				log.Println("org.gtk.vfs.Metadata", str)
 				// time.Sleep(1 * time.Second)
 				ai := NewAppImage(str)
-				ai.IntegrateOrUnintegrate()
+				ToBeIntegratedOrUnintegrated = helpers.AppendIfMissing(ToBeIntegratedOrUnintegrated, ai.path)
 			}
 
 		}
@@ -143,7 +143,7 @@ func monitorDbusSessionBus() {
 			fp := v.Body[2].(string)
 			log.Println("monitor: ResourceScoreUpdated: ", fp)
 			ai := NewAppImage(fp)
-			ai.IntegrateOrUnintegrate()
+			ToBeIntegratedOrUnintegrated = helpers.AppendIfMissing(ToBeIntegratedOrUnintegrated, ai.path)
 		}
 
 		// KDE
@@ -187,13 +187,13 @@ func monitorDbusSessionBus() {
 					fp := getFilepath(s)
 					log.Println("monitor: MoveFrom: ", fp)
 					ai := NewAppImage(fp)
-					ai.IntegrateOrUnintegrate()
+					ToBeIntegratedOrUnintegrated = helpers.AppendIfMissing(ToBeIntegratedOrUnintegrated, ai.path)
 				}
 				for _, s := range tofiles {
 					fp := getFilepath(s)
 					log.Println("monitor: MoveTo: ", fp)
 					ai := NewAppImage(fp)
-					ai.IntegrateOrUnintegrate()
+					ToBeIntegratedOrUnintegrated = helpers.AppendIfMissing(ToBeIntegratedOrUnintegrated, ai.path)
 				}
 			}
 		}
@@ -211,7 +211,7 @@ func monitorDbusSessionBus() {
 					fp := getFilepath(s)
 					log.Println("monitor: CopyTo: ", fp)
 					ai := NewAppImage(fp)
-					ai.IntegrateOrUnintegrate()
+					ToBeIntegratedOrUnintegrated = helpers.AppendIfMissing(ToBeIntegratedOrUnintegrated, ai.path)
 				}
 			}
 		}
@@ -225,7 +225,7 @@ func monitorDbusSessionBus() {
 					fp := getFilepath(s)
 					log.Println("monitor: CleanupOrDelete: ", fp)
 					ai := NewAppImage(fp)
-					ai.IntegrateOrUnintegrate()
+					ToBeIntegratedOrUnintegrated = helpers.AppendIfMissing(ToBeIntegratedOrUnintegrated, ai.path)
 				}
 			}
 		}
