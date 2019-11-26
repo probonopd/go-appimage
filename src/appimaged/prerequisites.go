@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/acobaugh/osrelease"
 	"github.com/adrg/xdg"
 	"github.com/amenzhinsky/go-polkit"
 	systemddbus "github.com/coreos/go-systemd/dbus"
@@ -119,10 +120,6 @@ func checkPrerequisites() {
 	if Exists(home+"/.thumbnails/normal/") == true {
 		log.Println("Using", ThumbnailsDirNormal, "as the location for thumbnails")
 		ThumbnailsDirNormal = home + "/.thumbnails/normal/"
-	} else {
-		log.Println("Symlinking", home+"/.thumbnails/normal/", ""+
-			"to", ThumbnailsDirNormal, "as the location for thumbnails")
-		os.Symlink(ThumbnailsDirNormal, home+"/.thumbnails/normal/")
 	}
 
 	// Create $HOME/.local/share/appimagekit/no_desktopintegration
@@ -241,6 +238,20 @@ func ensureRunningFromLiveSystem() {
 		}
 	}
 	_, gcEnvIsThere := os.LookupEnv("GOCACHE")
+
+	osrelease, err := osrelease.Read()
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+	}
+
+	// Selectively allow whitelisted target systems we have tested this on
+	testedSystems := []string{"deepin", "clear-linux-os"}
+	for _, testedSystem := range testedSystems {
+		if osrelease["ID"] == testedSystem {
+			return
+		}
+	}
+
 	if found == false && gcEnvIsThere == false {
 		sendDesktopNotification("Not running on one of the supported Live systems", "Grab a Ubuntu, Debian, Deepin, Fedora, openSUSE, elementary OS, KDE neon,... Live ISO and try from there.", -1)
 		os.Exit(1)
