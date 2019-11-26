@@ -114,7 +114,7 @@ func CheckSignature(path string) (*openpgp.Entity, error) {
 	return ent, nil
 }
 
-// SignAppImage signs an AppImage (wip), returns error - NOT TESTED YET
+// SignAppImage signs an AppImage, returns error
 // Based on https://gist.github.com/eliquious/9e96017f47d9bd43cdf9
 func SignAppImage(path string, digest string) error {
 

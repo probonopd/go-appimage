@@ -321,8 +321,13 @@ func moveDesktopFiles() {
 		}
 
 		if len(files) == 1 {
+			// If one single application has been integrated, then the user probably cares about it
+			// e.g., has downloaded it.
+			// TODO: Find out which application was added, and show its icon, make the notification clickable
+			// to open the application
 			sendDesktopNotification("Added application", "", 5000)
 		} else {
+			// If more than one has been integrated, then let's just display the number (or even nothing?)
 			sendDesktopNotification("Added "+strconv.Itoa(len(files))+" applications", "", 5000)
 		}
 
