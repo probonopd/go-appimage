@@ -241,7 +241,7 @@ func GenerateAppImage(appdir string) {
 
 	// Read information from .desktop file
 
-	err = helpers.CheckDesktopFile(err, desktopfile)
+	err = helpers.CheckDesktopFile(desktopfile)
 	if err != nil {
 		helpers.PrintError("CheckDesktopFile", err)
 		os.Exit(1)

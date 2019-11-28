@@ -11,9 +11,9 @@ import (
 )
 
 type AppDir struct {
-	Path     string
-	DesktopFilePath    string
-	MainExecutable string
+	Path            string
+	DesktopFilePath string
+	MainExecutable  string
 }
 
 func NewAppDir(desktopFilePath string) (AppDir, error) {
@@ -26,17 +26,17 @@ func NewAppDir(desktopFilePath string) (AppDir, error) {
 	ad.DesktopFilePath = desktopFilePath
 
 	// Determine root directory of the AppImage
-	pathToBeChecked := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(ad.DesktopFilePath))))+ "/usr/bin"
-	if Exists(pathToBeChecked)  {
+	pathToBeChecked := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(ad.DesktopFilePath)))) + "/usr/bin"
+	if Exists(pathToBeChecked) {
 		ad.Path = filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(ad.DesktopFilePath))))
 		fmt.Println("ad.Path", ad.Path)
 	} else {
-		return ad, errors.New("AppDir could not be identified: " +  pathToBeChecked + " does not exist")
+		return ad, errors.New("AppDir could not be identified: " + pathToBeChecked + " does not exist")
 	}
 
 	// Copy the desktop file into the root of the AppDir
 	ad.DesktopFilePath = desktopFilePath
-	err := CopyFile(ad.DesktopFilePath, ad.Path + "/" + filepath.Base(ad.DesktopFilePath))
+	err := CopyFile(ad.DesktopFilePath, ad.Path+"/"+filepath.Base(ad.DesktopFilePath))
 	if err != nil {
 		return ad, err
 	}
@@ -53,17 +53,17 @@ func NewAppDir(desktopFilePath string) (AppDir, error) {
 			log.Printf("%v\n", err)
 		}
 		if strings.HasSuffix(info.Name(), ".desktop") == true {
-			ad.DesktopFilePath =  ad.Path + "/" + info.Name()
-			counter = counter +1
+			ad.DesktopFilePath = ad.Path + "/" + info.Name()
+			counter = counter + 1
 		}
 	}
 
 	// Return if we have too few or too many top-level desktop files now
-	if counter <1 {
-		return ad, errors.New("No desktop file was found, please place one into "+ ad.Path)
+	if counter < 1 {
+		return ad, errors.New("No desktop file was found, please place one into " + ad.Path)
 	}
-	if counter >1 {
-		return ad, errors.New("More than one desktop file was found in"+  ad.Path)
+	if counter > 1 {
+		return ad, errors.New("More than one desktop file was found in" + ad.Path)
 	}
 
 	ini.PrettyFormat = false
@@ -88,7 +88,7 @@ func NewAppDir(desktopFilePath string) (AppDir, error) {
 	}
 
 	// Desktop file verification
-	CheckDesktopFile(ad.DesktopFilePath)
+	err = CheckDesktopFile(ad.DesktopFilePath)
 	if err != nil {
 		return ad, err
 	}
@@ -102,7 +102,7 @@ func NewAppDir(desktopFilePath string) (AppDir, error) {
 		return ad, err
 	}
 
-	ad.MainExecutable = ad.Path + "/usr/bin/" +  strings.Split(exec.String(), " ")[0] // TODO: Do not hardcode /usr/bin, instead search the AppDir for an executable file with that name?
+	ad.MainExecutable = ad.Path + "/usr/bin/" + strings.Split(exec.String(), " ")[0] // TODO: Do not hardcode /usr/bin, instead search the AppDir for an executable file with that name?
 
 	return ad, nil
 }
