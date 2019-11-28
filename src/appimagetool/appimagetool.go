@@ -253,8 +253,11 @@ func GenerateAppImage(appdir string) {
 	val, _ := d.Section("Desktop Entry").GetKey("Name")
 	name := val.String()
 	nameWithUnderscores := strings.Replace(name, " ", "_", -1)
-
 	fmt.Println(nameWithUnderscores)
+
+	// Get the name of the icon
+	val, _ = d.Section("Desktop Entry").GetKey("Icon")
+	iconname := val.String()
 
 	// Determine the architecture
 	// If no $ARCH variable is set check all .so that we can find to determine the architecture
