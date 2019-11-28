@@ -102,6 +102,22 @@ func FilesWithSuffixInDirectory(directory string, extension string) []string {
 	return foundfiles
 }
 
+// FilesWithPrefixInDirectory returns the files in a given directory with the given filename extension, and err
+func FilesWithPrefixInDirectory(directory string, prefix string) []string {
+	var foundfiles []string
+	files, err := ioutil.ReadDir(directory)
+	if err != nil {
+		return foundfiles
+	}
+
+	for _, file := range files {
+		if strings.HasPrefix(file.Name(), prefix) {
+			foundfiles = append(foundfiles, directory+"/"+file.Name())
+		}
+	}
+	return foundfiles
+}
+
 // CheckIfFileExists checks if a file exists and is not a directory before we
 // try using it to prevent further errors.
 // Returns true if it does, false otherwise.
@@ -495,4 +511,3 @@ func CheckMagicAtOffset(f *os.File, magic string, offset int64) bool {
 	}
 	return false
 }
-

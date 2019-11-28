@@ -12,8 +12,10 @@ import (
 )
 import "debug/elf"
 import "github.com/probonopd/go-appimage/internal/helpers"
+import "github.com/otiai10/copy"
 
 var allLibs []string
+var libraryLocations []string // All directories in the host system that may contain libraries
 
 var AppRunData = `#!/bin/sh
 
@@ -64,8 +66,12 @@ MAIN_BIN=$(find "$HERE" -name "$MAIN" | head -n 1)
 LD_LINUX=$(find "$HERE" -name 'ld-linux-*.so.*' | head -n 1)
 if [ -e "$LD_LINUX" ] ; then
   echo "Run experimental bundle that bundles everything"
-  export GCONV_PATH="$HERE/usr/lib/x86_64-linux-gnu/gconv"
+  export GCONV_PATH="$HERE/usr/lib/gconv"
   export FONTCONFIG_FILE="$HERE/etc/fonts/fonts.conf"
+  export GTK_EXE_PREFIX="$HERE/usr"
+  export GDK_PIXBUF_MODULEDIR=$(readlink -f "$HERE"/usr/lib//gdk-pixbuf-*/*/loaders/ )
+  export GDK_PIXBUF_MODULE_FILE=$(readlink -f "$HERE"/usr/lib/gdk-pixbuf-*/*/loaders.cache ) # Patched to contain no paths
+  export LIBRARY_PATH=$GDK_PIXBUF_MODULEDIR:$LIBRARY_PATH # Otherwise getting "Unable to load image-loading module"
   export LIBRARY_PATH=$GDK_PIXBUF_MODULEDIR # Otherwise getting "Unable to load image-loading module"
   export XDG_DATA_DIRS="${HERE}"/usr/share/:"${XDG_DATA_DIRS}"
   export PERLLIB="${HERE}"/usr/share/perl5/:"${HERE}"/usr/lib/perl5/:"${PERLLIB}"
@@ -170,7 +176,7 @@ func main() {
 		os.MkdirAll(filepath.Dir(appdir.Path+"/"+lib), 0755)
 		if helpers.Exists(appdir.Path+"/"+lib) == false {
 			helpers.CopyFile(lib, appdir.Path+"/"+lib)
-			fmt.Println("TODO: Copy license file xxxxxxxxxxxxxxxxxxxx")
+			fmt.Println("TODO: Copy license file for", lib, "xxxxxxxxxxxxxxxxxxxx")
 		}
 		allELFsInAppDir = append(allELFsInAppDir, ELF{path: appdir.Path + "/" + lib})
 	}
@@ -216,7 +222,7 @@ func main() {
 		} else {
 			// Call patchelf to set the rpath
 			cmd := exec.Command("patchelf", "--set-rpath", allELFsInAppDir[i].rpath, allELFsInAppDir[i].path)
-			fmt.Println(cmd.Args)
+			// fmt.Println(cmd.Args)
 			out, err = cmd.CombinedOutput()
 			if err != nil {
 				fmt.Println(allELFsInAppDir[i].path, strings.TrimSpace(string(out)))
@@ -227,12 +233,55 @@ func main() {
 
 	}
 
-	fmt.Println("TODO: Patching ld-linux... xxxxxxxxxxxxxxxxxxxx")
-	// Do what we do in the Scribus AppImage script
+	// If there is a .so with the name libgdk_pixbuf inside the AppDir, then we need to
+	// bundle Gdk pixbuf loaders without which the bundled Gtk does not work
+	// cp /usr/lib/x86_64-linux-gnu/gdk-pixbuf-*/*/loaders/* usr/lib/x86_64-linux-gnu/gdk-pixbuf-*/*/loaders/
+	// cp /usr/lib/x86_64-linux-gnu/gdk-pixbuf-*/*/loaders.cache usr/lib/x86_64-linux-gnu/gdk-pixbuf-*/*/
+	// sed -i -e 's|/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders/||g' usr/lib/x86_64-linux-gnu/gdk-pixbuf-*/*/loaders.cache
+	for _, lib := range allLibs {
+		if strings.HasPrefix(filepath.Base(lib), "libgdk_pixbuf") {
+			fmt.Println("Bundling Gdk pixbuf loaders (for GDK_PIXBUF_MODULEDIR and GDK_PIXBUF_MODULE_FILE)...")
+			locs, err := findWithPrefixInLibraryLocations("gdk-pixbuf")
+			if err != nil {
+				fmt.Println("Could not find Gdk pixbuf loaders")
+				os.Exit(1)
+			} else {
+				for _, loc := range locs {
+					os.MkdirAll(appdir.Path+"/usr/lib/", 0755)
+					if err != nil {
+						helpers.PrintError("MkdirAll", err)
+						os.Exit(1)
+					}
+					// Target location must match GDK_PIXBUF_MODULEDIR and GDK_PIXBUF_MODULE_FILE exported in AppRun
+					err = copy.Copy(loc, appdir.Path+"/usr/lib/"+filepath.Base(loc))
+					if err != nil {
+						helpers.PrintError("Copy", err)
+						os.Exit(1)
+					}
+				}
+			}
+			// err := copy.Copy("/usr/lib/x86_64-linux-gnu/gdk-pixbuf-*/*/loaders/*", "your/directory.copy")
+			break
+		}
+	}
 
-	fmt.Println("TODO: Copying in gconv... xxxxxxxxxxxxxxxxxxxx")
+	fmt.Println("TODO: Patching ld-linux... xxxxxxxxxxxxxxxxxxxx")
+	// Do what we do in the Scribus AppImage script, namely
+	// sed -i -e 's|/usr|/xxx|g' lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+	// sed -i -e 's|/usr/lib|/ooo/ooo|g' lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+
+	fmt.Println("Copying in gconv (for GCONV_PATH)...")
 	// Search in all of the system's library directories for a directory called gconv
-	// and put it into the location which matches what we define in AppRun
+	// and put it into the a location which matches the GCONV_PATH we export in AppRun
+	gconvs, err := findWithPrefixInLibraryLocations("gconv")
+	if err == nil {
+		// Target location must match GCONV_PATH exported in AppRun
+		err = copy.Copy(gconvs[0], appdir.Path+"/usr/lib/gconv")
+		if err != nil {
+			helpers.PrintError("Copy", err)
+			os.Exit(1)
+		}
+	}
 
 	if helpers.Exists(appdir.Path + "/usr/share/glib-2.0/schemas/") {
 		fmt.Println("TODO: Compiling glibc schemas... xxxxxxxxxxxxxxxxxxxx")
@@ -252,6 +301,10 @@ func main() {
 			os.Exit(1)
 		}
 	}
+
+	fmt.Println("TODO: Bundling Gtk Theme...")
+	// If we do not bundle a theme, then newer applications will not always be able to run properly on older systems
+	// or on systems without Gtk. So we need to bundle at least one default theme. What was Inkscape doing in this regard?
 
 	fmt.Println("Adding AppRun...")
 
@@ -347,11 +400,23 @@ func getDeps(binaryOrLib string) error {
 	return nil
 }
 
+func findWithPrefixInLibraryLocations(prefix string) ([]string, error) {
+	var found []string
+	// Try to find the file or directory in one of those locations
+	for _, libraryLocation := range libraryLocations {
+		found = helpers.FilesWithPrefixInDirectory(libraryLocation, prefix)
+		if len(found) > 0 {
+			return found, nil
+		}
+	}
+	return found, errors.New("did not find " + prefix)
+}
+
 func findLibrary(filename string) (string, error) {
 
 	// Look for libraries in the same locations in which the system looks for libraries
 	// TODO: Instead of hardcoding libraryLocations, get them from the system - see the comment at the top xxxxxxxxx
-	libraryLocations := []string{"/usr/lib64", "/lib64", "/usr/lib", "/lib",
+	libraryLocations = []string{"/usr/lib64", "/lib64", "/usr/lib", "/lib",
 		// The following was determined on Ubuntu 18.04 using
 		// $ find /etc/ld.so.conf.d/ -type f -exec cat {} \;
 		"/usr/lib/x86_64-linux-gnu/libfakeroot",
