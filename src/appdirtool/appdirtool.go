@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"strconv"
 
 	"os"
 	"os/exec"
@@ -69,10 +70,10 @@ if [ -e "$LD_LINUX" ] ; then
   export GCONV_PATH="$HERE/usr/lib/gconv"
   export FONTCONFIG_FILE="$HERE/etc/fonts/fonts.conf"
   export GTK_EXE_PREFIX="$HERE/usr"
-  export GDK_PIXBUF_MODULEDIR=$(readlink -f "$HERE"/usr/lib//gdk-pixbuf-*/*/loaders/ )
+  export GTK_THEME=Adwaita # This one should be bundled so that it can work on systems without Gtk
+  export GDK_PIXBUF_MODULEDIR=$(readlink -f "$HERE"/usr/lib/gdk-pixbuf-*/*/loaders/ )
   export GDK_PIXBUF_MODULE_FILE=$(readlink -f "$HERE"/usr/lib/gdk-pixbuf-*/*/loaders.cache ) # Patched to contain no paths
   export LIBRARY_PATH=$GDK_PIXBUF_MODULEDIR:$LIBRARY_PATH # Otherwise getting "Unable to load image-loading module"
-  export LIBRARY_PATH=$GDK_PIXBUF_MODULEDIR # Otherwise getting "Unable to load image-loading module"
   export XDG_DATA_DIRS="${HERE}"/usr/share/:"${XDG_DATA_DIRS}"
   export PERLLIB="${HERE}"/usr/share/perl5/:"${HERE}"/usr/lib/perl5/:"${PERLLIB}"
   export GSETTINGS_SCHEMA_DIR="${HERE}"/usr/share/glib-2.0/schemas/:"${GSETTINGS_SCHEMA_DIR}"
@@ -152,86 +153,7 @@ func main() {
 
 	fmt.Println("Copying all required libraries into the AppDir...")
 
-	// Copy all libraries into the AppDir, at the location in which they originally were in the host system
-	// TODO: Consider copying to one predetermined location inside the AppDir, e.g., usr/lib
-	// to simplify things. Since it might break on things like dlopen(), we are not doing it so far
-
-	// Add all executables and pre-existing ELFs in the AppDir to allELFsInAppDir
-	// independent of whether they have execute permissions or not
-	allelfs, err := findAllExecutablesAndLibraries(appdir.Path)
-	if err != nil {
-		helpers.PrintError("findAllExecutablesAndLibraries:", err)
-	}
-	var allELFsInAppDir []ELF
-	for _, elfpath := range allelfs {
-		elfobj := ELF{}
-		elfobj.path = elfpath
-		allELFsInAppDir = append(allELFsInAppDir, elfobj)
-	}
-	fmt.Println("len(allELFsInAppDir), FIXME: why is this 0:", len(allELFsInAppDir))
-
-	// Copy the libraries determined by our ldd replacement into the AppDir, and add them to
-	// allELFsInAppDir if they are not there yet
-	for _, lib := range allLibs {
-		os.MkdirAll(filepath.Dir(appdir.Path+"/"+lib), 0755)
-		if helpers.Exists(appdir.Path+"/"+lib) == false {
-			helpers.CopyFile(lib, appdir.Path+"/"+lib)
-			fmt.Println("TODO: Copy license file for", lib, "xxxxxxxxxxxxxxxxxxxx")
-		}
-		allELFsInAppDir = append(allELFsInAppDir, ELF{path: appdir.Path + "/" + lib})
-	}
-
-	// Find out in which directories we now actually have libraries
-	allDirectoriesWithLibraries, err := getAllDirectoriesWithLibraries(appdir.Path)
-	helpers.PrintError("allDirectoriesWithLibraries", err)
-	fmt.Println("allDirectoriesWithLibraries:", allDirectoriesWithLibraries)
-
-	fmt.Println("Computing relative locations to directories containing libraries...")
-
-	fmt.Println("len(allELFsInAppDir):", len(allELFsInAppDir))
-
-	fmt.Println("Patching ELF files to find libraries in relative locations...")
-
-	// For each ELF in the AppDir, compute the relative locations to directories containing libraries for the rpath
-	for i, l := range allELFsInAppDir {
-		// fmt.Println(l.path)
-		os.Chmod(l.path, 0755)
-		for _, libdir := range allDirectoriesWithLibraries {
-			rel, err := filepath.Rel(filepath.Dir(l.path), libdir)
-			if err == nil && rel != "." {
-				allELFsInAppDir[i].relpaths = append(allELFsInAppDir[i].relpaths, rel)
-			}
-		}
-		allELFsInAppDir[i].rpath = "$ORIGIN:$ORIGIN/" + strings.Join(allELFsInAppDir[i].relpaths, ":$ORIGIN/")
-		// fmt.Println("rpath for", allELFsInAppDir[i].path, allELFsInAppDir[i].rpath)
-
-		// Call patchelf to find out whether the ELF already has an rpath set
-		cmd := exec.Command("patchelf", "--print-rpath", allELFsInAppDir[i].path)
-		// fmt.Println(cmd.Args)
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			fmt.Println(allELFsInAppDir[i].path, strings.TrimSpace(string(out)))
-			helpers.PrintError("patchelf --print-rpath "+allELFsInAppDir[i].path, err)
-			os.Exit(1)
-		}
-		// fmt.Println(string(out))
-		if strings.Contains(allELFsInAppDir[i].path, "ld-linux") {
-			fmt.Println("Not writing rpath to", allELFsInAppDir[i].path, "because ld-linux apparently does not like this")
-		} else if strings.HasPrefix(string(out), "$") == true {
-			fmt.Println("Not writing rpath to", allELFsInAppDir[i].path, "because it already starts with $")
-		} else {
-			// Call patchelf to set the rpath
-			cmd := exec.Command("patchelf", "--set-rpath", allELFsInAppDir[i].rpath, allELFsInAppDir[i].path)
-			// fmt.Println(cmd.Args)
-			out, err = cmd.CombinedOutput()
-			if err != nil {
-				fmt.Println(allELFsInAppDir[i].path, strings.TrimSpace(string(out)))
-				helpers.PrintError("patchelf --set-rpath "+allELFsInAppDir[i].path, err)
-				os.Exit(1)
-			}
-		}
-
-	}
+	deployLibsInDirTree(appdir, appdir.Path)
 
 	// If there is a .so with the name libgdk_pixbuf inside the AppDir, then we need to
 	// bundle Gdk pixbuf loaders without which the bundled Gtk does not work
@@ -260,10 +182,18 @@ func main() {
 					}
 				}
 			}
-			// err := copy.Copy("/usr/lib/x86_64-linux-gnu/gdk-pixbuf-*/*/loaders/*", "your/directory.copy")
 			break
 		}
 	}
+
+	// Gtk 3 modules/plugins
+	// If there is a .so with the name libgtk-3 inside the AppDir, then we need to
+	// bundle Gdk modules/plugins
+	deployGtkDirectory(appdir, 3)
+
+	// tk 2 modules/plugins
+	// Same as above, but for Gtk 2
+	deployGtkDirectory(appdir, 2)
 
 	fmt.Println("TODO: Patching ld-linux... xxxxxxxxxxxxxxxxxxxx")
 	// Do what we do in the Scribus AppImage script, namely
@@ -314,6 +244,124 @@ func main() {
 		os.Exit(1)
 	}
 
+}
+
+func deployGtkDirectory(appdir helpers.AppDir, gtkVersion int) {
+	for _, lib := range allLibs {
+		if strings.HasPrefix(filepath.Base(lib), "libgtk-"+strconv.Itoa(gtkVersion)) {
+			fmt.Println("Bundling Gtk", strconv.Itoa(gtkVersion), "directory (for GTK_EXE_PREFIX)...")
+			locs, err := findWithPrefixInLibraryLocations("gtk-" + strconv.Itoa(gtkVersion))
+			if err != nil {
+				fmt.Println("Could not find Gtk", strconv.Itoa(gtkVersion), "directory")
+				os.Exit(1)
+			} else {
+				for _, loc := range locs {
+					os.MkdirAll(appdir.Path+"/usr/lib/", 0755)
+					if err != nil {
+						helpers.PrintError("MkdirAll", err)
+						os.Exit(1)
+					}
+					// Target location must be in GTK_EXE_PREFIX exported in AppRun
+					err = copy.Copy(loc, appdir.Path+"/usr/lib/"+filepath.Base(loc))
+					if err != nil {
+						helpers.PrintError("Copy", err)
+						os.Exit(1)
+					}
+					fmt.Println("Bundling dependencies of Gtk", strconv.Itoa(gtkVersion), "directory...")
+					deployLibsInDirTree(appdir, appdir.Path+"/usr/lib/"+filepath.Base(loc))
+					fmt.Println("Bundling Adwaita theme for Gtk", strconv.Itoa(gtkVersion), "(for GTK_THEME=Adwaita)...")
+					err = copy.Copy("/usr/share/themes/Adwaita/gtk-"+strconv.Itoa(gtkVersion)+".0", appdir.Path+"/usr/share/themes/Adwaita/gtk-"+strconv.Itoa(gtkVersion)+".0")
+					if err != nil {
+						helpers.PrintError("Copy", err)
+						os.Exit(1)
+					}
+					fmt.Println("Bundling icons for Adwaita theme..")
+					err = copy.Copy("/usr/share/icons/Adwaita", appdir.Path+"/usr/share/themes/Adwaita")
+					if err != nil {
+						helpers.PrintError("Copy", err)
+						os.Exit(1)
+					}
+				}
+			}
+			break
+		}
+	}
+}
+
+func deployLibsInDirTree(appdir helpers.AppDir, pathToDirTreeToBeDeployed string) {
+	// Copy all libraries into the AppDir, at the location in which they originally were in the host system
+	// TODO: Consider copying to one predetermined location inside the AppDir, e.g., usr/lib
+	// to simplify things. Since it might break on things like dlopen(), we are not doing it so far
+	// Add all executables and pre-existing ELFs in the AppDir to allELFsInAppDir
+	// independent of whether they have execute permissions or not
+	allelfs, err := findAllExecutablesAndLibraries(pathToDirTreeToBeDeployed)
+	if err != nil {
+		helpers.PrintError("findAllExecutablesAndLibraries:", err)
+	}
+	var allELFsInAppDir []ELF
+	for _, elfpath := range allelfs {
+		elfobj := ELF{}
+		elfobj.path = elfpath
+		allELFsInAppDir = append(allELFsInAppDir, elfobj)
+	}
+	fmt.Println("len(allELFsInAppDir):", len(allELFsInAppDir))
+	// Copy the libraries determined by our ldd replacement into the AppDir, and add them to
+	// allELFsInAppDir if they are not there yet
+	for _, lib := range allLibs {
+		os.MkdirAll(filepath.Dir(appdir.Path+"/"+lib), 0755)
+		if helpers.Exists(appdir.Path+"/"+lib) == false {
+			helpers.CopyFile(lib, appdir.Path+"/"+lib)
+			fmt.Println("TODO: Copy license file for", lib, "xxxxxxxxxxxxxxxxxxxx")
+		}
+		allELFsInAppDir = append(allELFsInAppDir, ELF{path: appdir.Path + "/" + lib})
+	}
+	// Find out in which directories we now actually have libraries
+	allDirectoriesWithLibraries, err := getAllDirectoriesWithLibraries(appdir.Path)
+	helpers.PrintError("allDirectoriesWithLibraries", err)
+	fmt.Println("allDirectoriesWithLibraries:", allDirectoriesWithLibraries)
+	fmt.Println("Computing relative locations to directories containing libraries...")
+	fmt.Println("len(allELFsInAppDir):", len(allELFsInAppDir))
+	fmt.Println("Patching ELF files to find libraries in relative locations...")
+	// For each ELF in the AppDir, compute the relative locations to directories containing libraries for the rpath
+	for i, l := range allELFsInAppDir {
+		// fmt.Println(l.path)
+		os.Chmod(l.path, 0755)
+		for _, libdir := range allDirectoriesWithLibraries {
+			rel, err := filepath.Rel(filepath.Dir(l.path), libdir)
+			if err == nil && rel != "." {
+				allELFsInAppDir[i].relpaths = append(allELFsInAppDir[i].relpaths, rel)
+			}
+		}
+		allELFsInAppDir[i].rpath = "$ORIGIN:$ORIGIN/" + strings.Join(allELFsInAppDir[i].relpaths, ":$ORIGIN/")
+		// fmt.Println("rpath for", allELFsInAppDir[i].path, allELFsInAppDir[i].rpath)
+
+		// Call patchelf to find out whether the ELF already has an rpath set
+		cmd := exec.Command("patchelf", "--print-rpath", allELFsInAppDir[i].path)
+		// fmt.Println(cmd.Args)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			fmt.Println(allELFsInAppDir[i].path, strings.TrimSpace(string(out)))
+			helpers.PrintError("patchelf --print-rpath "+allELFsInAppDir[i].path, err)
+			os.Exit(1)
+		}
+		// fmt.Println(string(out))
+		if strings.Contains(allELFsInAppDir[i].path, "ld-linux") {
+			fmt.Println("Not writing rpath to", allELFsInAppDir[i].path, "because ld-linux apparently does not like this")
+		} else if strings.HasPrefix(string(out), "$") == true {
+			fmt.Println("Not writing rpath to", allELFsInAppDir[i].path, "because it already starts with $")
+		} else {
+			// Call patchelf to set the rpath
+			cmd := exec.Command("patchelf", "--set-rpath", allELFsInAppDir[i].rpath, allELFsInAppDir[i].path)
+			// fmt.Println(cmd.Args)
+			out, err = cmd.CombinedOutput()
+			if err != nil {
+				fmt.Println(allELFsInAppDir[i].path, strings.TrimSpace(string(out)))
+				helpers.PrintError("patchelf --set-rpath "+allELFsInAppDir[i].path, err)
+				os.Exit(1)
+			}
+		}
+
+	}
 }
 
 // findAllExecutablesAndLibraries returns all ELF libraries and executables
