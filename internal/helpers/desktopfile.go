@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func CheckDesktopFile( desktopfile string) error {
+func CheckDesktopFile(desktopfile string) error {
 	// Check for presence of required keys and abort otherwise
 	d, err := ini.Load(desktopfile)
 	PrintError("ini.load", err)
@@ -24,10 +24,12 @@ func CheckDesktopFile( desktopfile string) error {
 		return errors.New("Desktop file contains Icon= entry with a path")
 	}
 
-	if strings.Contains(filepath.Base(iconname), ".") {
-		return errors.New("Desktop file contains Icon= entry with '.'")
+	if strings.HasSuffix(filepath.Base(iconname), ".png") ||
+		strings.HasSuffix(filepath.Base(iconname), ".svg") ||
+		strings.HasSuffix(filepath.Base(iconname), ".svgz") ||
+		strings.HasSuffix(filepath.Base(iconname), ".xpm") {
+		return errors.New("Desktop file contains Icon= entry with a suffix, please remove the suffix")
 	}
 
 	return nil
 }
-
