@@ -15,7 +15,7 @@ import "github.com/probonopd/go-appimage/internal/helpers"
 
 var allLibs []string
 
-var AppRunData string = `#!/bin/sh
+var AppRunData = `#!/bin/sh
 
 HERE="$(dirname "$(readlink -f "${0}")")"
 
@@ -81,8 +81,6 @@ else
 fi
 `
 
-
-
 type ELF struct {
 	path     string
 	relpaths []string
@@ -112,7 +110,7 @@ type ELF struct {
 
    o  In the default path /lib, and then /usr/lib.  (On some 64-bit architectures, the default paths for 64-bit shared  objects  are  /lib64,  and  then
       /usr/lib64.)  If the binary was linked with the -z nodeflib linker option, this step is skipped.
- */
+*/
 
 func main() {
 
@@ -127,7 +125,7 @@ func main() {
 		}
 	}
 
-	if len(os.Args) <2 {
+	if len(os.Args) < 2 {
 		fmt.Println("Please supply the path to a desktop file in an FHS-like AppDir")
 		fmt.Println("a FHS-like structure, e.g.:")
 		fmt.Println(os.Args[0], "appdir/usr/share/applications/myapp.desktop")
@@ -204,7 +202,6 @@ func main() {
 		allELFsInAppDir[i].rpath = "$ORIGIN:$ORIGIN/" + strings.Join(allELFsInAppDir[i].relpaths, ":$ORIGIN/")
 		// fmt.Println("rpath for", allELFsInAppDir[i].path, allELFsInAppDir[i].rpath)
 
-
 		// Call patchelf to find out whether the ELF already has an rpath set
 		cmd := exec.Command("patchelf", "--print-rpath", allELFsInAppDir[i].path)
 		// fmt.Println(cmd.Args)
@@ -215,7 +212,9 @@ func main() {
 			os.Exit(1)
 		}
 		// fmt.Println(string(out))
-		if strings.HasPrefix(string(out), "$") == false {
+		if strings.Contains(allELFsInAppDir[i].path, "ld-linux") {
+			fmt.Println("Not writing rpath to", allELFsInAppDir[i].path, "because ld-linux apparently does not like this")
+		} else if strings.HasPrefix(string(out), "$") == false && strings.Contains(allELFsInAppDir[i].path, "ld-linux") {
 			// Call patchelf to set the rpath
 			cmd = exec.Command("patchelf", "--set-rpath", allELFsInAppDir[i].rpath, allELFsInAppDir[i].path)
 			fmt.Println(cmd.Args)
@@ -237,7 +236,7 @@ func main() {
 
 	fmt.Println("Adding AppRun...")
 
-	err = ioutil.WriteFile(appdir.Path + "/AppRun", []byte(AppRunData), 0755)
+	err = ioutil.WriteFile(appdir.Path+"/AppRun", []byte(AppRunData), 0755)
 	if err != nil {
 		helpers.PrintError("write AppRun", err)
 		os.Exit(1)
@@ -358,4 +357,3 @@ func NewLibrary(path string) ELF {
 	lib.path = path
 	return lib
 }
-
