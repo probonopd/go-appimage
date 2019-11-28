@@ -86,6 +86,22 @@ func AddHereToPath() {
 	// log.Println("main: PATH:", os.Getenv("PATH"))
 }
 
+// FilesWithSuffixInDirectoryRecursive returns the files in a given directory with the given filename extension, and err
+func FilesWithSuffixInDirectoryRecursive(directory string, extension string) []string {
+	var foundfiles []string
+	err := filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
+		if strings.HasSuffix(info.Name(), extension) {
+			foundfiles = append(foundfiles, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return foundfiles
+	}
+
+	return foundfiles
+}
+
 // FilesWithSuffixInDirectory returns the files in a given directory with the given filename extension, and err
 func FilesWithSuffixInDirectory(directory string, extension string) []string {
 	var foundfiles []string

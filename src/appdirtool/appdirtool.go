@@ -59,11 +59,21 @@ case "${XDG_CURRENT_DESKTOP}" in
 esac
 
 ############################################################################################
+# If .ui files are in the AppDir, then chances are that we need to cd into usr/
+# because we may have had to patch the absolute paths away in the binary
+############################################################################################
+
+UIFILES=$(find "$HERE" -name "*.ui")
+if [ ! -z "$UIFILES" ] ; then
+  cd "$HERE/usr"
+fi
+
+############################################################################################
 # Run experimental bundle that bundles everything if a private ld-linux-x86-64.so.2 is there
 # This allows the bundle to run even on older systems than the one it was built on
 ############################################################################################
 
-MAIN_BIN=$(find "$HERE" -name "$MAIN" | head -n 1)
+MAIN_BIN=$(find "$HERE/usr/bin" -name "$MAIN" | head -n 1)
 LD_LINUX=$(find "$HERE" -name 'ld-linux-*.so.*' | head -n 1)
 if [ -e "$LD_LINUX" ] ; then
   echo "Run experimental bundle that bundles everything"
@@ -243,9 +253,17 @@ func main() {
 		}
 	}
 
-	fmt.Println("TODO: Bundling Gtk Theme...")
-	// If we do not bundle a theme, then newer applications will not always be able to run properly on older systems
-	// or on systems without Gtk. So we need to bundle at least one default theme. What was Inkscape doing in this regard?
+	// Check for the presence of Gtk .ui files
+	uifiles := helpers.FilesWithSuffixInDirectoryRecursive(appdir.Path, ".ui")
+	if len(uifiles) > 0 {
+		fmt.Println("Gtk .ui files found. Need to take care to have them loaded from a relative rather than absolute path")
+		fmt.Println("TODO: Check if they are at hardcoded absolute paths in the application and if yes, patch")
+		var dirswithUiFiles []string
+		for _, uifile := range uifiles {
+			dirswithUiFiles = helpers.AppendIfMissing(dirswithUiFiles, filepath.Dir(uifile))
+		}
+		fmt.Println("Directories with .ui files:", dirswithUiFiles)
+	}
 
 	fmt.Println("Adding AppRun...")
 
