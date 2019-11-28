@@ -3,6 +3,7 @@ package helpers
 import (
 	"bytes"
 	"debug/elf"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -467,3 +468,31 @@ func SliceContains(s []string, e string) bool {
 	}
 	return false
 }
+
+// Returns true if file exists
+func Exists(name string) bool {
+	_, err := os.Stat(name)
+	if err == nil {
+		return true
+	}
+	return false
+}
+
+// Return true if magic string (hex) is found at offset
+// TODO: Instead of magic string, could probably use something like []byte{'\r', '\n'} or []byte("AI")
+func CheckMagicAtOffset(f *os.File, magic string, offset int64) bool {
+	_, err := f.Seek(offset, 0) // Go to offset
+	LogError("CheckMagicAtOffset: "+f.Name(), err)
+	b := make([]byte, len(magic)/2) // Read bytes
+	n, err := f.Read(b)
+	LogError("CheckMagicAtOffset: "+f.Name(), err)
+	hexmagic := hex.EncodeToString(b[:n])
+	if hexmagic == magic {
+		// if *verbosePtr == true {
+		// 	log.Printf("CheckMagicAtOffset: %v: Magic 0x%x at offset %v\n", f.Name(), string(b[:n]), offset)
+		// }
+		return true
+	}
+	return false
+}
+

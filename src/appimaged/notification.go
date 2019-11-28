@@ -11,7 +11,7 @@ import (
 
 	"github.com/esiqveland/notify"
 	"github.com/godbus/dbus"
-	"github.com/probonopd/appimage/internal/helpers"
+	"github.com/probonopd/go-appimage/internal/helpers"
 )
 
 // sendUpdateDesktopNotification sends a desktop notification for an update.

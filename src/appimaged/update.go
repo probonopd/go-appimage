@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/probonopd/appimage/internal/helpers"
+	"github.com/probonopd/go-appimage/internal/helpers"
 )
 
 func update() {

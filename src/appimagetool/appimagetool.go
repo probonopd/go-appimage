@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/probonopd/appimage/internal/helpers"
+	"github.com/probonopd/go-appimage/internal/helpers"
 )
 
 // https://blog.kowalczyk.info/article/vEja/embedding-build-number-in-go-executable.html
@@ -189,6 +189,10 @@ func GenerateAppImage(appdir string) {
 		os.Exit(1)
 	}
 
+	// TODO: On Travis use Travis build numbers (too)
+	var version string
+	version = os.Getenv("VERSION")
+
 	gitRoot := ""
 	gitRepo, err := helpers.GetGitRepository()
 	if err != nil {
@@ -198,25 +202,19 @@ func GenerateAppImage(appdir string) {
 		if err == nil {
 			gitRoot = gitWt.Filesystem.Root()
 			fmt.Println("git root:", gitRoot)
+			if version == "" {
+				gitHead, _ := gitRepo.Head()
+				version = gitHead.Hash().String()[:7] // This equals 'git rev-parse --short HEAD'
+				if err != nil {
+					os.Stderr.WriteString("Could not determine version automatically, please supply the application version as $VERSION " + filepath.Base(os.Args[0]) + " ... \n")
+					os.Exit(1)
+				} else {
+					fmt.Println("NOTE: Using", version, "from 'git rev-parse --short HEAD' as the version")
+					fmt.Println("      Please set the $VERSION environment variable if this is not intended")
+				}
+			}
 		} else {
 			fmt.Println("Could not get root of git repository")
-		}
-	}
-
-	// Guess update information
-	// TODO: On Travis use Travis build numbers (too)
-	var version string
-	version = os.Getenv("VERSION")
-	// _, err = exec.LookPath("git")
-	if version == "" {
-		gitHead, _ := gitRepo.Head()
-		version = gitHead.Hash().String()[:7] // This equals 'git rev-parse --short HEAD'
-		if err != nil {
-			os.Stderr.WriteString("Could not determine version automatically, please supply the application version as $VERSION " + filepath.Base(os.Args[0]) + " ... \n")
-			os.Exit(1)
-		} else {
-			fmt.Println("NOTE: Using", version, "from 'git rev-parse --short HEAD' as the version")
-			fmt.Println("      Please set the $VERSION environment variable if this is not intended")
 		}
 	}
 
@@ -243,31 +241,16 @@ func GenerateAppImage(appdir string) {
 
 	// Read information from .desktop file
 
-	// Check for presence of required keys and abort otherwise
-	d, err := ini.Load(desktopfile)
-	helpers.PrintError("ini.load", err)
-	neededKeys := []string{"Categories", "Name", "Exec", "Type", "Icon"}
-	for _, k := range neededKeys {
-		if d.Section("Desktop Entry").HasKey(k) == false {
-			os.Stderr.WriteString(".desktop file is missing a '" + k + "'= key\n")
-			os.Exit(1)
-		}
-	}
-
-	val, _ := d.Section("Desktop Entry").GetKey("Icon")
-	iconname := val.String()
-	if strings.Contains(iconname, "/") {
-		os.Stderr.WriteString("Desktop file contains Icon= entry with a path, aborting\n")
-		os.Exit(1)
-	}
-
-	if strings.Contains(filepath.Base(iconname), ".") {
-		os.Stderr.WriteString("Desktop file contains Icon= entry with '.', aborting\n")
+	err = helpers.CheckDesktopFile(err, desktopfile)
+	if err != nil {
+		helpers.PrintError("CheckDesktopFile", err)
 		os.Exit(1)
 	}
 
 	// Read "Name=" key and convert spaces into underscores
-	val, _ = d.Section("Desktop Entry").GetKey("Name")
+	d, err := ini.Load(desktopfile)
+	helpers.PrintError("ini.load", err)
+	val, _ := d.Section("Desktop Entry").GetKey("Name")
 	name := val.String()
 	nameWithUnderscores := strings.Replace(name, " ", "_", -1)
 

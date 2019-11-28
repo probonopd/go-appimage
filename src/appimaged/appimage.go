@@ -21,7 +21,7 @@ import (
 
 	"github.com/adrg/xdg"
 	"github.com/go-language-server/uri"
-	"github.com/probonopd/appimage/internal/helpers"
+	"github.com/probonopd/go-appimage/internal/helpers"
 )
 
 // Handles AppImage files.
@@ -173,38 +173,20 @@ func (ai AppImage) determineImageType() int {
 		return -1
 	}
 
-	if checkMagicAtOffset(f, "414902", 8) == true {
+	if helpers.CheckMagicAtOffset(f, "414902", 8) == true {
 		return 2
 	}
 
-	if checkMagicAtOffset(f, "414901", 8) == true {
+	if helpers.CheckMagicAtOffset(f, "414901", 8) == true {
 		return 1
 	}
 
 	// ISO9660 files that are also ELF files
-	if checkMagicAtOffset(f, "7f454c", 0) == true && checkMagicAtOffset(f, "4344303031", 32769) == true {
+	if helpers.CheckMagicAtOffset(f, "7f454c", 0) == true && helpers.CheckMagicAtOffset(f, "4344303031", 32769) == true {
 		return 1
 	}
 
 	return -1
-}
-
-// Return true if magic string (hex) is found at offset
-// TODO: Instead of magic string, could probably use something like []byte{'\r', '\n'} or []byte("AI")
-func checkMagicAtOffset(f *os.File, magic string, offset int64) bool {
-	_, err := f.Seek(offset, 0) // Go to offset
-	helpers.LogError("checkMagicAtOffset: "+f.Name(), err)
-	b := make([]byte, len(magic)/2) // Read bytes
-	n, err := f.Read(b)
-	helpers.LogError("checkMagicAtOffset: "+f.Name(), err)
-	hexmagic := hex.EncodeToString(b[:n])
-	if hexmagic == magic {
-		// if *verbosePtr == true {
-		// 	log.Printf("checkMagicAtOffset: %v: Magic 0x%x at offset %v\n", f.Name(), string(b[:n]), offset)
-		// }
-		return true
-	}
-	return false
 }
 
 func (ai AppImage) setExecBit() {
@@ -350,15 +332,6 @@ func ioReader(file string) io.ReaderAt {
 	defer r.Close()
 	helpers.LogError("appimage: elf:", err)
 	return r
-}
-
-// Returns true if file exists
-func Exists(name string) bool {
-	_, err := os.Stat(name)
-	if err == nil {
-		return true
-	}
-	return false
 }
 
 // ExtractFile extracts a file from from filepath (which may contain * wildcards)

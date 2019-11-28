@@ -3,7 +3,7 @@
     <module name="appimage" />
     <working_directory value="$PROJECT_DIR$/" />
     <kind value="PACKAGE" />
-    <package value="github.com/probonopd/appimage/src/appimagetool" />
+    <package value="github.com/probonopd/go-appimage/src/appimaged" />
     <method v="2" />
   </configuration>
 </component>

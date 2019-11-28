@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/probonopd/appimage/internal/helpers"
+	"github.com/probonopd/go-appimage/internal/helpers"
 
 	"github.com/godbus/dbus"
 )
@@ -13,7 +13,7 @@ import (
 
 UDisks2VolumeMonitor seems to give us concise information about when a volume is mounted and unmounted:
 
-me@host:~/go/src/github.com/probonopd/appimage/src/appimaged$ ./appimaged 2>&1  | grep XXX
+me@host:~/go/src/github.com/probonopd/go-appimage/src/appimaged$ ./appimaged 2>&1  | grep XXX
 2019/11/03 18:34:40 udisks: XXXXX map[1:@o "/org/gtk/Private/RemoteVolumeMonitor" 2:"org.gtk.Private.RemoteVolumeMonitor" 3:"MountAdded" 7:":1.51" 8:@g "ss(ssssssbsassa{sv})"] [org.gtk.vfs.UDisks2VolumeMonitor 0x55ec0dfab100 [0x55ec0dfab100 KINGSTON . GThemedIcon drive-harddisk-usb drive-harddisk drive . GThemedIcon drive-harddisk-usb-symbolic drive-harddisk-symbolic drive-symbolic drive-harddisk-usb drive-harddisk drive  file:///media/me/KINGSTON true 0x7f67c83b6320 [] gvfs.time_detected_usec.1572802480269453 map[]]]
 2019/11/03 18:34:58 udisks: XXXXX map[1:@o "/org/gtk/Private/RemoteVolumeMonitor" 2:"org.gtk.Private.RemoteVolumeMonitor" 3:"MountRemoved" 7:":1.51" 8:@g "ss(ssssssbsassa{sv})"] [org.gtk.vfs.UDisks2VolumeMonitor 0x55ec0dfab100 [0x55ec0dfab100 KINGSTON . GThemedIcon drive-harddisk-usb drive-harddisk drive . GThemedIcon drive-harddisk-usb-symbolic drive-harddisk-symbolic drive-symbolic drive-harddisk-usb drive-harddisk drive  file:///media/me/KINGSTON true  [] gvfs.time_detected_usec.1572802480269453 map[]]]
 

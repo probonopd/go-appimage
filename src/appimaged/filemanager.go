@@ -8,7 +8,7 @@ package main
 import (
 	"os"
 
-	"github.com/probonopd/appimage/internal/helpers"
+	"github.com/probonopd/go-appimage/internal/helpers"
 
 	"io/ioutil"
 

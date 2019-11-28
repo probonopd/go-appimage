@@ -21,7 +21,7 @@ rm "$HOME"/.local/share/applications/appimage*
 ./appimaged-*.AppImage
 ```
 
-https://github.com/probonopd/appimage/releases/tag/continuous has builds for 32-bit Intel, 32-bit ARM (e.g., Raspberry Pi), and 64-bit ARM.
+https://github.com/probonopd/go-appimage/releases/tag/continuous has builds for 32-bit Intel, 32-bit ARM (e.g., Raspberry Pi), and 64-bit ARM.
 
 ## Features
 
@@ -55,6 +55,6 @@ If for whatever reason you would like to build from source:
 ```
 sudo apt-get -y install gcc 
 if [ -z $GOPATH ] ; then export GOPATH=$HOME/go ; fi
-go get github.com/probonopd/appimage/src/appimaged 
-go build -trimpath -ldflags="-s -w" github.com/probonopd/appimage/src/appimaged
+go get github.com/probonopd/go-appimage/src/appimaged 
+go build -trimpath -ldflags="-s -w" github.com/probonopd/go-appimage/src/appimaged
 ```

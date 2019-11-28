@@ -4,7 +4,7 @@
     <working_directory value="$PROJECT_DIR$/" />
     <kind value="PACKAGE" />
     <filePath value="$PROJECT_DIR$/src/appimaged/main.go" />
-    <package value="github.com/probonopd/appimage/src/appimaged" />
+    <package value="github.com/probonopd/go-appimage/src/appimaged" />
     <method v="2" />
   </configuration>
 </component>

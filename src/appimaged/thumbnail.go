@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"github.com/adrg/xdg"
 	issvg "github.com/h2non/go-is-svg"
-	"github.com/probonopd/appimage/internal/helpers"
+	"github.com/probonopd/go-appimage/internal/helpers"
 	"github.com/sabhiram/png-embed" // For embedding metadata into PNG
 	. "github.com/srwiley/oksvg"
 	. "github.com/srwiley/rasterx"
@@ -81,7 +81,7 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	// We may still not have an icon. For example, AppImages made by electron-builder
 	// are lacking .DirIcon files as of Fall 2019; here we have to parse the desktop
 	// file, and try to extract the value of Icon= with the suffix ".png" from the AppImage
-	if Exists(thumbnailcachedir+"/.DirIcon") == false && ai.imagetype == 2 {
+	if helpers.Exists(thumbnailcachedir+"/.DirIcon") == false && ai.imagetype == 2 {
 		if *verbosePtr == true {
 			log.Println(".DirIcon extraction failed. Is it missing? Trying to figure out alternative")
 		}
@@ -177,7 +177,7 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	f, err := os.Open(thumbnailcachedir + "/.DirIcon")
 	defer f.Close()
 
-	if checkMagicAtOffset(f, "504e47", 1) == false {
+	if helpers.CheckMagicAtOffset(f, "504e47", 1) == false {
 		log.Println("thumbnail: Not a PNG file, hence removing:", thumbnailcachedir+"/.DirIcon")
 		err = os.Remove(thumbnailcachedir + "/.DirIcon")
 		helpers.LogError("thumbnail", err)

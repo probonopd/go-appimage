@@ -22,7 +22,7 @@ package main
 // us Unix specific and not cross-platform. Therefore, we are using https://github.com/rjeczalik/notify
 
 import (
-	"github.com/probonopd/appimage/internal/helpers"
+	"github.com/probonopd/go-appimage/internal/helpers"
 	"github.com/rjeczalik/notify"
 	"log"
 )

@@ -30,7 +30,7 @@ import (
 	"github.com/amenzhinsky/go-polkit"
 
 	"github.com/cloudimmunity/pdiscover"
-	helpers "github.com/probonopd/appimage/internal/helpers"
+	helpers "github.com/probonopd/go-appimage/internal/helpers"
 	"github.com/s3rj1k/go-fanotify/fanotify"
 )
 

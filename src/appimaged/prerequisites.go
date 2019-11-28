@@ -2,13 +2,12 @@ package main
 
 import (
 	"fmt"
+	"github.com/ProtonMail/go-autostart"
 	"github.com/acobaugh/osrelease"
 	"github.com/adrg/xdg"
-	"github.com/amenzhinsky/go-polkit"
+	//	"github.com/amenzhinsky/go-polkit"
 	systemddbus "github.com/coreos/go-systemd/dbus"
-	"github.com/probonopd/appimage/internal/helpers"
-	"github.com/shirou/gopsutil/host"
-	"github.com/shirou/gopsutil/load"
+	"github.com/probonopd/go-appimage/internal/helpers"
 	"github.com/shirou/gopsutil/process"
 	"io/ioutil"
 	"log"
@@ -71,9 +70,11 @@ func checkPrerequisites() {
 	// Stop any other AppImage system integration daemon
 	// so that they won't interfere with each other
 	if checkIfSystemdServiceRunning([]string{"appimagelauncher*"}) == true {
-		log.Println("Trying to stop interfering AppImage system integration daemons")
-		stopSystemdService("appimagelauncherd")
-		stopSystemdService("appimagelauncherfs")
+		sendErrorDesktopNotification("Other AppImage integration daemon running", "Please uninstall appimagelauncher first, then try again")
+		os.Exit(1)
+		// log.Println("Trying to stop interfering AppImage system integration daemons")
+		// stopSystemdService("appimagelauncherd")
+		// stopSystemdService("appimagelauncherfs")
 	}
 
 	// Disable binfmt-misc of AppImageLauncher when we are NOT root? Argh!
@@ -112,12 +113,12 @@ func checkPrerequisites() {
 
 	// Some systems may expect thumbnails in another (old?) location
 
-	if Exists(home+"/.thumbnails/normal/") && Exists(ThumbnailsDirNormal) {
+	if helpers.Exists(home+"/.thumbnails/normal/") && helpers.Exists(ThumbnailsDirNormal) {
 		sendDesktopNotification("Error", "Two potential locations for thumbanils found. TODO: Handle this case", -1)
 		os.Exit(1)
 	}
 
-	if Exists(home+"/.thumbnails/normal/") == true {
+	if helpers.Exists(home+"/.thumbnails/normal/") == true {
 		log.Println("Using", ThumbnailsDirNormal, "as the location for thumbnails")
 		ThumbnailsDirNormal = home + "/.thumbnails/normal/"
 	}
@@ -130,6 +131,7 @@ func checkPrerequisites() {
 	helpers.LogError("main:", err)
 	f.Close()
 	helpers.LogError("main:", err)
+
 }
 
 func checkIfSystemdServiceRunning(servicenames []string) bool {
@@ -163,6 +165,7 @@ func checkIfSystemdServiceRunning(servicenames []string) bool {
 
 }
 
+/*
 // stopSystemdService stops a SystemKit service with servicename.
 // It asks the user for permission using polkit if needed.
 func stopSystemdService(servicename string) {
@@ -181,15 +184,6 @@ func stopSystemdService(servicename string) {
 	}
 
 	log.Printf("polkit: Is authorized: %t %s\n", result.IsAuthorized, action)
-
-	// Stop systemd service
-
-	// cmd := exec.Command("systemctl", "--user", "stop", servicename+".service")
-	// if err := cmd.Run(); err != nil {
-	// 	helpers.LogError(cmd.String(), err) // Needs Go 1.13
-	// } else {
-	// 	*cleanPtr = true // Clean up pre-existing desktop files from the other AppImage system integration daemon
-	// }
 
 	conn, err := systemddbus.NewUserConnection()
 	defer conn.Close()
@@ -210,6 +204,7 @@ func stopSystemdService(servicename string) {
 	}
 	<-reschan // wait for StopUnit job to complete
 }
+*/
 
 func exitIfBinfmtExists(path string) {
 	cmd := exec.Command("/bin/sh", "-c", "echo -1 | sudo tee "+path)
@@ -262,12 +257,6 @@ func ensureRunningFromLiveSystem() {
 // that have the same process name as the current one in their name
 // FIXME: Since this is not working properly yet, we are just printing for now but not acting
 func TerminateOtherInstances() {
-	infoStat, _ := host.Info()
-	fmt.Printf("Total processes: %d\n", infoStat.Procs)
-
-	miscStat, _ := load.Misc()
-	fmt.Printf("Running processes: %d\n", miscStat.ProcsRunning)
-
 	user, err := user.Current()
 	if err != nil {
 		panic(err)
@@ -323,4 +312,34 @@ if [ -e /usr/libexec/udisks2/udisksd ] ; then
 fi
 systemctl restart udisks2
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++`)
+}
+
+// Set this application as autostart so that it is started with the user session
+// TODO: Autostart removal procedure
+// TODO: Detect if we are running on a Live system and act differently then
+func setMyselfAsAutostart(){
+	var whatToAutostart string
+	if thisai.imagetype > 0 {
+		whatToAutostart = thisai.path
+	} else {
+		whatToAutostart, _ = os.Readlink("/proc/self/exe")
+	}
+
+	app := &autostart.App{
+		Name: "appimaged",
+		DisplayName: thisai.niceName,
+		Exec: []string{whatToAutostart},
+	}
+
+	if app.IsEnabled() {
+		log.Println("App is already enabled for autostart")
+	} else {
+		log.Println("Enabling app for autostart...")
+
+		if err := app.Enable(); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	log.Println("Done!")
 }

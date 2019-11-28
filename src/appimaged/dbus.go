@@ -27,7 +27,7 @@ import (
 
 	"github.com/go-language-server/uri"
 	"github.com/godbus/dbus"
-	"github.com/probonopd/appimage/internal/helpers"
+	"github.com/probonopd/go-appimage/internal/helpers"
 )
 
 func removeDuplicatesUnordered(elements []string) []string {

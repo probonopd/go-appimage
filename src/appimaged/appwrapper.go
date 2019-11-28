@@ -15,7 +15,7 @@ import (
 
 	"github.com/adrg/xdg"
 	"github.com/godbus/dbus"
-	"github.com/probonopd/appimage/internal/helpers"
+	"github.com/probonopd/go-appimage/internal/helpers"
 	"gopkg.in/ini.v1"
 )
 

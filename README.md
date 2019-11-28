@@ -2,10 +2,10 @@
 
 Experimental playgroud for a Go implementation of [AppImage](https://appimage.org) tools, from the inventor of the AppImage format.
 
-* [`appimaged`](https://github.com/probonopd/appimage/blob/master/src/appimaged/README.md), an optional daemon that integrates AppImages into the system, shows their icons, and makes them executable
-* [`appimagetool`](https://github.com/probonopd/appimage/blob/master/src/appimagetool/README.md), a tool to convert AppDirs into AppImages
+* [`appimaged`](https://github.com/probonopd/go-appimage/blob/master/src/appimaged/README.md), an optional daemon that integrates AppImages into the system, shows their icons, and makes them executable
+* [`appimagetool`](https://github.com/probonopd/go-appimage/blob/master/src/appimagetool/README.md), a tool to convert AppDirs into AppImages
 
-Download them from https://github.com/probonopd/appimage/releases/tag/continuous.
+Download them from https://github.com/probonopd/go-appimage/releases/tag/continuous.
 
 __NOTE:__ You might be looking for https://github.com/AppImage/AppImageKit instead in case you are looking for current production code.
 

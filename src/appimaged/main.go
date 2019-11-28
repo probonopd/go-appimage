@@ -17,7 +17,7 @@ import (
 	"github.com/adrg/xdg"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 
-	"github.com/probonopd/appimage/internal/helpers"
+	"github.com/probonopd/go-appimage/internal/helpers"
 	"github.com/prometheus/procfs"
 )
 
@@ -124,12 +124,15 @@ func main() {
 	fmt.Println(filepath.Base(os.Args[0]), version)
 
 	for _, dir := range candidateDirectories {
-		if Exists(dir) {
+		if helpers.Exists(dir) {
 			watchedDirectories = append(watchedDirectories, dir)
 		}
 	}
 
 	checkPrerequisites()
+
+	fmt.Println("Setting as autostart...")
+	setMyselfAsAutostart()
 
 	// Watch the filesystem for accesses using fanotify
 	// FANotifyMonitor() // fanotifymonitor error: operation not permitted
@@ -391,7 +394,7 @@ func watchDirectories() {
 	}
 
 	for _, dir := range candidateDirectories {
-		if Exists(dir) {
+		if helpers.Exists(dir) {
 			watchedDirectories = append(watchedDirectories, dir)
 		}
 	}
@@ -408,7 +411,7 @@ func watchDirectories() {
 			strings.HasPrefix(mount.MountPoint, "/tmp") == false &&
 			strings.HasPrefix(mount.MountPoint, "/proc") == false {
 			fmt.Println(mount.SuperOptions)
-			if Exists(mount.MountPoint + "/Applications") {
+			if helpers.Exists(mount.MountPoint + "/Applications") {
 				if _, ok := mount.SuperOptions["showexec"]; ok {
 					go sendErrorDesktopNotification("UDisks showexec issue", "Applications cannot run from \n"+mount.MountPoint+". \nSee \nhttps://github.com/storaged-project/udisks/issues/707")
 					printUdisksShowexecHint()
