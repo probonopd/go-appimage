@@ -119,7 +119,7 @@ func main() {
 
 	// Check for needed files on $PATH
 	helpers.AddDirsToPath([]string{helpers.Here()})
-	tools := []string{"patchelf", "desktop-file-validate"}
+	tools := []string{"patchelf", "desktop-file-validate", "glib-compile-schemas"}
 	for _, t := range tools {
 		_, err := exec.LookPath(t)
 		if err != nil {
@@ -213,9 +213,20 @@ func main() {
 		}
 	}
 
-	if helpers.Exists(appdir.Path + "/usr/share/glib-2.0/schemas/") {
-		fmt.Println("TODO: Compiling glibc schemas... xxxxxxxxxxxxxxxxxxxx")
+	if helpers.Exists(appdir.Path + "/usr/share/glib-2.0/schemas") {
+		fmt.Println("Compiling glib-2.0 schemas...")
 		// Do what we do in pkg2appimage
+		// Compile GLib schemas if the subdirectory is present in the AppImage
+		// AppRun has to export GSETTINGS_SCHEMA_DIR for this to work
+		if helpers.Exists(appdir.Path + "/usr/share/glib-2.0/schemas") {
+			cmd := exec.Command("glib-compile-schemas", ".")
+			cmd.Dir = appdir.Path + "/usr/share/glib-2.0/schemas"
+			err = cmd.Run()
+			if err != nil {
+				helpers.PrintError("Run glib-compile-schemas", err)
+				os.Exit(1)
+			}
+		}
 	}
 
 	if helpers.Exists(appdir.Path+"/etc/fonts") == false {
