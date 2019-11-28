@@ -60,24 +60,20 @@ esac
 # This allows the bundle to run even on older systems than the one it was built on
 ############################################################################################
 
-if [ -e "$HERE/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2" ] ; then
+MAIN_BIN=$(find "$HERE" -name "$MAIN" | head -n 1)
+LD_LINUX=$(find "$HERE" -name 'ld-linux-*.so.*' | head -n 1)
+if [ -e "$LD_LINUX" ] ; then
   echo "Run experimental bundle that bundles everything"
   export GCONV_PATH="$HERE/usr/lib/x86_64-linux-gnu/gconv"
   export FONTCONFIG_FILE="$HERE/etc/fonts/fonts.conf"
-  export LIBRARY_PATH="$HERE/usr/lib":$LIBRARY_PATH
-  export LIBRARY_PATH="$HERE/lib":$LIBRARY_PATH
-  export LIBRARY_PATH="$HERE/usr/lib/i386-linux-gnu":$LIBRARY_PATH
-  export LIBRARY_PATH="$HERE/lib/i386-linux-gnu":$LIBRARY_PATH
-  export LIBRARY_PATH="$HERE/usr/lib/i386-linux-gnu/pulseaudio":$LIBRARY_PATH
-  export LIBRARY_PATH="$HERE/usr/lib/i386-linux-gnu/alsa-lib":$LIBRARY_PATH
-  export LIBRARY_PATH="$HERE/usr/lib/x86_64-linux-gnu":$LIBRARY_PATH
-  export LIBRARY_PATH="$HERE/lib/x86_64-linux-gnu":$LIBRARY_PATH
-  export LIBRARY_PATH="$HERE/usr/lib/x86_64-linux-gnu/pulseaudio":$LIBRARY_PATH
-  export LIBRARY_PATH="$HERE/usr/lib/x86_64-linux-gnu/alsa-lib":$LIBRARY_PATH
-  export LIBRARY_PATH=$GDK_PIXBUF_MODULEDIR:$LIBRARY_PATH # Otherwise getting "Unable to load image-loading module"
-  exec "${HERE}/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2" --inhibit-cache --library-path "${LIBRARY_PATH}" "${MAIN}" "$@"
+  export LIBRARY_PATH=$GDK_PIXBUF_MODULEDIR # Otherwise getting "Unable to load image-loading module"
+  export XDG_DATA_DIRS="${HERE}"/usr/share/:"${XDG_DATA_DIRS}"
+  export PERLLIB="${HERE}"/usr/share/perl5/:"${HERE}"/usr/lib/perl5/:"${PERLLIB}"
+  export GSETTINGS_SCHEMA_DIR="${HERE}"/usr/share/glib-2.0/schemas/:"${GSETTINGS_SCHEMA_DIR}"
+  export QT_PLUGIN_PATH="${HERE}"/usr/lib/qt4/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib32/qt4/plugins/:"${HERE}"/usr/lib64/qt4/plugins/:"${HERE}"/usr/lib/qt5/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib32/qt5/plugins/:"${HERE}"/usr/lib64/qt5/plugins/:"${QT_PLUGIN_PATH}"
+  exec "${LD_LINUX}" --inhibit-cache --library-path "${LIBRARY_PATH}" "${MAIN_BIN}" "$@"
 else
-  exec $(which "${MAIN}") "$@"
+  echo "Bundle has issues, cannot launch"
 fi
 `
 
@@ -174,6 +170,7 @@ func main() {
 		os.MkdirAll(filepath.Dir(appdir.Path+"/"+lib), 0755)
 		if helpers.Exists(appdir.Path+"/"+lib) == false {
 			helpers.CopyFile(lib, appdir.Path+"/"+lib)
+			fmt.Println("TODO: Copy license file xxxxxxxxxxxxxxxxxxxx")
 		}
 		allELFsInAppDir = append(allELFsInAppDir, ELF{path: appdir.Path + "/" + lib})
 	}
@@ -214,9 +211,11 @@ func main() {
 		// fmt.Println(string(out))
 		if strings.Contains(allELFsInAppDir[i].path, "ld-linux") {
 			fmt.Println("Not writing rpath to", allELFsInAppDir[i].path, "because ld-linux apparently does not like this")
-		} else if strings.HasPrefix(string(out), "$") == false && strings.Contains(allELFsInAppDir[i].path, "ld-linux") {
+		} else if strings.HasPrefix(string(out), "$") == true {
+			fmt.Println("Not writing rpath to", allELFsInAppDir[i].path, "because it already starts with $")
+		} else {
 			// Call patchelf to set the rpath
-			cmd = exec.Command("patchelf", "--set-rpath", allELFsInAppDir[i].rpath, allELFsInAppDir[i].path)
+			cmd := exec.Command("patchelf", "--set-rpath", allELFsInAppDir[i].rpath, allELFsInAppDir[i].path)
 			fmt.Println(cmd.Args)
 			out, err = cmd.CombinedOutput()
 			if err != nil {
@@ -224,15 +223,35 @@ func main() {
 				helpers.PrintError("patchelf --set-rpath "+allELFsInAppDir[i].path, err)
 				os.Exit(1)
 			}
-		} else {
-			fmt.Println("Not writing rpath to", allELFsInAppDir[i].path, "because it already starts with $")
 		}
 
 	}
 
 	fmt.Println("TODO: Patching ld-linux... xxxxxxxxxxxxxxxxxxxx")
+	// Do what we do in the Scribus AppImage script
 
-	fmt.Println("TODO: Copying in glibc parts... xxxxxxxxxxxxxxxxxxxx")
+	fmt.Println("TODO: Copying in gconv... xxxxxxxxxxxxxxxxxxxx")
+	// Search in all of the system's library directories for a directory called gconv
+	// and put it into the location which matches what we define in AppRun
+
+	if helpers.Exists(appdir.Path + "/usr/share/glib-2.0/schemas/") {
+		fmt.Println("TODO: Compiling glibc schemas... xxxxxxxxxxxxxxxxxxxx")
+		// Do what we do in pkg2appimage
+	}
+
+	if helpers.Exists(appdir.Path+"/etc/fonts") == false {
+		fmt.Println("Adding fontconfig symlink...")
+		err = os.MkdirAll(appdir.Path+"/etc/fonts", 0755)
+		if err != nil {
+			helpers.PrintError("MkdirAll", err)
+			os.Exit(1)
+		}
+		err = os.Symlink("/etc/fonts/fonts.conf", appdir.Path+"/etc/fonts/fonts.conf")
+		if err != nil {
+			helpers.PrintError("MkdirAll", err)
+			os.Exit(1)
+		}
+	}
 
 	fmt.Println("Adding AppRun...")
 
@@ -332,7 +351,16 @@ func findLibrary(filename string) (string, error) {
 
 	// Look for libraries in the same locations in which the system looks for libraries
 	// TODO: Instead of hardcoding libraryLocations, get them from the system - see the comment at the top xxxxxxxxx
-	libraryLocations := []string{"/usr/lib64", "/lib64", "/usr/lib", "/lib"}
+	libraryLocations := []string{"/usr/lib64", "/lib64", "/usr/lib", "/lib",
+		// The following was determined on Ubuntu 18.04 using
+		// $ find /etc/ld.so.conf.d/ -type f -exec cat {} \;
+		"/usr/lib/x86_64-linux-gnu/libfakeroot",
+		"/usr/local/lib",
+		"/usr/local/lib/x86_64-linux-gnu",
+		"/lib/x86_64-linux-gnu",
+		"/usr/lib/x86_64-linux-gnu",
+		"/lib32",
+		"/usr/lib32"}
 
 	// Also look for libraries in in LD_LIBRARY_PATH
 	ldpstr := os.Getenv("LD_LIBRARY_PATH")
