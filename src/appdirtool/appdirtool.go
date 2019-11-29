@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -80,7 +81,7 @@ if [ -e "$LD_LINUX" ] ; then
   export GCONV_PATH="$HERE/usr/lib/gconv"
   export FONTCONFIG_FILE="$HERE/etc/fonts/fonts.conf"
   export GTK_EXE_PREFIX="$HERE/usr"
-  export GTK_THEME=Adwaita # This one should be bundled so that it can work on systems without Gtk
+  export GTK_THEME=Default # This one should be bundled so that it can work on systems without Gtk
   export GDK_PIXBUF_MODULEDIR=$(readlink -f "$HERE"/usr/lib/gdk-pixbuf-*/*/loaders/ )
   export GDK_PIXBUF_MODULE_FILE=$(readlink -f "$HERE"/usr/lib/gdk-pixbuf-*/*/loaders.cache ) # Patched to contain no paths
   export LIBRARY_PATH=$GDK_PIXBUF_MODULEDIR:$LIBRARY_PATH # Otherwise getting "Unable to load image-loading module"
@@ -261,6 +262,11 @@ func main() {
 		var dirswithUiFiles []string
 		for _, uifile := range uifiles {
 			dirswithUiFiles = helpers.AppendIfMissing(dirswithUiFiles, filepath.Dir(uifile))
+			err = PatchFile(appdir.MainExecutable, "/usr", "././")
+			if err != nil {
+				helpers.PrintError("PatchFile", err)
+				os.Exit(1)
+			}
 		}
 		fmt.Println("Directories with .ui files:", dirswithUiFiles)
 	}
@@ -298,18 +304,21 @@ func deployGtkDirectory(appdir helpers.AppDir, gtkVersion int) {
 					}
 					fmt.Println("Bundling dependencies of Gtk", strconv.Itoa(gtkVersion), "directory...")
 					deployLibsInDirTree(appdir, appdir.Path+"/usr/lib/"+filepath.Base(loc))
-					fmt.Println("Bundling Adwaita theme for Gtk", strconv.Itoa(gtkVersion), "(for GTK_THEME=Adwaita)...")
-					err = copy.Copy("/usr/share/themes/Adwaita/gtk-"+strconv.Itoa(gtkVersion)+".0", appdir.Path+"/usr/share/themes/Adwaita/gtk-"+strconv.Itoa(gtkVersion)+".0")
+					fmt.Println("Bundling Default theme for Gtk", strconv.Itoa(gtkVersion), "(for GTK_THEME=Default)...")
+					err = copy.Copy("/usr/share/themes/Default/gtk-"+strconv.Itoa(gtkVersion)+".0", appdir.Path+"/usr/share/themes/Default/gtk-"+strconv.Itoa(gtkVersion)+".0")
 					if err != nil {
 						helpers.PrintError("Copy", err)
 						os.Exit(1)
 					}
-					fmt.Println("Bundling icons for Adwaita theme..")
-					err = copy.Copy("/usr/share/icons/Adwaita", appdir.Path+"/usr/share/themes/Adwaita")
-					if err != nil {
-						helpers.PrintError("Copy", err)
-						os.Exit(1)
-					}
+
+					/*
+						fmt.Println("Bundling icons for Default theme...")
+						err = copy.Copy("/usr/share/icons/Adwaita", appdir.Path+"/usr/share/icons/Adwaita")
+						if err != nil {
+							helpers.PrintError("Copy", err)
+							os.Exit(1)
+						}
+					*/
 				}
 			}
 			break
@@ -526,4 +535,28 @@ func NewLibrary(path string) ELF {
 	lib := ELF{}
 	lib.path = path
 	return lib
+}
+
+// PatchFile patches file by replacing 'search' with 'replace', returns error.
+// TODO: Implement in-place replace like sed -i -e, without the need for an intermediary file
+func PatchFile(path string, search string, replace string) error {
+
+	input, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	fi, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+
+	output := bytes.Replace(input, []byte(search), []byte(replace), -1)
+
+	if err = ioutil.WriteFile(path+".patched", output, fi.Mode().Perm()); err != nil {
+		return err
+	}
+
+	os.Rename(path+".patched", path)
+	return nil
 }
