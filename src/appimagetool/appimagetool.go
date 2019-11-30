@@ -467,11 +467,12 @@ func GenerateAppImage(appdir string) {
 	//     TRAVIS_REPO_SLUG: The slug (in form: owner_name/repo_name) of the repository currently being built.
 	//     TRAVIS_TAG: If the current build is for a git tag, this variable is set to the tag’s name.
 	//     TRAVIS_PULL_REQUEST
+	ghToken, ghTokenFound := os.LookupEnv("GITHUB_TOKEN")
 	if os.Getenv("TRAVIS_REPO_SLUG") != "" {
 		fmt.Println("Running on Travis CI")
 		if os.Getenv("TRAVIS_PULL_REQUEST") != "false" {
 			fmt.Println("Will not calculate update information for GitHub because this is a pull request")
-		} else if os.Getenv("GITHUB_TOKEN") == "" {
+		} else if ghTokenFound == false || ghToken == "" {
 			fmt.Println("Will not calculate update information for GitHub because $GITHUB_TOKEN is missing")
 			fmt.Println("please set it in the Travis CI Repository Settings for this project.")
 			fmt.Println("You can get one from https://github.com/settings/tokens")
