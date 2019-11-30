@@ -83,8 +83,8 @@ if [ -e "$LD_LINUX" ] ; then
   export FONTCONFIG_FILE="$HERE/etc/fonts/fonts.conf"
   export GTK_EXE_PREFIX="$HERE/usr"
   export GTK_THEME=Default # This one should be bundled so that it can work on systems without Gtk
-  export GDK_PIXBUF_MODULEDIR=$(readlink -f "$HERE"/usr/lib/gdk-pixbuf-*/*/loaders/ )
-  export GDK_PIXBUF_MODULE_FILE=$(readlink -f "$HERE"/usr/lib/gdk-pixbuf-*/*/loaders.cache ) # Patched to contain no paths
+  export GDK_PIXBUF_MODULEDIR=$(find "$HERE" -name loaders -type d -path '*gdk-pixbuf*')
+  export GDK_PIXBUF_MODULE_FILE=$(find "$HERE" -name loaders.cache -type f -path '*gdk-pixbuf*') # Patched to contain no paths
   export LIBRARY_PATH=$GDK_PIXBUF_MODULEDIR:$LIBRARY_PATH # Otherwise getting "Unable to load image-loading module"
   export XDG_DATA_DIRS="${HERE}"/usr/share/:"${XDG_DATA_DIRS}"
   export PERLLIB="${HERE}"/usr/share/perl5/:"${HERE}"/usr/lib/perl5/:"${PERLLIB}"
@@ -166,29 +166,13 @@ func main() {
 
 	for _, lib := range allLibs {
 		if strings.HasPrefix(filepath.Base(lib), "libgdk_pixbuf") {
-			log.Println("Bundling Gdk pixbuf loaders (for GDK_PIXBUF_MODULEDIR and GDK_PIXBUF_MODULE_FILE)...")
+			log.Println("Determining Gdk pixbuf loaders (for GDK_PIXBUF_MODULEDIR and GDK_PIXBUF_MODULE_FILE)...")
 			locs, err := findWithPrefixInLibraryLocations("gdk-pixbuf")
 			if err != nil {
 				log.Println("Could not find Gdk pixbuf loaders")
 				os.Exit(1)
 			} else {
 				for _, loc := range locs {
-					/*
-						os.MkdirAll(appdir.Path+"/usr/lib/", 0755)
-						if err != nil {
-							helpers.PrintError("MkdirAll", err)
-							os.Exit(1)
-						}
-						// Target location must match GDK_PIXBUF_MODULEDIR and GDK_PIXBUF_MODULE_FILE exported in AppRun
-
-						err = copy.Copy(loc, appdir.Path+"/usr/lib/"+filepath.Base(loc))
-						if err != nil {
-							helpers.PrintError("Copy", err)
-							os.Exit(1)
-						}
-					*/
-
-					log.Println("Gdk pixbuf loaders: determineLibsInDirTree(loc) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
 					determineLibsInDirTree(appdir, loc)
 
 					// We need to patch away the path to libpixbufloader-png.so from the file loaders.cache, similar to:
@@ -277,14 +261,7 @@ func main() {
 		"/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-plugin-scanner"} // sic! Ubuntu 18.04
 	for _, cand := range gstPluginScannerCandidates {
 		if helpers.Exists(cand) {
-			/*
-				err = copy.Copy(cand, appdir.Path+"/usr/bin/gst-plugin-scanner")
-				if err != nil {
-					helpers.PrintError("Copy", err)
-					os.Exit(1)
-				}
-			*/
-			log.Println("gst-plugin-scanner xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
+			log.Println("Determining gst-plugin-scanner...")
 			determineLibsInDirTree(appdir, cand)
 			break
 		}
@@ -317,22 +294,13 @@ func main() {
 	// sed -i -e 's|/usr|/xxx|g' lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
 	// sed -i -e 's|/usr/lib|/ooo/ooo|g' lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
 
-	log.Println("Copying in gconv (for GCONV_PATH)...")
+	log.Println("Determining gconv (for GCONV_PATH)...")
 	// Search in all of the system's library directories for a directory called gconv
 	// and put it into the a location which matches the GCONV_PATH we export in AppRun
 	gconvs, err := findWithPrefixInLibraryLocations("gconv")
 	log.Println("TODO: Handle", gconvs[0])
 	if err == nil {
 		// Target location must match GCONV_PATH exported in AppRun
-		/*
-			err = copy.Copy(gconvs[0], appdir.Path+"/usr/lib/gconv")
-			if err != nil {
-				helpers.PrintError("Copy", err)
-				os.Exit(1)
-			}
-
-		*/
-		log.Println("gconv xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
 		determineLibsInDirTree(appdir, gconvs[0])
 	}
 
@@ -353,7 +321,7 @@ func main() {
 	}
 
 	if helpers.Exists(appdir.Path+"/etc/fonts") == false {
-		log.Println("Adding fontconfig symlink...")
+		log.Println("Adding fontconfig symlink... (is this really the right thing to do?)")
 		err = os.MkdirAll(appdir.Path+"/etc/fonts", 0755)
 		if err != nil {
 			helpers.PrintError("MkdirAll", err)
@@ -422,9 +390,9 @@ func main() {
 
 	log.Println("Only after this point shoud we start copying around any ELFs")
 
-	log.Println("TODO: handle the pre-existing ELFs in the AppDir, too")
+	log.Println("TODO: handle the pre-existing ELFs in the AppDir, too XXXXXXXXXXXXXXXXXXX")
 
-	log.Println("Copying in and patching ELFs...")
+	log.Println("Copying in and patching ELFs which are not already in the AppDir...")
 
 	for _, lib := range allLibs {
 		if strings.HasPrefix(lib, appdir.Path) == false && helpers.Exists(appdir.Path+"/"+lib) == false {
@@ -447,7 +415,7 @@ func main() {
 			}
 
 			newRpathStringForElf = strings.Join(newRpathStrings, ":")
-			fmt.Println("Computed newRpathStringForElf:", appdir.Path+"/"+lib, newRpathStringForElf)
+			// fmt.Println("Computed newRpathStringForElf:", appdir.Path+"/"+lib, newRpathStringForElf)
 
 			// Get any pre-existing rpaths from the ELF
 			rpaths, err := readRpaths(lib)
@@ -460,25 +428,17 @@ func main() {
 			// points to the equal location as the original but inside the AppDir. And add rpaths to any locations
 			// inside the AppImage that have ELFs in them
 			if len(rpaths) > 0 && strings.HasPrefix(string(rpaths[0]), "$") == true {
-				log.Println("Not writing rpath in", appdir.Path+lib, "because it already starts with $. Is this actualy the right thing to do?")
+				log.Println("Not writing rpath in", appdir.Path+lib, "because it already starts with $. Is this actually the right thing to do?")
 			}
 
-			if len(rpaths) > 0 {
-				// Compute the new rpath string to be inserted into the ELF (one that
-				// points to the equal location as the original but inside the AppDir)
-				log.Println("TODO: Rewrite pre-existing rpath of", appdir.Path+lib, "to point into the AppDir:")
-				log.Println(newRpathStringForElf)
-			} else {
-				// Call patchelf to set the rpath
-				log.Println("Rewriting rpath of", appdir.Path+lib, "to", newRpathStringForElf)
-				cmd := exec.Command("patchelf", "--set-rpath", newRpathStringForElf, appdir.Path+lib)
-				// log.Println(cmd.Args)
-				_, err := cmd.CombinedOutput()
-				if err != nil {
-					helpers.PrintError("patchelf --set-rpath "+appdir.Path+lib, err)
-					os.Exit(1)
-				}
-
+			// Call patchelf to set the rpath
+			log.Println("Rewriting rpath of", appdir.Path+lib)
+			cmd := exec.Command("patchelf", "--set-rpath", newRpathStringForElf, appdir.Path+lib)
+			// log.Println(cmd.Args)
+			_, err = cmd.CombinedOutput()
+			if err != nil {
+				helpers.PrintError("patchelf --set-rpath "+appdir.Path+lib, err)
+				os.Exit(1)
 			}
 
 			// TODO: Copy license file for lib
@@ -536,7 +496,7 @@ func deployGtkDirectory(appdir helpers.AppDir, gtkVersion int) {
 	}
 }
 
-// Appends library in path to allLibs and adds pre-existing rpaths to libraryLocations
+// Appends library in path to allLibs and adds its location as well as any pre-existing rpaths to libraryLocations
 func appendLib(path string) {
 
 	// Find out whether there are pre-existing rpaths and if so, add them to libraryLocations
@@ -550,12 +510,14 @@ func appendLib(path string) {
 	}
 
 	for _, rpath := range rpaths {
-		rpath = strings.Replace(rpath, "$ORIGIN", filepath.Dir(path), -1)
+		rpath = filepath.Clean(strings.Replace(rpath, "$ORIGIN", filepath.Dir(path), -1))
 		if helpers.SliceContains(libraryLocations, rpath) == false && rpath != "" {
 			log.Println("Add", rpath, "to the libraryLocations directories we search for libraries")
-			libraryLocations = helpers.AppendIfMissing(libraryLocations, rpath)
+			libraryLocations = helpers.AppendIfMissing(libraryLocations, filepath.Clean(rpath))
 		}
 	}
+
+	libraryLocations = helpers.AppendIfMissing(libraryLocations, filepath.Clean(filepath.Dir(path)))
 
 	allLibs = helpers.AppendIfMissing(allLibs, path)
 }
@@ -770,7 +732,7 @@ func findLibrary(filename string) (string, error) {
 		"/usr/lib32"}
 
 	for _, loc := range locs {
-		libraryLocations = helpers.AppendIfMissing(libraryLocations, loc)
+		libraryLocations = helpers.AppendIfMissing(libraryLocations, filepath.Clean(loc))
 	}
 
 	// Also look for libraries in in LD_LIBRARY_PATH
@@ -778,7 +740,7 @@ func findLibrary(filename string) (string, error) {
 	ldps := strings.Split(ldpstr, ":")
 	for _, ldp := range ldps {
 		if ldp != "" {
-			libraryLocations = helpers.AppendIfMissing(libraryLocations, ldp)
+			libraryLocations = helpers.AppendIfMissing(libraryLocations, filepath.Clean(ldp))
 		}
 	}
 
