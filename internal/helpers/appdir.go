@@ -29,7 +29,7 @@ func NewAppDir(desktopFilePath string) (AppDir, error) {
 	pathToBeChecked := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(ad.DesktopFilePath)))) + "/usr/bin"
 	if Exists(pathToBeChecked) {
 		ad.Path = filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(ad.DesktopFilePath))))
-		fmt.Println("ad.Path", ad.Path)
+		fmt.Println("AppDir path:", ad.Path)
 	} else {
 		return ad, errors.New("AppDir could not be identified: " + pathToBeChecked + " does not exist")
 	}
@@ -94,9 +94,7 @@ func NewAppDir(desktopFilePath string) (AppDir, error) {
 	}
 
 	// Do not allow absolute paths in the Exec= key
-	fmt.Println("Exec= key contains:", exec.String())
-	fmt.Println(strings.Split(exec.String(), " ")[0])
-	fmt.Println(filepath.Base(strings.Split(exec.String(), " ")[0]))
+	fmt.Println("Exec= key contains:", filepath.Base(strings.Split(exec.String(), " ")[0]))
 	if strings.Split(exec.String(), " ")[0] != filepath.Base(strings.Split(exec.String(), " ")[0]) {
 		err = errors.New("Exec= contains absolute path")
 		return ad, err
