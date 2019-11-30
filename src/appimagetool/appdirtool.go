@@ -239,7 +239,15 @@ func AppDirDeploy(path string) {
 	ldLinux := strings.TrimSpace(string(out))
 
 	if helpers.Exists(appdir.Path+ldLinux) == false {
-		err = copy.Copy(ldLinux, appdir.Path+ldLinux)
+
+		// ld-linux might be a symlink; hence we first need to resolve it
+		src, err := os.Readlink(ldLinux)
+		if err != nil {
+			helpers.PrintError("Could not get the location of ld-linux", err)
+			os.Exit(1)
+		}
+
+		err = copy.Copy(src, appdir.Path+ldLinux)
 		if err != nil {
 			helpers.PrintError("Could not copy ld-linux", err)
 			os.Exit(1)
