@@ -388,6 +388,12 @@ func main() {
 	log.Println("Copying in and patching ELFs which are not already in the AppDir...")
 
 	for _, lib := range allELFs {
+
+		if strings.HasPrefix(filepath.Base(lib), "libnvidia") == true {
+			log.Println("Skipping", lib, "because it crashes when running on older systems")
+			continue
+		}
+
 		if strings.HasPrefix(lib, appdir.Path) == false && helpers.Exists(appdir.Path+"/"+lib) == false {
 
 			err = helpers.CopyFile(lib, appdir.Path+"/"+lib)
