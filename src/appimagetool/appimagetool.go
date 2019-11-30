@@ -164,7 +164,8 @@ func main() {
 	}
 
 	// Check for needed files on $PATH
-	tools := []string{"file", "mksquashfs", "desktop-file-validate", "uploadtool", "patchelf", "desktop-file-validate", "glib-compile-schemas"}
+	tools := []string{"file", "mksquashfs", "desktop-file-validate", "uploadtool", "patchelf", "desktop-file-validate", "glib-compile-schemas", "curl"}
+	// curl is needed by uploadtool; TODO: Replace uploadtool with native Go code
 	for _, t := range tools {
 		_, err := exec.LookPath(t)
 		if err != nil {
