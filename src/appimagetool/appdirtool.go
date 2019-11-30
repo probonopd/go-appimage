@@ -377,9 +377,14 @@ func AppDirDeploy(path string) {
 				log.Println(appdir.Path+"/"+lib, "could not be copied:", err)
 				os.Exit(1)
 			}
-
-			// TODO: Copy license file for lib
-
+			// Copy copyright files into the AppImage
+			copyrightFile, err := getCopyrightFile(lib)
+			if err != nil {
+				helpers.PrintError("getCopyrightFile", err)
+				os.Exit(1)
+			}
+			os.MkdirAll(filepath.Dir(appdir.Path + copyrightFile), 0755)
+			copy.Copy(copyrightFile, appdir.Path + copyrightFile)
 		}
 
 		patchRpathsInElf(appdir, libraryLocationsInAppDir, lib)
@@ -663,4 +668,89 @@ func PatchFile(path string, search string, replace string) error {
 
 	os.Rename(path+".patched", path)
 	return nil
+}
+
+
+func getCopyrightFile(path string) (string, error) {
+
+	var copyrightFile string
+
+	if helpers.IsCommandAvailable("dpkg") == false {
+		return copyrightFile, errors.New("dpkg not found, hence not deploying copyright files")
+	}
+
+	if helpers.IsCommandAvailable("dpkg-query") == false {
+		return copyrightFile, errors.New("dpkg-query not found, hence not deploying copyright files")
+	}
+
+//QString copyrightFilePath;
+//
+///* Find out which package the file being deployed belongs to */
+//
+//QStringList arguments;
+//arguments << "-S" << libPath;
+//QProcess *myProcess = new QProcess();
+//myProcess->start(dpkgPath, arguments);
+//myProcess->waitForFinished();
+//QString strOut = myProcess->readAllStandardOutput().split(':')[0];
+//if(strOut == "") return false;
+
+	cmd := exec.Command("dpkg", "-S", path)
+	result, err := cmd.Output()
+	if err != nil {
+		return copyrightFile, err
+	}
+
+///* Find out the copyright file in that package */
+//arguments << "-L" << strOut;
+//myProcess->start(dpkgQueryPath, arguments);
+//myProcess->waitForFinished();
+//strOut = myProcess->readAllStandardOutput();
+	cmd = exec.Command("dpkg-query", "-L", path)
+	output, err := cmd.Output()
+	if err != nil {
+		return copyrightFile, err
+	}
+
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "usr/share/doc") && strings.Contains(line, "copyright") strings.Contains(line, " ") {
+			parts := strings.Split(line, " ")
+			copyrightFile = parts [len(parts)-1]
+		}
+	}
+	if copyrightFile == "" {
+		return copyrightFile, errors.New("could not determine the copyright file")
+	}
+	return copyrightFile, nil
+//QStringList outputLines = strOut.split("\n", QString::SkipEmptyParts);
+//
+//foreach (QString outputLine, outputLines) {
+//if((outputLine.contains("usr/share/doc")) && (outputLine.contains("/copyright")) && (outputLine.contains(" "))){
+//// copyrightFilePath = outputLine.split(' ')[1]; // This is not working on multiarch systems; see https://github.com/probonopd/linuxdeployqt/issues/184#issuecomment-345293540
+//QStringList parts = outputLine.split(' ');
+//copyrightFilePath = parts[parts.size() - 1]; // Grab last element
+//break;
+//}
+//}
+//
+//if(copyrightFilePath == "") return false;
+//
+//LogDebug() << "copyrightFilePath:" << copyrightFilePath;
+//
+///* Where should we copy this file to? We are assuming the Debian-like path contains
+// * the name of the package like so: copyrightFilePath: "/usr/share/doc/libpcre3/copyright"
+// * this assumption is most likely only true for Debian-like systems */
+//QString packageName = copyrightFilePath.split("/")[copyrightFilePath.split("/").length()-2];
+//QString copyrightFileTargetPath;
+//if(fhsLikeMode){
+//copyrightFileTargetPath = QDir::cleanPath(appBinaryPath + "/../../share/doc/" + packageName + "/copyright");
+//} else {
+//copyrightFileTargetPath = QDir::cleanPath(appBinaryPath + "/../doc/" + packageName + "/copyright");
+//}
+//
+///* Do the actual copying */
+//return(copyFilePrintStatus(copyrightFilePath, copyrightFileTargetPath));
+//}
+
 }
