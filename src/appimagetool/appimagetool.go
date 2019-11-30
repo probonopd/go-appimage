@@ -11,6 +11,7 @@ import (
 	"github.com/agriardyan/go-zsyncmake/zsync"
 	"gopkg.in/ini.v1"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -47,6 +48,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "\n")
 
 		fmt.Fprintf(os.Stderr, "Usage:\n")
+
+		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" deploy <path to PREFIX directory>\n")
+		fmt.Fprintf(os.Stderr, "\tTurns PREFIX directory into AppDir by deploying dependencies and AppRun file\n")
+
 		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" <path to AppDir>\n")
 		fmt.Fprintf(os.Stderr, "\tConvert the supplied AppDir into an AppImage and \n\t(if running on Travis CI) sign, upload, and publish it\n")
 
@@ -77,6 +82,14 @@ func main() {
 
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
+		case "deploy":
+			if len(os.Args) < 3 {
+				log.Println("Please supply the path to a desktop file in an FHS-like AppDir")
+				log.Println("a FHS-like structure, e.g.:")
+				log.Println(os.Args[0], "appdir/usr/share/applications/myapp.desktop")
+				os.Exit(1)
+			}
+			AppDirDeploy(os.Args[2])
 		case "validate":
 			if len(os.Args) > 2 {
 				if helpers.CheckIfFileExists(os.Args[2]) {
@@ -150,7 +163,7 @@ func main() {
 	}
 
 	// Check for needed files on $PATH
-	tools := []string{"file", "mksquashfs", "desktop-file-validate", "uploadtool"}
+	tools := []string{"file", "mksquashfs", "desktop-file-validate", "uploadtool", "patchelf", "desktop-file-validate", "glib-compile-schemas"}
 	for _, t := range tools {
 		_, err := exec.LookPath(t)
 		if err != nil {

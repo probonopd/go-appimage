@@ -129,27 +129,9 @@ type ELF struct {
       /usr/lib64.)  If the binary was linked with the -z nodeflib linker option, this step is skipped.
 */
 
-func main() {
+func AppDirDeploy(path string) {
 
-	// Check for needed files on $PATH
-	helpers.AddDirsToPath([]string{helpers.Here()})
-	tools := []string{"patchelf", "desktop-file-validate", "glib-compile-schemas"}
-	for _, t := range tools {
-		_, err := exec.LookPath(t)
-		if err != nil {
-			log.Println("Required helper tool", t, "missing")
-			os.Exit(1)
-		}
-	}
-
-	if len(os.Args) < 2 {
-		log.Println("Please supply the path to a desktop file in an FHS-like AppDir")
-		log.Println("a FHS-like structure, e.g.:")
-		log.Println(os.Args[0], "appdir/usr/share/applications/myapp.desktop")
-		os.Exit(1)
-	}
-
-	appdir, err := helpers.NewAppDir(os.Args[1])
+	appdir, err := helpers.NewAppDir(path)
 	if err != nil {
 		helpers.PrintError("AppDir", err)
 		os.Exit(1)
@@ -210,21 +192,6 @@ func main() {
 	}
 
 	// GStreamer
-
-	/*
-		# GStreamer environment variables
-		export GST_PLUGIN_SCANNER=${APPDIR}/libexec/gstreamer-1.0/gst-plugin-scanner
-		export GST_PLUGIN_SYSTEM_PATH=
-
-		# Try to discover plugins only once
-		PLUGINS_SYMLINK=${HOME}/.cache/gstreamer-1.0/pitivi-gstplugins
-		ln -s ${APPDIR}/lib/gstreamer-1.0/ ${PLUGINS_SYMLINK}
-		if [ $? -ne 0 ]; then
-		    export GST_PLUGIN_PATH=${APPDIR}/lib/gstreamer-1.0/
-		else
-		    export GST_PLUGIN_PATH=${PLUGINS_SYMLINK}
-		fi
-	*/
 	for _, lib := range allELFs {
 		if strings.HasPrefix(filepath.Base(lib), "libgstreamer-1.0") {
 			log.Println("Bundling GStreamer 1.0 directory (for GST_PLUGIN_PATH)...")
@@ -279,15 +246,13 @@ func main() {
 		}
 	}
 
+	// Do what we do in the Scribus AppImage script, namely
+	// sed -i -e 's|/usr|/xxx|g' lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
 	err = PatchFile(appdir.Path+ldLinux, "/usr", "/xxx")
 	if err != nil {
 		helpers.PrintError("PatchFile", err)
 		os.Exit(1)
 	}
-
-	// Do what we do in the Scribus AppImage script, namely
-	// sed -i -e 's|/usr|/xxx|g' lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
-	// sed -i -e 's|/usr/lib|/ooo/ooo|g' lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
 
 	log.Println("Determining gconv (for GCONV_PATH)...")
 	// Search in all of the system's library directories for a directory called gconv
@@ -428,7 +393,6 @@ func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, 
 	}
 	newRpathStringForElf = strings.Join(newRpathStrings, ":")
 	// fmt.Println("Computed newRpathStringForElf:", appdir.Path+"/"+lib, newRpathStringForElf)
-	// Get any pre-existing rpaths from the ELF
 
 	if strings.HasPrefix(filepath.Base(path), "ld-linux") == true {
 		log.Println("Not writing rpath in", path, "because its name starts with ld-linux")
@@ -480,7 +444,7 @@ func deployGtkDirectory(appdir helpers.AppDir, gtkVersion int) {
 	}
 }
 
-// Appends library in path to allELFs and adds its location as well as any pre-existing rpaths to libraryLocations
+// appendLib appends library in path to allELFs and adds its location as well as any pre-existing rpaths to libraryLocations
 func appendLib(path string) {
 
 	// Find out whether there are pre-existing rpaths and if so, add them to libraryLocations
