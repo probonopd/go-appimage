@@ -705,13 +705,13 @@ func getCopyrightFile(path string) (string, error) {
 	//myProcess->start(dpkgQueryPath, arguments);
 	//myProcess->waitForFinished();
 	//strOut = myProcess->readAllStandardOutput();
-	cmd = exec.Command("dpkg-query", "-L", path)
+	cmd = exec.Command("dpkg-query", "-L", strings.TrimSpace(string(result)))
 	output, err := cmd.Output()
 	if err != nil {
 		return copyrightFile, err
 	}
 
-	lines := strings.Split(output, "\n")
+	lines := strings.Split(string(output), "\n")
 	for _, line := range lines {
 		if strings.Contains(line, "usr/share/doc") && strings.Contains(line, "copyright") && strings.Contains(line, " ") {
 			parts := strings.Split(line, " ")
