@@ -89,7 +89,10 @@ if [ -e "$LD_LINUX" ] ; then
   export XDG_DATA_DIRS="${HERE}"/usr/share/:"${XDG_DATA_DIRS}"
   export PERLLIB="${HERE}"/usr/share/perl5/:"${HERE}"/usr/lib/perl5/:"${PERLLIB}"
   export GSETTINGS_SCHEMA_DIR="${HERE}"/usr/share/glib-2.0/schemas/:"${GSETTINGS_SCHEMA_DIR}"
-  export GST_PLUGIN_SYSTEM_PATH=$(dirname $(find "${HERE}" -name "libgstpng.so" -type f | head -n 1))
+  under_GST_PLUGIN_SYSTEM_PATH=$(find "${HERE}" -name "libgstpng.so" -type f | head -n 1)
+  if [ ! -z "$under_GST_PLUGIN_SYSTEM_PATH"" ] ; then
+    export GST_PLUGIN_SYSTEM_PATH=$(dirname under_GST_PLUGIN_SYSTEM_PATH)
+  fi
   export QT_PLUGIN_PATH="${HERE}"/usr/lib/qt4/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib32/qt4/plugins/:"${HERE}"/usr/lib64/qt4/plugins/:"${HERE}"/usr/lib/qt5/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib32/qt5/plugins/:"${HERE}"/usr/lib64/qt5/plugins/:"${QT_PLUGIN_PATH}"
   # exec "${LD_LINUX}" --inhibit-cache --library-path "${LIBRARY_PATH}" "${MAIN_BIN}" "$@"
   exec "${LD_LINUX}" --inhibit-cache "${MAIN_BIN}" "$@"
