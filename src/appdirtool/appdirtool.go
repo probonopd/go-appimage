@@ -191,30 +191,33 @@ func main() {
 					log.Println("Gdk pixbuf loaders: determineLibsInDirTree(loc) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
 					determineLibsInDirTree(appdir, loc)
 
-					/*
+					// We need to patch away the path to libpixbufloader-png.so from the file loaders.cache, similar to:
+					// sed -i -e 's|/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders/||g' usr/lib/x86_64-linux-gnu/gdk-pixbuf-* / * / loaders.cache
+					loadersCaches := helpers.FilesWithSuffixInDirectoryRecursive(loc, "loaders.cache")
+					if len(loadersCaches) < 1 {
+						helpers.PrintError("loadersCaches", errors.New("could not find loaders.cache"))
+						os.Exit(1)
+					}
 
-						// We need to patch away the path to libpixbufloader-png.so from the file loaders.cache, similar to:
-						// sed -i -e 's|/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders/||g' usr/lib/x86_64-linux-gnu/gdk-pixbuf-* / * / loaders.cache
-						loadersCaches := helpers.FilesWithSuffixInDirectoryRecursive(appdir.Path+"/usr/lib/"+filepath.Base(loc), "loaders.cache")
-						if len(loadersCaches) < 1 {
-							helpers.PrintError("loadersCaches", errors.New("could not find loaders.cache"))
-							os.Exit(1)
-						}
+					err = copy.Copy(loadersCaches[0], appdir.Path+loadersCaches[0])
+					if err != nil {
+						helpers.PrintError("Could not copy loaders.cache", err)
+						os.Exit(1)
+					}
 
-						whatToPatchAway := helpers.FilesWithSuffixInDirectoryRecursive(loc, "libpixbufloader-png.so")
-						if len(whatToPatchAway) < 1 {
-							helpers.PrintError("whatToPatchAway", errors.New("could not find directory that contains libpixbufloader-png.so"))
-							os.Exit(1)
-						}
+					whatToPatchAway := helpers.FilesWithSuffixInDirectoryRecursive(loc, "libpixbufloader-png.so")
+					if len(whatToPatchAway) < 1 {
+						helpers.PrintError("whatToPatchAway", errors.New("could not find directory that contains libpixbufloader-png.so"))
+						os.Exit(1)
+					}
 
-						log.Println("Patching", loadersCaches[0], "removing", filepath.Dir(whatToPatchAway[0])+"/")
-						err = PatchFile(loadersCaches[0], filepath.Dir(whatToPatchAway[0])+"/", "")
-						if err != nil {
-							helpers.PrintError("PatchFile loaders.cache", err)
-							os.Exit(1)
-						}
+					log.Println("Patching", appdir.Path+loadersCaches[0], "removing", filepath.Dir(whatToPatchAway[0])+"/")
+					err = PatchFile(appdir.Path+loadersCaches[0], filepath.Dir(whatToPatchAway[0])+"/", "")
+					if err != nil {
+						helpers.PrintError("PatchFile loaders.cache", err)
+						os.Exit(1)
+					}
 
-					*/
 				}
 			}
 			break
