@@ -78,7 +78,7 @@ fi
 MAIN_BIN=$(find "$HERE/usr/bin" -name "$MAIN" | head -n 1)
 LD_LINUX=$(find "$HERE" -name 'ld-linux-*.so.*' | head -n 1)
 if [ -e "$LD_LINUX" ] ; then
-  echo "Run experimental bundle that bundles everything"
+  echo "Run experimental self-contained bundle"
   export GCONV_PATH="$HERE/usr/lib/gconv"
   export FONTCONFIG_FILE="$HERE/etc/fonts/fonts.conf"
   export GTK_EXE_PREFIX="$HERE/usr"
