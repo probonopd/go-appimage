@@ -90,6 +90,7 @@ func main() {
 				os.Exit(1)
 			}
 			AppDirDeploy(os.Args[2])
+			os.Exit(0)
 		case "validate":
 			if len(os.Args) > 2 {
 				if helpers.CheckIfFileExists(os.Args[2]) {
