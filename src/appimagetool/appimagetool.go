@@ -36,6 +36,19 @@ func main() {
 		version = "unsupported custom build"
 	}
 
+	// Detect if we are running inside Docker; https://github.com/AppImage/AppImageKit/issues/912
+	// If the file /.dockerenv exists, and/or if /proc/1/cgroup begins with /lxc/ or /docker/
+	res, err := ioutil.ReadFile("/proc/1/cgroup")
+	if err != nil {
+		helpers.PrintError("ReadFile /proc/1/cgroup", err)
+		os.Exit(1)
+	}
+	if strings.HasPrefix(string(res), "/lxc") || strings.HasPrefix(string(res), "/docker") || helpers.Exists("/.dockerenv") == true {
+		log.Println("Running inside Docker. Please make sure that the environment variables from Travis CI")
+		log.Println("available inside Docker if you are running on Travis CI.")
+		log.Println("This can be achieved by using something along the lines of 'docker run --env-file <(env)'.")
+	}
+
 	sections := []string{".upd_info", ".sha256_sig", ".sig_key", ".digest_md5"}
 
 	flag.Usage = func() {
