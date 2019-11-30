@@ -57,6 +57,10 @@ script:
     ( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/mksquashfs )
     ( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/AppImage/AppImageKit/releases/download/continuous/runtime-x86_64 )
     ( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh -O uploadtool )
+    cd appimagetool.AppDir/
+    wget -c https://ftp.fau.de/debian/pool/main/p/patchelf/patchelf_0.8-2_amd64.deb
+    dpkg -x patchelf_0.8-2_amd64.deb . ; rm *.deb
+    cd -
     chmod +x appimagetool.AppDir/usr/bin/*
     cp appimagetool-amd64 appimagetool.AppDir/usr/bin/appimagetool
     ( cd appimagetool.AppDir/ ; ln -s usr/bin/appimagetool AppRun)
