@@ -17,7 +17,7 @@ import "debug/elf"
 import "github.com/probonopd/go-appimage/internal/helpers"
 import "github.com/otiai10/copy"
 
-var allLibs []string
+var allELFs []string
 var libraryLocations []string // All directories in the host system that may contain libraries
 
 var AppRunData = `#!/bin/sh
@@ -85,15 +85,14 @@ if [ -e "$LD_LINUX" ] ; then
   export GTK_THEME=Default # This one should be bundled so that it can work on systems without Gtk
   export GDK_PIXBUF_MODULEDIR=$(find "$HERE" -name loaders -type d -path '*gdk-pixbuf*')
   export GDK_PIXBUF_MODULE_FILE=$(find "$HERE" -name loaders.cache -type f -path '*gdk-pixbuf*') # Patched to contain no paths
-  export LIBRARY_PATH=$GDK_PIXBUF_MODULEDIR:$LIBRARY_PATH # Otherwise getting "Unable to load image-loading module"
+  # export LIBRARY_PATH=$GDK_PIXBUF_MODULEDIR # Otherwise getting "Unable to load image-loading module"
   export XDG_DATA_DIRS="${HERE}"/usr/share/:"${XDG_DATA_DIRS}"
   export PERLLIB="${HERE}"/usr/share/perl5/:"${HERE}"/usr/lib/perl5/:"${PERLLIB}"
   export GSETTINGS_SCHEMA_DIR="${HERE}"/usr/share/glib-2.0/schemas/:"${GSETTINGS_SCHEMA_DIR}"
-  unset GST_PLUGIN_SYSTEM_PATH
-  export GST_PLUGIN_PATH="${HERE}"/usr/lib/gstreamer-*/
-  export GST_PLUGIN_SCANNER=${APPDIR}/usr/bin/gst-plugin-scanner
+  export GST_PLUGIN_SYSTEM_PATH=$(dirname $(find "${HERE}" -name "libgstpng.so" -type f | head -n 1))
   export QT_PLUGIN_PATH="${HERE}"/usr/lib/qt4/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib32/qt4/plugins/:"${HERE}"/usr/lib64/qt4/plugins/:"${HERE}"/usr/lib/qt5/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib32/qt5/plugins/:"${HERE}"/usr/lib64/qt5/plugins/:"${QT_PLUGIN_PATH}"
-  exec "${LD_LINUX}" --inhibit-cache --library-path "${LIBRARY_PATH}" "${MAIN_BIN}" "$@"
+  # exec "${LD_LINUX}" --inhibit-cache --library-path "${LIBRARY_PATH}" "${MAIN_BIN}" "$@"
+  exec "${LD_LINUX}" --inhibit-cache "${MAIN_BIN}" "$@"
 else
   echo "Bundle has issues, cannot launch"
 fi
@@ -157,14 +156,15 @@ func main() {
 	}
 
 	log.Println("Gathering all required libraries for the AppDir...")
-	determineLibsInDirTree(appdir, appdir.Path)
+	determineELFsInDirTree(appdir, appdir.Path)
 
 	// If there is a .so with the name libgdk_pixbuf inside the AppDir, then we need to
 	// bundle Gdk pixbuf loaders without which the bundled Gtk does not work
 	// cp /usr/lib/x86_64-linux-gnu/gdk-pixbuf-*/*/loaders/* usr/lib/x86_64-linux-gnu/gdk-pixbuf-*/*/loaders/
-	// cp /usr/lib/x86_64-linux-gnu/gdk-pixbuf-*/*/loaders.cache usr/lib/x86_64-linux-gnu/gdk-pixbuf-*/*/
+	// cp /usr/lib/x86_64-linux-gnu/gdk-pixbuf-*/*/loaders.cache usr/lib/x86_64-linux-gnu/gdk-pixbuf-*/*/ -
+	// this file must also be patched not to contain paths to the libraries
 
-	for _, lib := range allLibs {
+	for _, lib := range allELFs {
 		if strings.HasPrefix(filepath.Base(lib), "libgdk_pixbuf") {
 			log.Println("Determining Gdk pixbuf loaders (for GDK_PIXBUF_MODULEDIR and GDK_PIXBUF_MODULE_FILE)...")
 			locs, err := findWithPrefixInLibraryLocations("gdk-pixbuf")
@@ -173,10 +173,11 @@ func main() {
 				os.Exit(1)
 			} else {
 				for _, loc := range locs {
-					determineLibsInDirTree(appdir, loc)
+					determineELFsInDirTree(appdir, loc)
 
 					// We need to patch away the path to libpixbufloader-png.so from the file loaders.cache, similar to:
-					// sed -i -e 's|/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders/||g' usr/lib/x86_64-linux-gnu/gdk-pixbuf-* / * / loaders.cache
+					// sed -i -e 's|/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders/||g' usr/lib/x86_64-linux-gnu/gdk-pixbuf-*/*/loaders.cache
+					// the patched file must not contain paths to the libraries
 					loadersCaches := helpers.FilesWithSuffixInDirectoryRecursive(loc, "loaders.cache")
 					if len(loadersCaches) < 1 {
 						helpers.PrintError("loadersCaches", errors.New("could not find loaders.cache"))
@@ -224,7 +225,7 @@ func main() {
 		    export GST_PLUGIN_PATH=${PLUGINS_SYMLINK}
 		fi
 	*/
-	for _, lib := range allLibs {
+	for _, lib := range allELFs {
 		if strings.HasPrefix(filepath.Base(lib), "libgstreamer-1.0") {
 			log.Println("Bundling GStreamer 1.0 directory (for GST_PLUGIN_PATH)...")
 			locs, err := findWithPrefixInLibraryLocations("gstreamer-1.0")
@@ -232,24 +233,8 @@ func main() {
 				log.Println("Could not find GStreamer 1.0 directory")
 				os.Exit(1)
 			} else {
-				for _, loc := range locs {
-					os.MkdirAll(appdir.Path+"/usr/lib/", 0755)
-					if err != nil {
-						helpers.PrintError("MkdirAll", err)
-						os.Exit(1)
-					}
-					// Target location must match GST_PLUGIN_PATH exported in AppRun
-					/*
-						err = copy.Copy(loc, appdir.Path+"/usr/lib/"+filepath.Base(loc))
-						if err != nil {
-							helpers.PrintError("Copy", err)
-							os.Exit(1)
-						}
-					*/
-
-					log.Println("Bundling dependencies of GStreamer directory...")
-					determineLibsInDirTree(appdir, appdir.Path+"/usr/lib/"+filepath.Base(loc))
-				}
+				log.Println("Bundling dependencies of GStreamer 1.0 directory...")
+				determineELFsInDirTree(appdir, locs[0])
 			}
 			break
 		}
@@ -262,7 +247,7 @@ func main() {
 	for _, cand := range gstPluginScannerCandidates {
 		if helpers.Exists(cand) {
 			log.Println("Determining gst-plugin-scanner...")
-			determineLibsInDirTree(appdir, cand)
+			determineELFsInDirTree(appdir, cand)
 			break
 		}
 	}
@@ -284,7 +269,17 @@ func main() {
 		helpers.PrintError("patchelf --print-interpreter", err)
 		os.Exit(1)
 	}
-	err = PatchFile(appdir.Path+strings.TrimSpace(string(out)), "/usr", "/xxx")
+	ldLinux := strings.TrimSpace(string(out))
+
+	if helpers.Exists(appdir.Path+ldLinux) == false {
+		err = copy.Copy(ldLinux, appdir.Path+ldLinux)
+		if err != nil {
+			helpers.PrintError("Could not copy ld-linux", err)
+			os.Exit(1)
+		}
+	}
+
+	err = PatchFile(appdir.Path+ldLinux, "/usr", "/xxx")
 	if err != nil {
 		helpers.PrintError("PatchFile", err)
 		os.Exit(1)
@@ -301,7 +296,7 @@ func main() {
 	log.Println("TODO: Handle", gconvs[0])
 	if err == nil {
 		// Target location must match GCONV_PATH exported in AppRun
-		determineLibsInDirTree(appdir, gconvs[0])
+		determineELFsInDirTree(appdir, gconvs[0])
 	}
 
 	if helpers.Exists(appdir.Path + "/usr/share/glib-2.0/schemas") {
@@ -373,7 +368,7 @@ func main() {
 		if strings.HasPrefix(lib, appdir.Path) == false {
 			lib = appdir.Path + lib
 		}
-		libraryLocationsInAppDir = append(libraryLocationsInAppDir, lib)
+		libraryLocationsInAppDir = helpers.AppendIfMissing(libraryLocationsInAppDir, lib)
 	}
 
 	fmt.Println("")
@@ -383,18 +378,16 @@ func main() {
 	}
 
 	fmt.Println("")
-	log.Println("allLibs:")
-	for _, lib := range allLibs {
+	log.Println("allELFs:")
+	for _, lib := range allELFs {
 		fmt.Println(lib)
 	}
 
-	log.Println("Only after this point shoud we start copying around any ELFs")
-
-	log.Println("TODO: handle the pre-existing ELFs in the AppDir, too XXXXXXXXXXXXXXXXXXX")
+	log.Println("Only after this point should we start copying around any ELFs")
 
 	log.Println("Copying in and patching ELFs which are not already in the AppDir...")
 
-	for _, lib := range allLibs {
+	for _, lib := range allELFs {
 		if strings.HasPrefix(lib, appdir.Path) == false && helpers.Exists(appdir.Path+"/"+lib) == false {
 
 			err = helpers.CopyFile(lib, appdir.Path+"/"+lib)
@@ -403,52 +396,52 @@ func main() {
 				os.Exit(1)
 			}
 
-			var newRpathStringForElf string
-			var newRpathStrings []string
-			for _, libloc := range libraryLocationsInAppDir {
-
-				relpath, err := filepath.Rel(filepath.Dir(appdir.Path+lib), libloc)
-				if err != nil {
-					helpers.PrintError("Could not compute relative path", err)
-				}
-				newRpathStrings = append(newRpathStrings, "$ORIGIN/"+filepath.Clean(relpath))
-			}
-
-			newRpathStringForElf = strings.Join(newRpathStrings, ":")
-			// fmt.Println("Computed newRpathStringForElf:", appdir.Path+"/"+lib, newRpathStringForElf)
-
-			// Get any pre-existing rpaths from the ELF
-			rpaths, err := readRpaths(lib)
-			if err != nil {
-				helpers.PrintError("Could not determine rpath", err)
-				os.Exit(1)
-			}
-
-			// If the library had a pre-existing rpath that did not start with '$', replace it by one that
-			// points to the equal location as the original but inside the AppDir. And add rpaths to any locations
-			// inside the AppImage that have ELFs in them
-			if len(rpaths) > 0 && strings.HasPrefix(string(rpaths[0]), "$") == true {
-				log.Println("Not writing rpath in", appdir.Path+lib, "because it already starts with $. Is this actually the right thing to do?")
-			}
-
-			// Call patchelf to set the rpath
-			log.Println("Rewriting rpath of", appdir.Path+lib)
-			cmd := exec.Command("patchelf", "--set-rpath", newRpathStringForElf, appdir.Path+lib)
-			// log.Println(cmd.Args)
-			_, err = cmd.CombinedOutput()
-			if err != nil {
-				helpers.PrintError("patchelf --set-rpath "+appdir.Path+lib, err)
-				os.Exit(1)
-			}
-
 			// TODO: Copy license file for lib
 
 		}
+
+		patchRpathsInElf(appdir, libraryLocationsInAppDir, lib)
+
+	}
+}
+
+func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, path string) {
+
+	if strings.HasPrefix(path, appdir.Path) == false {
+		path = filepath.Clean(appdir.Path + "/" + path)
+	}
+	var newRpathStringForElf string
+	var newRpathStrings []string
+	for _, libloc := range libraryLocationsInAppDir {
+
+		relpath, err := filepath.Rel(filepath.Dir(path), libloc)
+		if err != nil {
+			helpers.PrintError("Could not compute relative path", err)
+		}
+		newRpathStrings = append(newRpathStrings, "$ORIGIN/"+filepath.Clean(relpath))
+	}
+	newRpathStringForElf = strings.Join(newRpathStrings, ":")
+	// fmt.Println("Computed newRpathStringForElf:", appdir.Path+"/"+lib, newRpathStringForElf)
+	// Get any pre-existing rpaths from the ELF
+
+	if strings.HasPrefix(filepath.Base(path), "ld-linux") == true {
+		log.Println("Not writing rpath in", path, "because its name starts with ld-linux")
+		return
+	}
+
+	// Call patchelf to set the rpath
+	log.Println("Rewriting rpath of", path)
+	cmd := exec.Command("patchelf", "--set-rpath", newRpathStringForElf, path)
+	// log.Println(cmd.Args)
+	_, err := cmd.CombinedOutput()
+	if err != nil {
+		helpers.PrintError("patchelf --set-rpath "+path, err)
+		os.Exit(1)
 	}
 }
 
 func deployGtkDirectory(appdir helpers.AppDir, gtkVersion int) {
-	for _, lib := range allLibs {
+	for _, lib := range allELFs {
 		if strings.HasPrefix(filepath.Base(lib), "libgtk-"+strconv.Itoa(gtkVersion)) {
 			log.Println("Bundling Gtk", strconv.Itoa(gtkVersion), "directory (for GTK_EXE_PREFIX)...")
 			locs, err := findWithPrefixInLibraryLocations("gtk-" + strconv.Itoa(gtkVersion))
@@ -457,23 +450,8 @@ func deployGtkDirectory(appdir helpers.AppDir, gtkVersion int) {
 				os.Exit(1)
 			} else {
 				for _, loc := range locs {
-					/*
-						os.MkdirAll(appdir.Path+"/usr/lib/", 0755)
-						if err != nil {
-							helpers.PrintError("MkdirAll", err)
-							os.Exit(1)
-						}
-						// Target location must be in GTK_EXE_PREFIX exported in AppRun
-
-						err = copy.Copy(loc, appdir.Path+"/usr/lib/"+filepath.Base(loc))
-						if err != nil {
-							helpers.PrintError("Copy", err)
-							os.Exit(1)
-						}
-
-					*/
 					log.Println("Bundling dependencies of Gtk", strconv.Itoa(gtkVersion), "directory...")
-					determineLibsInDirTree(appdir, loc)
+					determineELFsInDirTree(appdir, loc)
 					log.Println("Bundling Default theme for Gtk", strconv.Itoa(gtkVersion), "(for GTK_THEME=Default)...")
 					err = copy.Copy("/usr/share/themes/Default/gtk-"+strconv.Itoa(gtkVersion)+".0", appdir.Path+"/usr/share/themes/Default/gtk-"+strconv.Itoa(gtkVersion)+".0")
 					if err != nil {
@@ -496,7 +474,7 @@ func deployGtkDirectory(appdir helpers.AppDir, gtkVersion int) {
 	}
 }
 
-// Appends library in path to allLibs and adds its location as well as any pre-existing rpaths to libraryLocations
+// Appends library in path to allELFs and adds its location as well as any pre-existing rpaths to libraryLocations
 func appendLib(path string) {
 
 	// Find out whether there are pre-existing rpaths and if so, add them to libraryLocations
@@ -519,15 +497,10 @@ func appendLib(path string) {
 
 	libraryLocations = helpers.AppendIfMissing(libraryLocations, filepath.Clean(filepath.Dir(path)))
 
-	allLibs = helpers.AppendIfMissing(allLibs, path)
+	allELFs = helpers.AppendIfMissing(allELFs, path)
 }
 
-func determineLibsInDirTree(appdir helpers.AppDir, pathToDirTreeToBeDeployed string) {
-	// Copy all libraries into the AppDir, at the location in which they originally were in the host system
-	// TODO: Consider copying to one predetermined location inside the AppDir, e.g., usr/lib
-	// to simplify things. Since it might break on things like dlopen(), we are not doing it so far
-	// Add all executables and pre-existing ELFs in the AppDir to allELFsUnderPath
-	// independent of whether they have execute permissions or not
+func determineELFsInDirTree(appdir helpers.AppDir, pathToDirTreeToBeDeployed string) {
 	allelfs, err := findAllExecutablesAndLibraries(pathToDirTreeToBeDeployed)
 	if err != nil {
 		helpers.PrintError("findAllExecutablesAndLibraries", err)
@@ -550,60 +523,8 @@ func determineLibsInDirTree(appdir helpers.AppDir, pathToDirTreeToBeDeployed str
 	log.Println("len(allELFsUnderPath):", len(allELFsUnderPath))
 
 	// Find out in which directories we now actually have libraries
-
 	log.Println("libraryLocations:", libraryLocations)
-	log.Println("len(allLibs):", len(allLibs))
-
-	/*
-
-		for _, lib := range allLibs {
-			log.Println(lib)
-		}
-
-		allDirectoriesWithLibraries, err := getAllDirectoriesWithLibraries(appdir.Path)
-		helpers.PrintError("allDirectoriesWithLibraries", err)
-		log.Println("allDirectoriesWithLibraries:", allDirectoriesWithLibraries)
-		log.Println("Computing relative locations to directories containing libraries...")
-		log.Println("len(allELFsUnderPath):", len(allELFsUnderPath))
-
-		log.Println("Patching ELF files to find libraries in relative locations...")
-		// For each ELF in the AppDir, compute the relative locations to directories containing libraries for the rpath
-		for i, l := range allELFsUnderPath {
-			// log.Println(l.path)
-			os.Chmod(l.path, 0755)
-			for _, libdir := range allDirectoriesWithLibraries {
-				rel, err := filepath.Rel(filepath.Dir(l.path), libdir)
-				if err == nil && rel != "." {
-					allELFsUnderPath[i].relpaths = append(allELFsUnderPath[i].relpaths, rel)
-				}
-			}
-			allELFsUnderPath[i].rpath = "$ORIGIN:$ORIGIN/" + strings.Join(allELFsUnderPath[i].relpaths, ":$ORIGIN/")
-			// log.Println("rpath for", allELFsUnderPath[i].path, allELFsUnderPath[i].rpath)
-
-			rpaths, err := readRpaths(allELFsUnderPath[i].path)
-			if err != nil {
-				helpers.PrintError("allELFsUnderPath", err)
-				os.Exit(1)
-			}
-
-			if strings.Contains(allELFsUnderPath[i].path, "ld-linux") {
-				log.Println("Not writing rpath to", allELFsUnderPath[i].path, "because ld-linux apparently does not like this")
-			} else if len(rpaths) > 0 && strings.HasPrefix(string(rpaths[0]), "$") == true {
-				// log.Println("Not writing rpath to", allELFsUnderPath[i].path, "because it already starts with $")
-			} else {
-				// Call patchelf to set the rpath
-				cmd := exec.Command("patchelf", "--set-rpath", allELFsUnderPath[i].rpath, allELFsUnderPath[i].path)
-				// log.Println(cmd.Args)
-				out, err := cmd.CombinedOutput()
-				if err != nil {
-					log.Println(allELFsUnderPath[i].path, strings.TrimSpace(string(out)))
-					helpers.PrintError("patchelf --set-rpath "+allELFsUnderPath[i].path, err)
-					os.Exit(1)
-				}
-			}
-		}
-
-	*/
+	log.Println("len(allELFs):", len(allELFs))
 }
 
 func readRpaths(path string) ([]string, error) {
@@ -629,12 +550,7 @@ func findAllExecutablesAndLibraries(directory string) ([]string, error) {
 			return e
 		}
 
-		// check if it is a regular file (not dir) and, according to its name, is a shared library
-		if info.Mode().IsRegular() && strings.Contains(path, ".so") {
-			allExecutablesAndLibraries = helpers.AppendIfMissing(allExecutablesAndLibraries, path)
-		}
-
-		// Add all executable/ELF files
+		// Add ELF files
 		if info.Mode().IsRegular() {
 			f, err := os.Open(path)
 			defer f.Close()
@@ -648,25 +564,6 @@ func findAllExecutablesAndLibraries(directory string) ([]string, error) {
 		return nil
 	})
 	return allExecutablesAndLibraries, nil
-}
-
-// getAllDirectoriesWithLibraries returns all directories under the supplied
-// diectory in which .so files reside, and error. This is useful to compute the rpaths needed
-func getAllDirectoriesWithLibraries(directory string) ([]string, error) {
-	var allDirectoriesWithLibraries []string
-	filepath.Walk(directory, func(path string, info os.FileInfo, e error) error {
-		if e != nil {
-			return e
-		}
-
-		// check if it is a regular file (not dir)
-		if info.Mode().IsRegular() && strings.Contains(path, ".so") {
-
-			allDirectoriesWithLibraries = helpers.AppendIfMissing(allDirectoriesWithLibraries, filepath.Dir(path))
-		}
-		return nil
-	})
-	return allDirectoriesWithLibraries, nil
 }
 
 func getDeps(binaryOrLib string) error {
@@ -691,7 +588,7 @@ func getDeps(binaryOrLib string) error {
 		if err != nil {
 			return err
 		}
-		if helpers.SliceContains(allLibs, s) == true {
+		if helpers.SliceContains(allELFs, s) == true {
 			continue
 		} else {
 			libPath, err := findLibrary(lib)
