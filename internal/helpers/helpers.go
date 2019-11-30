@@ -248,6 +248,12 @@ func ValidateAppStreamMetainfoFile(appdirpath string) error {
 // copy file attributes.
 // Unclear why such basic functionality is not in the standard library.
 func CopyFile(src string, dst string) error {
+
+	err := os.MkdirAll(filepath.Dir(dst), 0755)
+	if err != nil {
+		return err
+	}
+
 	in, err := os.Open(src)
 	if err != nil {
 		return err
