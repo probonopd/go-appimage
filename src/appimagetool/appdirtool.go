@@ -379,12 +379,12 @@ func AppDirDeploy(path string) {
 			}
 			// Copy copyright files into the AppImage
 			copyrightFile, err := getCopyrightFile(lib)
-			if err != nil {
-				helpers.PrintError("getCopyrightFile", err)
-				os.Exit(1)
+			// It is perfectly fine for this to error - on non-dpkg systems, or if lib was not in a deb package
+			if err == nil {
+				os.MkdirAll(filepath.Dir(appdir.Path+copyrightFile), 0755)
+				copy.Copy(copyrightFile, appdir.Path+copyrightFile)
 			}
-			os.MkdirAll(filepath.Dir(appdir.Path+copyrightFile), 0755)
-			copy.Copy(copyrightFile, appdir.Path+copyrightFile)
+
 		}
 
 		patchRpathsInElf(appdir, libraryLocationsInAppDir, lib)
