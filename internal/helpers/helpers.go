@@ -153,7 +153,8 @@ func CheckIfExecFileExists(desktopfilepath string) bool {
 	if os.IsNotExist(err) {
 		return false
 	}
-	cfg, e := ini.Load(desktopfilepath)
+	cfg, e := ini.LoadSources(ini.LoadOptions{IgnoreInlineComment: true}, // Do not cripple lines hat contain ";"
+		desktopfilepath)
 	LogError("desktop", e)
 	dst := cfg.Section("Desktop Entry").Key(ExecLocationKey).String()
 
@@ -201,7 +202,8 @@ func GetValuesForAllDesktopFiles(key string) []string {
 		if strings.HasSuffix(file.Name(), ".desktop") {
 			exists := CheckIfExecFileExists(xdg.DataHome + "/applications/" + file.Name())
 			if exists == true {
-				cfg, e := ini.Load(xdg.DataHome + "/applications/" + file.Name())
+				cfg, e := ini.LoadSources(ini.LoadOptions{IgnoreInlineComment: true}, // Do not cripple lines hat contain ";"
+					xdg.DataHome+"/applications/"+file.Name())
 				LogError("GetValuesForAllDesktopFiles", e)
 				dst := cfg.Section("Desktop Entry").Key(key).String()
 				if dst != "" {

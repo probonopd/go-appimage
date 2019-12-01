@@ -94,7 +94,8 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 		for _, file := range files {
 			if filepath.Ext(thumbnailcachedir+file.Name()) == ".desktop" {
 				log.Println("Determine iconname from desktop file:", "/tmp"+"/"+file.Name())
-				cfg, err := ini.Load(thumbnailcachedir + "/" + file.Name())
+				cfg, err := ini.LoadSources(ini.LoadOptions{IgnoreInlineComment: true}, // Do not cripple lines hat contain ";"
+					thumbnailcachedir+"/"+file.Name())
 				if err == nil {
 					section, _ := cfg.GetSection("Desktop Entry")
 					iconkey, _ := section.GetKey("Icon")

@@ -408,7 +408,9 @@ func FindAppImagesWithMatchingUpdateInformation(updateinformation string) []stri
 	}
 	for _, file := range files {
 		if strings.HasSuffix(file.Name(), ".desktop") && strings.HasPrefix(file.Name(), "appimagekit_") {
-			cfg, e := ini.Load(xdg.DataHome + "/applications/" + file.Name())
+
+			cfg, e := ini.LoadSources(ini.LoadOptions{IgnoreInlineComment: true}, // Do not cripple lines hat contain ";"
+				xdg.DataHome+"/applications/"+file.Name())
 			helpers.LogError("desktop", e)
 			dst := cfg.Section("Desktop Entry").Key(ExecLocationKey).String()
 			_, err = os.Stat(dst)

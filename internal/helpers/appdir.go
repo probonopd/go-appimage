@@ -67,7 +67,8 @@ func NewAppDir(desktopFilePath string) (AppDir, error) {
 	}
 
 	ini.PrettyFormat = false
-	cfg, err := ini.Load(ad.DesktopFilePath)
+	cfg, err := ini.LoadSources(ini.LoadOptions{IgnoreInlineComment: true}, // Do not cripple lines hat contain ";"
+		ad.DesktopFilePath)
 	if err != nil {
 		return ad, err
 	}

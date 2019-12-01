@@ -9,7 +9,8 @@ import (
 
 func CheckDesktopFile(desktopfile string) error {
 	// Check for presence of required keys and abort otherwise
-	d, err := ini.Load(desktopfile)
+	d, err := ini.LoadSources(ini.LoadOptions{IgnoreInlineComment: true}, // Do not cripple lines hat contain ";"
+		desktopfile)
 	PrintError("ini.load", err)
 	neededKeys := []string{"Categories", "Name", "Exec", "Type", "Icon"}
 	for _, k := range neededKeys {

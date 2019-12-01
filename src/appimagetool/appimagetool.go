@@ -277,7 +277,8 @@ func GenerateAppImage(appdir string) {
 	}
 
 	// Read "Name=" key and convert spaces into underscores
-	d, err := ini.Load(desktopfile)
+	d, err := ini.LoadSources(ini.LoadOptions{IgnoreInlineComment: true}, // Do not cripple lines hat contain ";"
+		desktopfile)
 	helpers.PrintError("ini.load", err)
 	val, _ := d.Section("Desktop Entry").GetKey("Name")
 	name := val.String()
@@ -322,7 +323,8 @@ func GenerateAppImage(appdir string) {
 	arch := archs[0]
 
 	// Set VERSION in desktop file and save it
-	d, err = ini.Load(desktopfile)
+	d, err = ini.LoadSources(ini.LoadOptions{IgnoreInlineComment: true}, // Do not cripple lines hat contain ";"
+		desktopfile)
 	ini.PrettyFormat = false
 	helpers.PrintError("ini.load", err)
 	d.Section("Desktop Entry").Key("X-AppImage-Version").SetValue(version)
