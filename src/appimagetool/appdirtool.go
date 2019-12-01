@@ -795,7 +795,8 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 			helpers.PrintError("Could not find libQt5Core.so.5", err)
 			os.Exit(1)
 		}
-		cmd := exec.Command("sh", "-c \"strings '"+library+"' | grep qt_prfxpath\"")
+
+		cmd := exec.Command("sh", "-c \"strings "+library+" | grep qt_prfxpath\"") // FIXME: Replace with native Go code
 		result, err := cmd.Output()
 		log.Println("result of cmdrun:", result)
 		if err != nil {

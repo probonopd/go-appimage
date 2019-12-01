@@ -177,8 +177,9 @@ func main() {
 	}
 
 	// Check for needed files on $PATH
-	tools := []string{"file", "mksquashfs", "desktop-file-validate", "uploadtool", "patchelf", "desktop-file-validate", "glib-compile-schemas", "curl"}
+	tools := []string{"file", "mksquashfs", "desktop-file-validate", "uploadtool", "patchelf", "desktop-file-validate", "glib-compile-schemas", "curl", "sh", "strings", "grep"}
 	// curl is needed by uploadtool; TODO: Replace uploadtool with native Go code
+	// "sh", "strings", "grep" are needed by appdirtool to parse qt_prfxpath; TODO: Replace with native Go code
 	for _, t := range tools {
 		_, err := exec.LookPath(t)
 		if err != nil {
