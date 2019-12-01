@@ -515,14 +515,51 @@ func SliceContains(s []string, e string) bool {
 	return false
 }
 
-// Returns true if file exists
+// Returns true if file or directory exists
+// Why is this not in the standard library?
 func Exists(name string) bool {
 	_, err := os.Stat(name)
-	if err == nil {
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false
+		}
+	}
+	return true
+}
+
+// Returns true if path is a directory
+// Why is this not in the standard library?
+func IsDirectory(path string) bool {
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	return fileInfo.IsDir()
+}
+
+/* DOES NOT WORK PROPERLY
+// Returns true if path is a file
+// Why is this not in the standard library?
+func IsFile(path string) (bool) {
+	fdir, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer fdir.Close()
+
+	finfo, err := fdir.Stat()
+	if err != nil {
+		return false
+	}
+	switch mode := finfo.Mode(); {
+
+	case mode.IsRegular():
 		return true
 	}
 	return false
 }
+
+*/
 
 // Return true if magic string (hex) is found at offset
 // TODO: Instead of magic string, could probably use something like []byte{'\r', '\n'} or []byte("AI")

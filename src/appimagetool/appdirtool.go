@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"strconv"
@@ -275,7 +277,6 @@ func AppDirDeploy(path string) {
 	// Search in all of the system's library directories for a directory called gconv
 	// and put it into the a location which matches the GCONV_PATH we export in AppRun
 	gconvs, err := findWithPrefixInLibraryLocations("gconv")
-	log.Println("TODO: Handle", gconvs[0])
 	if err == nil {
 		// Target location must match GCONV_PATH exported in AppRun
 		determineELFsInDirTree(appdir, gconvs[0])
@@ -336,6 +337,25 @@ func AppDirDeploy(path string) {
 		os.Exit(1)
 	}
 
+	log.Println("Find out whether Qt is a dependency of the application to be bundled...")
+
+	qtVersionDetected := 0
+
+	if containsString(allELFs, "libQt5Core.so.5") == true {
+		log.Println("Detected Qt 5")
+		qtVersionDetected = 5
+	}
+
+	if containsString(allELFs, "libQtCore.so.4") == true {
+		log.Println("Detected Qt 4")
+		qtVersionDetected = 4
+
+	}
+
+	if qtVersionDetected > 0 {
+		handleQt(appdir, qtVersionDetected)
+	}
+
 	fmt.Println("")
 	log.Println("libraryLocations:")
 	for _, lib := range libraryLocations {
@@ -363,25 +383,6 @@ func AppDirDeploy(path string) {
 	log.Println("allELFs:")
 	for _, lib := range allELFs {
 		fmt.Println(lib)
-	}
-
-	log.Println("Find out whether Qt is a dependency of the application to be bundled...")
-
-	qtVersionDetected := 0
-
-	if containsString(allELFs, "libQt5Core.so.5") == true {
-		log.Println("Detected Qt 5")
-		qtVersionDetected = 5
-	}
-
-	if containsString(allELFs, "libQtCore.so.4") == true {
-		log.Println("Detected Qt 4")
-		qtVersionDetected = 4
-
-	}
-
-	if qtVersionDetected > 0 {
-		handleQt(appdir, qtVersionDetected)
 	}
 
 	log.Println("Only after this point should we start copying around any ELFs")
@@ -469,7 +470,7 @@ func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, 
 
 	// Call patchelf to set the rpath
 	if helpers.Exists(path) == true {
-		log.Println("Rewriting rpath of", path)
+		// log.Println("Rewriting rpath of", path)
 		cmd := exec.Command("patchelf", "--set-rpath", newRpathStringForElf, path)
 		// log.Println(cmd.Args)
 		_, err := cmd.CombinedOutput()
@@ -523,7 +524,7 @@ func appendLib(path string) {
 	// points to the equal location as the original but inside the AppDir
 	rpaths, err := readRpaths(path)
 	if err != nil {
-		helpers.PrintError("Could not determine rpath", err)
+		helpers.PrintError("Could not determine rpath in "+path, err)
 		os.Exit(1)
 	}
 
@@ -573,8 +574,9 @@ func determineELFsInDirTree(appdir helpers.AppDir, pathToDirTreeToBeDeployed str
 func readRpaths(path string) ([]string, error) {
 	// Call patchelf to find out whether the ELF already has an rpath set
 	cmd := exec.Command("patchelf", "--print-rpath", path)
-	// log.Println(cmd.Args)
+	log.Println("patchelf cmd.Args:", cmd.Args)
 	out, err := cmd.CombinedOutput()
+	log.Println("patchelf CombinedOutput:", out)
 	rpathStringInELF := strings.TrimSpace(string(out))
 	if rpathStringInELF == "" {
 		return []string{}, err
@@ -586,9 +588,21 @@ func readRpaths(path string) ([]string, error) {
 
 // findAllExecutablesAndLibraries returns all ELF libraries and executables
 // found in directory, and error
-func findAllExecutablesAndLibraries(directory string) ([]string, error) {
+func findAllExecutablesAndLibraries(path string) ([]string, error) {
 	var allExecutablesAndLibraries []string
-	filepath.Walk(directory, func(path string, info os.FileInfo, e error) error {
+
+	fmt.Println("xxxxxxxxxxxxxxxxxxxxxxxxxxxxx checking", path)
+
+	// If we have a file, then there is nothing to walk and we can return it directly
+	if helpers.IsDirectory(path) != true {
+		fmt.Println("xxxxxxxxxxxxxxxxxxxxxxxxxxxxx is a file", path)
+		allExecutablesAndLibraries = append(allExecutablesAndLibraries, path)
+		return allExecutablesAndLibraries, nil
+	}
+
+	fmt.Println("xxxxxxxxxxxxxxxxxxxxxxxxxxxxx is not a file", path)
+
+	filepath.Walk(path, func(path string, info os.FileInfo, e error) error {
 		if e != nil {
 			return e
 		}
@@ -787,7 +801,7 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 
 	if qtVersion >= 5 {
 		log.Println("XXXXXXXXXXXXXXXXXXXXX TODO: Deploy platform plugin")
-		res, err := findWithPrefixInLibraryLocations("platforms")
+
 		// Actually the libQt5Core.so.5 contains (always?) qt_prfxpath=... which tells us the location in which 'plugins/' is located
 
 		library, err := findLibrary("libQt5Core.so.5")
@@ -796,75 +810,151 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 			os.Exit(1)
 		}
 
-		cmd := exec.Command("sh", "-c \"strings "+library+" | grep qt_prfxpath\"") // FIXME: Replace with native Go code
-		result, err := cmd.Output()
-		log.Println("result of cmdrun:", result)
+		f, err := os.Open(library)
+		defer f.Close()
 		if err != nil {
-			log.Println(cmd.String())
-			helpers.PrintError("Could not run command to find qt_prfxpath", err)
+			helpers.PrintError("Could not open libQt5Core.so.5", err)
 			os.Exit(1)
 		}
+
+		qtPrfxpath := getQtPrfxpath(f, err)
+
+		if qtPrfxpath == "" {
+			log.Println("Got empty qtPrfxpath, exiting")
+			os.Exit(1)
+		}
+
+		fmt.Println("Looking in", qtPrfxpath+"/plugins")
+
+		if helpers.Exists(qtPrfxpath+"/plugins/platforms/libqxcb.so") == false {
+			log.Println("Could not find 'plugins/platforms/libqxcb.so' in qtPrfxpath, exiting")
+			os.Exit(1)
+		}
+
+		determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/platforms/libqxcb.so")
 
 		// TODO: Patch qt_prfxpath, see https://github.com/probonopd/linuxdeployqt/issues/12
+		/*
+			if err != nil {
+				log.Println("Could not find the Qt platforms directory")
+				os.Exit(1)
+			} else {
+				log.Println("Using Qt platforms directory:", res)
+			}
 
-		if err != nil {
-			log.Println("Could not find the Qt platforms directory")
-			os.Exit(1)
-		} else {
-			log.Println("Using Qt platforms directory:", res)
-		}
+		*/
 		// By default, Qt appears to look for the 'plugins' directory in the first(!) of the rpaths
 		// which is = libraryLocationsInAppDir [0]
 	}
 
-	// Find out which qmake to use
-	var qmakeCommand string
-	log.Println("Determining qmake...")
-	if helpers.IsCommandAvailable("qmake") {
-		qmakeCommand = "qmake"
-	}
-	if qmakeCommand == "" && qtVersion == 5 && helpers.IsCommandAvailable("qmake-qt5") {
-		qmakeCommand = "qmake-qt5"
-	}
-	if qmakeCommand == "" && qtVersion == 4 && helpers.IsCommandAvailable("qmake-qt4") {
-		qmakeCommand = "qmake-qt4"
-	}
+	// Find out which qmake to use - maybe we don't even need this?
+	/*
+		var qmakeCommand string
+		log.Println("Determining qmake...")
+		if helpers.IsCommandAvailable("qmake") {
+			qmakeCommand = "qmake"
+		}
+		if qmakeCommand == "" && qtVersion == 5 && helpers.IsCommandAvailable("qmake-qt5") {
+			qmakeCommand = "qmake-qt5"
+		}
+		if qmakeCommand == "" && qtVersion == 4 && helpers.IsCommandAvailable("qmake-qt4") {
+			qmakeCommand = "qmake-qt4"
+		}
 
-	if qmakeCommand == "" {
-		log.Println("Could not find qmake on the $PATH, exiting")
-		os.Exit(1)
-	} else {
-		log.Println("Using qmake:", qmakeCommand)
-	}
+		if qmakeCommand == "" {
+			log.Println("Could not find qmake on the $PATH, exiting")
+			os.Exit(1)
+		} else {
+			log.Println("Using qmake:", qmakeCommand)
+		}
 
-	// Find the Qt installation that qmake belongs to
-	cmd := exec.Command(qmakeCommand, "-query")
-	output, err := cmd.Output()
+		// Find the Qt installation that qmake belongs to
+		cmd := exec.Command(qmakeCommand, "-query")
+		output, err := cmd.Output()
+		if err != nil {
+			log.Println("Could not run qmake to find out the location of the Qt installation, exiting")
+			os.Exit(1)
+		}
+
+		qtInstallationPathLines := strings.Split(strings.TrimSpace(string(output)), "\n")
+		if len(qtInstallationPathLines) < 3 {
+			log.Println("Could not parse the location of the Qt installation from qmake output, exiting")
+			os.Exit(1)
+		}
+
+		for qtInstallationPathLine := range qtInstallationPathLines[1:] {
+			qtInstallationLineParts := strings.Split(strings.TrimSpace(string(qtInstallationPathLine)), ":")
+			fmt.Println(qtInstallationLineParts[0], "contains", qtInstallationLineParts[1])
+		}
+
+		qtInstallationPath := qtInstallationPathLines[1]
+
+		if helpers.Exists(qtInstallationPath) == false {
+			log.Println("Qt path could not be determined from qmake on the $PATH")
+			log.Println("Make sure you have the correct Qt on your $PATH")
+			log.Println("You can check this with qmake -v")
+			os.Exit(1)
+		}
+
+		log.Println("Qt installation path determined from qmake:", qtInstallationPath)
+	*/
+}
+
+func getQtPrfxpath(f *os.File, err error) string {
+	f.Seek(0, 0)
+	// Search from the beginning of the file
+	search := []byte("qt_prfxpath=")
+	offset := ScanFile(f, search) + int64(len(search))
+	log.Println("Offset:", offset)
+	search = []byte("\x00")
+	// From the current location in the file, search to the next 0x00 byte
+	f.Seek(offset, 0)
+	length := ScanFile(f, search)
+	log.Println("Length:", length)
+	// Now that we know where in the file the information is, go get it
+	f.Seek(offset, 0)
+	buf := make([]byte, length)
+	// Make a buffer that is exactly as long as the range we want to read
+	_, err = io.ReadFull(f, buf)
 	if err != nil {
-		log.Println("Could not run qmake to find out the location of the Qt installation, exiting")
+		helpers.PrintError("Unable to read qt_prfxpath", err)
 		os.Exit(1)
 	}
-
-	qtInstallationPathLines := strings.Split(strings.TrimSpace(string(output)), "\n")
-	if len(qtInstallationPathLines) < 3 {
-		log.Println("Could not parse the location of the Qt installation from qmake output, exiting")
-		os.Exit(1)
+	qt_prfxpath := strings.TrimSpace(string(buf))
+	fmt.Println("qt_prfxpath:", qt_prfxpath)
+	if qt_prfxpath == "" {
+		log.Println("Could not get qt_prfxpath")
+		return ""
 	}
+	/*
+		if helpers.Exists(qt_prfxpath) == false {
+			log.Println("Got qt_prfxpath but it does not exist")
+			return ""
+		}
 
-	for qtInstallationPathLine := range qtInstallationPathLines[1:] {
-		qtInstallationLineParts := strings.Split(strings.TrimSpace(string(qtInstallationPathLine)), ":")
-		fmt.Println(qtInstallationLineParts[0], "contains", qtInstallationLineParts[1])
+	*/
+	return qt_prfxpath
+}
+
+// ScanFile returns the offset of the first occurence of a []byte in a file from the current position,
+// or -1 if []byte was not found in file, and seeks to the beginning of the searched []byte
+// https://forum.golangbridge.org/t/how-to-find-the-offset-of-a-byte-in-a-large-binary-file/16457/
+func ScanFile(f io.ReadSeeker, search []byte) int64 {
+	ix := 0
+	r := bufio.NewReader(f)
+	offset := int64(0)
+	for ix < len(search) {
+		b, err := r.ReadByte()
+		if err != nil {
+			return -1
+		}
+		if search[ix] == b {
+			ix++
+		} else {
+			ix = 0
+		}
+		offset++
 	}
-
-	qtInstallationPath := qtInstallationPathLines[1]
-
-	if helpers.Exists(qtInstallationPath) == false {
-		log.Println("Qt path could not be determined from qmake on the $PATH")
-		log.Println("Make sure you have the correct Qt on your $PATH")
-		log.Println("You can check this with qmake -v")
-		os.Exit(1)
-	}
-
-	log.Println("Qt installation path determined from qmake:", qtInstallationPath)
-
+	f.Seek(offset-int64(len(search)), 0) // Seeks to the beginning of the searched []byte
+	return offset - int64(len(search))
 }
