@@ -336,9 +336,16 @@ func posString(slice []string, element string) int {
 	return -1
 }
 
-// containsString returns true iff slice contains element
+// containsString returns true iff slice contains element that ends with the given string
 func containsString(slice []string, element string) bool {
-	return !(posString(slice, element) == -1)
+
+	for _, item := range slice {
+		if strings.HasSuffix(item, element) == true {
+			return true
+		}
+	}
+
+	return false
 }
 
 //////////////////////////////// end AskForConfirmation

@@ -107,6 +107,9 @@ type ELF struct {
 	rpath    string
 }
 
+// Key: name of the package, value: location of the copyright file
+var copyrightFiles = make(map[string]string) // Need to use 'make', otherwise we can't add to it
+
 /*
    man ld.so says:
 
@@ -206,18 +209,19 @@ func AppDirDeploy(path string) {
 				log.Println("Bundling dependencies of GStreamer 1.0 directory...")
 				determineELFsInDirTree(appdir, locs[0])
 			}
-			break
-		}
-	}
 
-	// FIXME: This is not going to scale, every distribution is cooking their own soup,
-	// we need to determine the location of gst-plugin-scanner dynamically by parsing it out of libgstreamer-1.0
-	gstPluginScannerCandidates := []string{"/usr/libexec/gstreamer-1.0/gst-plugin-scanner", // Clear Linux* OS
-		"/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-plugin-scanner"} // sic! Ubuntu 18.04
-	for _, cand := range gstPluginScannerCandidates {
-		if helpers.Exists(cand) {
-			log.Println("Determining gst-plugin-scanner...")
-			determineELFsInDirTree(appdir, cand)
+			// FIXME: This is not going to scale, every distribution is cooking their own soup,
+			// we need to determine the location of gst-plugin-scanner dynamically by parsing it out of libgstreamer-1.0
+			gstPluginScannerCandidates := []string{"/usr/libexec/gstreamer-1.0/gst-plugin-scanner", // Clear Linux* OS
+				"/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-plugin-scanner"} // sic! Ubuntu 18.04
+			for _, cand := range gstPluginScannerCandidates {
+				if helpers.Exists(cand) {
+					log.Println("Determining gst-plugin-scanner...")
+					determineELFsInDirTree(appdir, cand)
+					break
+				}
+			}
+
 			break
 		}
 	}
@@ -259,6 +263,8 @@ func AppDirDeploy(path string) {
 
 	// Do what we do in the Scribus AppImage script, namely
 	// sed -i -e 's|/usr|/xxx|g' lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+
+	// This prevents an unpatched libGL.so.1 from finding its deps in /usr, so we are NOT doing this for now? XXXXXXXXXXXXXXXXXxx
 	err = PatchFile(appdir.Path+ldLinux, "/usr", "/xxx")
 	if err != nil {
 		helpers.PrintError("PatchFile", err)
@@ -359,24 +365,72 @@ func AppDirDeploy(path string) {
 		fmt.Println(lib)
 	}
 
+	log.Println("Find out whether Qt is a dependency of the application to be bundled...")
+
+	qtVersionDetected := 0
+
+	if containsString(allELFs, "libQt5Core.so.5") == true {
+		log.Println("Detected Qt 5")
+		qtVersionDetected = 5
+	}
+
+	if containsString(allELFs, "libQtCore.so.4") == true {
+		log.Println("Detected Qt 4")
+		qtVersionDetected = 4
+
+	}
+
+	if qtVersionDetected > 0 {
+		handleQt(appdir, qtVersionDetected)
+	}
+
 	log.Println("Only after this point should we start copying around any ELFs")
 
 	log.Println("Copying in and patching ELFs which are not already in the AppDir...")
 
+	// As soon as we patch libGL.so.* to include '$ORIGIN' filled with our library, we get a segfault. FIXME: Why? - Maybe because the Qt platform plugin is so far unpatched? XXXXXXXXXXXXXXXX
+	// Hence we are not bundling libGL.so.*, but this also means that we need to allow ld-linux to find libraries
+	// in /usr, which we really don't want...
+	excludelistPrefixes := []string{} // {"libGL.so", "libnvidia"}
+
 	for _, lib := range allELFs {
 
-		if strings.HasPrefix(filepath.Base(lib), "libnvidia") == true {
-			log.Println("Skipping", lib, "because it crashes when running on older systems")
-			continue
+		shoudDoIt := true
+		for _, excludePrefix := range excludelistPrefixes {
+			if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true {
+				log.Println("Skipping", lib, "because it is on the excludelist")
+				shoudDoIt = false
+				break
+			}
 		}
 
-		if strings.HasPrefix(lib, appdir.Path) == false && helpers.Exists(appdir.Path+"/"+lib) == false {
+		if shoudDoIt == true && strings.HasPrefix(lib, appdir.Path) == false && helpers.Exists(appdir.Path+"/"+lib) == false {
 
 			err = helpers.CopyFile(lib, appdir.Path+"/"+lib)
 			if err != nil {
 				log.Println(appdir.Path+"/"+lib, "could not be copied:", err)
 				os.Exit(1)
 			}
+		}
+
+		patchRpathsInElf(appdir, libraryLocationsInAppDir, lib)
+
+	}
+
+	log.Println("Copying in copyright files...")
+
+	for _, lib := range allELFs {
+
+		shoudDoIt := true
+		for _, excludePrefix := range excludelistPrefixes {
+			if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true {
+				log.Println("Skipping copyright file for ", lib, "because it is on the excludelist")
+				shoudDoIt = false
+				break
+			}
+		}
+
+		if shoudDoIt == true && strings.HasPrefix(lib, appdir.Path) == false {
 			// Copy copyright files into the AppImage
 			copyrightFile, err := getCopyrightFile(lib)
 			// It is perfectly fine for this to error - on non-dpkg systems, or if lib was not in a deb package
@@ -386,10 +440,8 @@ func AppDirDeploy(path string) {
 			}
 
 		}
-
-		patchRpathsInElf(appdir, libraryLocationsInAppDir, lib)
-
 	}
+
 }
 
 func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, path string) {
@@ -416,13 +468,15 @@ func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, 
 	}
 
 	// Call patchelf to set the rpath
-	log.Println("Rewriting rpath of", path)
-	cmd := exec.Command("patchelf", "--set-rpath", newRpathStringForElf, path)
-	// log.Println(cmd.Args)
-	_, err := cmd.CombinedOutput()
-	if err != nil {
-		helpers.PrintError("patchelf --set-rpath "+path, err)
-		os.Exit(1)
+	if helpers.Exists(path) == true {
+		log.Println("Rewriting rpath of", path)
+		cmd := exec.Command("patchelf", "--set-rpath", newRpathStringForElf, path)
+		// log.Println(cmd.Args)
+		_, err := cmd.CombinedOutput()
+		if err != nil {
+			helpers.PrintError("patchelf --set-rpath "+path, err)
+			os.Exit(1)
+		}
 	}
 }
 
@@ -504,7 +558,10 @@ func determineELFsInDirTree(appdir helpers.AppDir, pathToDirTreeToBeDeployed str
 		elfobj.path = elfpath
 		allELFsUnderPath = append(allELFsUnderPath, elfobj)
 		err = getDeps(elfpath)
-		helpers.PrintError("getDeps", err)
+		if err != nil {
+			helpers.PrintError("getDeps", err)
+			os.Exit(1)
+		}
 	}
 	log.Println("len(allELFsUnderPath):", len(allELFsUnderPath))
 
@@ -682,30 +739,28 @@ func getCopyrightFile(path string) (string, error) {
 		return copyrightFile, errors.New("dpkg-query not found, hence not deploying copyright files")
 	}
 
-	//QString copyrightFilePath;
-	//
-	///* Find out which package the file being deployed belongs to */
-	//
-	//QStringList arguments;
-	//arguments << "-S" << libPath;
-	//QProcess *myProcess = new QProcess();
-	//myProcess->start(dpkgPath, arguments);
-	//myProcess->waitForFinished();
-	//QString strOut = myProcess->readAllStandardOutput().split(':')[0];
-	//if(strOut == "") return false;
+	// Find out which package the file being deployed belongs to
 
 	cmd := exec.Command("dpkg", "-S", path)
+	log.Println("Find out which package the file being deployed belongs to using", cmd.String())
 	result, err := cmd.Output()
 	if err != nil {
 		return copyrightFile, err
 	}
 
-	///* Find out the copyright file in that package */
-	//arguments << "-L" << strOut;
-	//myProcess->start(dpkgQueryPath, arguments);
-	//myProcess->waitForFinished();
-	//strOut = myProcess->readAllStandardOutput();
-	cmd = exec.Command("dpkg-query", "-L", strings.TrimSpace(string(result)))
+	// Find out the copyright file in that package
+	// We are caching the results so that multiple packages belonging to the same package have to run dpkg-query only once
+	// So first we check whether we already know it
+	parts := strings.Split(strings.TrimSpace(string(result)), ":")
+	packageContainingTheSO := parts[0]
+
+	cf, ok := copyrightFiles[packageContainingTheSO]
+	if ok == true {
+		return cf, nil
+	}
+
+	cmd = exec.Command("dpkg-query", "-L", packageContainingTheSO)
+	log.Println("Find out the copyright file in that package using", cmd.String())
 	output, err := cmd.Output()
 	if err != nil {
 		return copyrightFile, err
@@ -713,43 +768,102 @@ func getCopyrightFile(path string) (string, error) {
 
 	lines := strings.Split(string(output), "\n")
 	for _, line := range lines {
-		if strings.Contains(line, "usr/share/doc") && strings.Contains(line, "copyright") && strings.Contains(line, " ") {
-			parts := strings.Split(line, " ")
-			copyrightFile = parts[len(parts)-1]
+		if strings.Contains(line, "usr/share/doc") && strings.Contains(line, "copyright") {
+			copyrightFile = strings.TrimSpace(line)
 		}
 	}
 	if copyrightFile == "" {
 		return copyrightFile, errors.New("could not determine the copyright file")
+	} else {
+		log.Println("Copyright file:", copyrightFile)
+		copyrightFiles[packageContainingTheSO] = copyrightFile
 	}
+
 	return copyrightFile, nil
-	//QStringList outputLines = strOut.split("\n", QString::SkipEmptyParts);
-	//
-	//foreach (QString outputLine, outputLines) {
-	//if((outputLine.contains("usr/share/doc")) && (outputLine.contains("/copyright")) && (outputLine.contains(" "))){
-	//// copyrightFilePath = outputLine.split(' ')[1]; // This is not working on multiarch systems; see https://github.com/probonopd/linuxdeployqt/issues/184#issuecomment-345293540
-	//QStringList parts = outputLine.split(' ');
-	//copyrightFilePath = parts[parts.size() - 1]; // Grab last element
-	//break;
-	//}
-	//}
-	//
-	//if(copyrightFilePath == "") return false;
-	//
-	//LogDebug() << "copyrightFilePath:" << copyrightFilePath;
-	//
-	///* Where should we copy this file to? We are assuming the Debian-like path contains
-	// * the name of the package like so: copyrightFilePath: "/usr/share/doc/libpcre3/copyright"
-	// * this assumption is most likely only true for Debian-like systems */
-	//QString packageName = copyrightFilePath.split("/")[copyrightFilePath.split("/").length()-2];
-	//QString copyrightFileTargetPath;
-	//if(fhsLikeMode){
-	//copyrightFileTargetPath = QDir::cleanPath(appBinaryPath + "/../../share/doc/" + packageName + "/copyright");
-	//} else {
-	//copyrightFileTargetPath = QDir::cleanPath(appBinaryPath + "/../doc/" + packageName + "/copyright");
-	//}
-	//
-	///* Do the actual copying */
-	//return(copyFilePrintStatus(copyrightFilePath, copyrightFileTargetPath));
-	//}
+}
+
+// Let's see in how many lines of code we can re-implement the guts of linuxdeployqt
+func handleQt(appdir helpers.AppDir, qtVersion int) {
+
+	if qtVersion >= 5 {
+		log.Println("XXXXXXXXXXXXXXXXXXXXX TODO: Deploy platform plugin")
+		res, err := findWithPrefixInLibraryLocations("platforms")
+		// Actually the libQt5Core.so.5 contains (always?) qt_prfxpath=... which tells us the location in which 'plugins/' is located
+
+		library, err := findLibrary("libQt5Core.so.5")
+		if err != nil {
+			helpers.PrintError("Could not find libQt5Core.so.5", err)
+			os.Exit(1)
+		}
+		cmd := exec.Command("sh", "-c \"strings '"+library+"' | grep qt_prfxpath\"")
+		result, err := cmd.Output()
+		log.Println("result of cmdrun:", result)
+		if err != nil {
+			log.Println(cmd.String())
+			helpers.PrintError("Could not run command to find qt_prfxpath", err)
+			os.Exit(1)
+		}
+
+		// TODO: Patch qt_prfxpath, see https://github.com/probonopd/linuxdeployqt/issues/12
+
+		if err != nil {
+			log.Println("Could not find the Qt platforms directory")
+			os.Exit(1)
+		} else {
+			log.Println("Using Qt platforms directory:", res)
+		}
+		// By default, Qt appears to look for the 'plugins' directory in the first(!) of the rpaths
+		// which is = libraryLocationsInAppDir [0]
+	}
+
+	// Find out which qmake to use
+	var qmakeCommand string
+	log.Println("Determining qmake...")
+	if helpers.IsCommandAvailable("qmake") {
+		qmakeCommand = "qmake"
+	}
+	if qmakeCommand == "" && qtVersion == 5 && helpers.IsCommandAvailable("qmake-qt5") {
+		qmakeCommand = "qmake-qt5"
+	}
+	if qmakeCommand == "" && qtVersion == 4 && helpers.IsCommandAvailable("qmake-qt4") {
+		qmakeCommand = "qmake-qt4"
+	}
+
+	if qmakeCommand == "" {
+		log.Println("Could not find qmake on the $PATH, exiting")
+		os.Exit(1)
+	} else {
+		log.Println("Using qmake:", qmakeCommand)
+	}
+
+	// Find the Qt installation that qmake belongs to
+	cmd := exec.Command(qmakeCommand, "-query")
+	output, err := cmd.Output()
+	if err != nil {
+		log.Println("Could not run qmake to find out the location of the Qt installation, exiting")
+		os.Exit(1)
+	}
+
+	qtInstallationPathLines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	if len(qtInstallationPathLines) < 3 {
+		log.Println("Could not parse the location of the Qt installation from qmake output, exiting")
+		os.Exit(1)
+	}
+
+	for qtInstallationPathLine := range qtInstallationPathLines[1:] {
+		qtInstallationLineParts := strings.Split(strings.TrimSpace(string(qtInstallationPathLine)), ":")
+		fmt.Println(qtInstallationLineParts[0], "contains", qtInstallationLineParts[1])
+	}
+
+	qtInstallationPath := qtInstallationPathLines[1]
+
+	if helpers.Exists(qtInstallationPath) == false {
+		log.Println("Qt path could not be determined from qmake on the $PATH")
+		log.Println("Make sure you have the correct Qt on your $PATH")
+		log.Println("You can check this with qmake -v")
+		os.Exit(1)
+	}
+
+	log.Println("Qt installation path determined from qmake:", qtInstallationPath)
 
 }

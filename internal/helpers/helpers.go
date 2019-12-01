@@ -249,12 +249,18 @@ func ValidateAppStreamMetainfoFile(appdirpath string) error {
 // Unclear why such basic functionality is not in the standard library.
 func CopyFile(src string, dst string) error {
 
-	err := os.MkdirAll(filepath.Dir(dst), 0755)
+	// We may have a symlink, so first resolve it
+	srcResolved, err := filepath.EvalSymlinks(src)
 	if err != nil {
 		return err
 	}
 
-	in, err := os.Open(src)
+	err = os.MkdirAll(filepath.Dir(dst), 0755)
+	if err != nil {
+		return err
+	}
+
+	in, err := os.Open(srcResolved)
 	if err != nil {
 		return err
 	}
