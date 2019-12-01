@@ -416,6 +416,35 @@ func AppDirDeploy(path string) {
 
 		patchRpathsInElf(appdir, libraryLocationsInAppDir, lib)
 
+		if strings.Contains(lib, "libQt5Core.so.5") {
+			log.Println("Patching qt_prfxpath, otherwise can't load platform plugin...")
+
+			f, err := os.Open(appdir.Path + "/" + lib) // Open file for reading/determining the offset
+			defer f.Close()
+			if err != nil {
+				helpers.PrintError("Could not open libQt5Core.so.5 for reading", err)
+				os.Exit(1)
+			}
+			f.Seek(0, 0)
+			// Search from the beginning of the file
+			search := []byte("qt_prfxpath=")
+			offset := ScanFile(f, search) + int64(len(search))
+			log.Println("Offset:", offset)
+
+			f, err = os.OpenFile(appdir.Path+"/"+lib, os.O_WRONLY, 0644) // Open file writable, why is this so complicated
+			defer f.Close()
+			if err != nil {
+				helpers.PrintError("Could not open libQt5Core.so.5 for writing", err)
+				os.Exit(1)
+			}
+
+			// Now that we know where in the file the information is, go write it
+			f.Seek(offset, 0)
+			_, err = f.Write([]byte(".\x00"))
+			if err != nil {
+				helpers.PrintError("Could not patch qt_prfxpath in "+appdir.Path+"/"+lib, err)
+			}
+		}
 	}
 
 	log.Println("Copying in copyright files...")
@@ -574,9 +603,9 @@ func determineELFsInDirTree(appdir helpers.AppDir, pathToDirTreeToBeDeployed str
 func readRpaths(path string) ([]string, error) {
 	// Call patchelf to find out whether the ELF already has an rpath set
 	cmd := exec.Command("patchelf", "--print-rpath", path)
-	log.Println("patchelf cmd.Args:", cmd.Args)
+	// log.Println("patchelf cmd.Args:", cmd.Args)
 	out, err := cmd.CombinedOutput()
-	log.Println("patchelf CombinedOutput:", out)
+	// log.Println("patchelf CombinedOutput:", out)
 	rpathStringInELF := strings.TrimSpace(string(out))
 	if rpathStringInELF == "" {
 		return []string{}, err
@@ -800,7 +829,6 @@ func getCopyrightFile(path string) (string, error) {
 func handleQt(appdir helpers.AppDir, qtVersion int) {
 
 	if qtVersion >= 5 {
-		log.Println("XXXXXXXXXXXXXXXXXXXXX TODO: Deploy platform plugin")
 
 		// Actually the libQt5Core.so.5 contains (always?) qt_prfxpath=... which tells us the location in which 'plugins/' is located
 
@@ -926,13 +954,7 @@ func getQtPrfxpath(f *os.File, err error) string {
 		log.Println("Could not get qt_prfxpath")
 		return ""
 	}
-	/*
-		if helpers.Exists(qt_prfxpath) == false {
-			log.Println("Got qt_prfxpath but it does not exist")
-			return ""
-		}
 
-	*/
 	return qt_prfxpath
 }
 
