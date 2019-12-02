@@ -112,6 +112,10 @@ type ELF struct {
 // Key: name of the package, value: location of the copyright file
 var copyrightFiles = make(map[string]string) // Need to use 'make', otherwise we can't add to it
 
+// Key: Path of the file, value: name of the package
+var packagesContainingFiles = make(map[string]string) // Need to use 'make', otherwise we can't add to it
+
+
 /*
    man ld.so says:
 
@@ -361,8 +365,8 @@ func AppDirDeploy(path string) {
 	for _, lib := range libraryLocations {
 		fmt.Println(lib)
 	}
-
 	fmt.Println("")
+
 	// This is used when calculating the rpath that gets written into the ELFs as they are copied into the AppDir
 	// and when modifying the ELFs that were pre-existing in the AppDir so that they become aware of the other locations
 	var libraryLocationsInAppDir []string
@@ -372,27 +376,36 @@ func AppDirDeploy(path string) {
 		}
 		libraryLocationsInAppDir = helpers.AppendIfMissing(libraryLocationsInAppDir, lib)
 	}
-
 	fmt.Println("")
+
 	log.Println("libraryLocationsInAppDir:")
 	for _, lib := range libraryLocationsInAppDir {
 		fmt.Println(lib)
 	}
+	fmt.Println("")
 
+	/*
 	fmt.Println("")
 	log.Println("allELFs:")
 	for _, lib := range allELFs {
 		fmt.Println(lib)
 	}
+	*/
 
 	log.Println("Only after this point should we start copying around any ELFs")
 
 	log.Println("Copying in and patching ELFs which are not already in the AppDir...")
 
-	// As soon as we patch libGL.so.* to include '$ORIGIN' filled with our library, we get a segfault. FIXME: Why? - Maybe because the Qt platform plugin is so far unpatched? XXXXXXXXXXXXXXXX
-	// Hence we are not bundling libGL.so.*, but this also means that we need to allow ld-linux to find libraries
-	// in /usr, which we really don't want...
-	excludelistPrefixes := []string{} // {"libGL.so", "libnvidia"}
+	// As soon as we bundle libnvidia*, we get a segfault.
+	// Hence we exit whenever libGL.so.1 requires libnvidia*
+		for _, elf := range allELFs {
+			if strings.HasPrefix(elf, "libnvidia") {
+				log.Println("System (most likely libGL) uses libnvidia*, please build on another system that does not use NVIDIA drivers, exiting")
+				os.Exit(1)
+			}
+		}
+
+	excludelistPrefixes := []string{} // {"", ""} // TODO: Implement excludelist (optionally). Note that if we don't run through ld-linux, we need to patch qt_prfxpath differently
 
 	for _, lib := range allELFs {
 
@@ -429,7 +442,42 @@ func AppDirDeploy(path string) {
 			// Search from the beginning of the file
 			search := []byte("qt_prfxpath=")
 			offset := ScanFile(f, search) + int64(len(search))
-			log.Println("Offset:", offset)
+			log.Println("Offset of qt_prfxpath:", offset)
+
+			/*
+				What does qt_prfxpath=. actually mean on a Linux system? Where is "."?
+				Looks like it means "relative to args[0]".
+
+				So 'qt_prfxpath=.' would be wrong if we load the application through ld-linux.so because that one
+				lives in, e.g., appdir/lib64 which is actually not where the Qt 'plugins' directory is.
+				Hence we do NOT have to patch qt_prfxpath=. but to q't_prfxpath=../opt/qt512/'
+				(the relative path from args[0] to the directory in which the Qt 'plugins' directory is)
+			*/
+
+			// Note: The following is correct only if we bundle (and run through) ld-linux; in all other cases
+			// we should calculate the relative path relative to the main binary
+			var qtPrefixDir string
+			for _, libraryLocationInAppDir := range libraryLocationsInAppDir {
+				if strings.HasSuffix(libraryLocationInAppDir, "/plugins/platforms") {
+					qtPrefixDir = filepath.Dir(filepath.Dir(libraryLocationInAppDir))
+					break
+				}
+			}
+
+			if qtPrefixDir == "" {
+				helpers.PrintError("Could not determine the the Qt prefix directory:", err)
+				os.Exit(1)
+			} else {
+				log.Println("Qt prefix directory in the AppDir:", qtPrefixDir)
+			}
+
+			relPathToQt, err := filepath.Rel(filepath.Dir(appdir.Path+ldLinux), qtPrefixDir)
+			if err != nil {
+				helpers.PrintError("Could not compute the location of the Qt plugins directory:", err)
+				os.Exit(1)
+				} else {
+				log.Println("Relative path from ld-linux to Qt prefix directory in the AppDir:", relPathToQt)
+			}
 
 			f, err = os.OpenFile(appdir.Path+"/"+lib, os.O_WRONLY, 0644) // Open file writable, why is this so complicated
 			defer f.Close()
@@ -440,7 +488,7 @@ func AppDirDeploy(path string) {
 
 			// Now that we know where in the file the information is, go write it
 			f.Seek(offset, 0)
-			_, err = f.Write([]byte(".\x00"))
+			_, err = f.Write([]byte(relPathToQt + "\x00"))
 			if err != nil {
 				helpers.PrintError("Could not patch qt_prfxpath in "+appdir.Path+"/"+lib, err)
 			}
@@ -471,7 +519,9 @@ func AppDirDeploy(path string) {
 
 		}
 	}
-
+	log.Println("Done")
+	log.Println("To check whether it is really self-contained, run:")
+	fmt.Println("LD_LIBRARY_PATH='' find "+appdir.Path+" -type f -exec ldd {} 2>&1 \\; | grep '=>' | grep -v " + appdir.Path)
 }
 
 func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, path string) {
@@ -624,12 +674,9 @@ func findAllExecutablesAndLibraries(path string) ([]string, error) {
 
 	// If we have a file, then there is nothing to walk and we can return it directly
 	if helpers.IsDirectory(path) != true {
-		fmt.Println("xxxxxxxxxxxxxxxxxxxxxxxxxxxxx is a file", path)
 		allExecutablesAndLibraries = append(allExecutablesAndLibraries, path)
 		return allExecutablesAndLibraries, nil
 	}
-
-	fmt.Println("xxxxxxxxxxxxxxxxxxxxxxxxxxxxx is not a file", path)
 
 	filepath.Walk(path, func(path string, info os.FileInfo, e error) error {
 		if e != nil {
@@ -783,27 +830,31 @@ func getCopyrightFile(path string) (string, error) {
 	}
 
 	// Find out which package the file being deployed belongs to
-
-	cmd := exec.Command("dpkg", "-S", path)
-	log.Println("Find out which package the file being deployed belongs to using", cmd.String())
-	result, err := cmd.Output()
-	if err != nil {
-		return copyrightFile, err
+	var packageContainingTheSO string
+	pkg, ok := packagesContainingFiles[path]
+	if ok == true {
+		packageContainingTheSO = pkg
+	} else {
+		cmd := exec.Command("dpkg", "-S", path)
+		// log.Println("Find out which package the file being deployed belongs to using", cmd.String())
+		result, err := cmd.Output()
+		if err != nil {
+			return copyrightFile, err
+		}
+		parts := strings.Split(strings.TrimSpace(string(result)), ":")
+		packageContainingTheSO = parts[0]
 	}
 
 	// Find out the copyright file in that package
 	// We are caching the results so that multiple packages belonging to the same package have to run dpkg-query only once
 	// So first we check whether we already know it
-	parts := strings.Split(strings.TrimSpace(string(result)), ":")
-	packageContainingTheSO := parts[0]
-
 	cf, ok := copyrightFiles[packageContainingTheSO]
 	if ok == true {
 		return cf, nil
 	}
 
-	cmd = exec.Command("dpkg-query", "-L", packageContainingTheSO)
-	log.Println("Find out the copyright file in that package using", cmd.String())
+	cmd := exec.Command("dpkg-query", "-L", packageContainingTheSO)
+	// log.Println("Find out the copyright file in that package using", cmd.String())
 	output, err := cmd.Output()
 	if err != nil {
 		return copyrightFile, err
@@ -811,6 +862,7 @@ func getCopyrightFile(path string) (string, error) {
 
 	lines := strings.Split(string(output), "\n")
 	for _, line := range lines {
+		packagesContainingFiles[strings.TrimSpace(line)] = packageContainingTheSO
 		if strings.Contains(line, "usr/share/doc") && strings.Contains(line, "copyright") {
 			copyrightFile = strings.TrimSpace(line)
 		}
@@ -818,7 +870,7 @@ func getCopyrightFile(path string) (string, error) {
 	if copyrightFile == "" {
 		return copyrightFile, errors.New("could not determine the copyright file")
 	} else {
-		log.Println("Copyright file:", copyrightFile)
+		// log.Println("Copyright file:", copyrightFile)
 		copyrightFiles[packageContainingTheSO] = copyrightFile
 	}
 
@@ -933,12 +985,12 @@ func getQtPrfxpath(f *os.File, err error) string {
 	// Search from the beginning of the file
 	search := []byte("qt_prfxpath=")
 	offset := ScanFile(f, search) + int64(len(search))
-	log.Println("Offset:", offset)
+	log.Println("Offset of qt_prfxpath:", offset)
 	search = []byte("\x00")
 	// From the current location in the file, search to the next 0x00 byte
 	f.Seek(offset, 0)
 	length := ScanFile(f, search)
-	log.Println("Length:", length)
+	log.Println("Length of value of qt_prfxpath:", length)
 	// Now that we know where in the file the information is, go get it
 	f.Seek(offset, 0)
 	buf := make([]byte, length)

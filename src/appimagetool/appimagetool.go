@@ -108,22 +108,22 @@ func main() {
 			if len(os.Args) > 2 {
 				if helpers.CheckIfFileExists(os.Args[2]) {
 					d := helpers.CalculateSHA256Digest(os.Args[2])
-					fmt.Println("Calculated sha256 digest:", d)
+					log.Println("Calculated sha256 digest:", d)
 					ent, err := helpers.CheckSignature(os.Args[2])
 					if err == nil {
-						fmt.Println(os.Args[2], "has a valid signature")
+						log.Println(os.Args[2], "has a valid signature")
 						// TODO: Do something useful with this information
-						fmt.Println("Identities:", ent.Identities)
-						fmt.Println("KeyIdShortString:", ent.PrimaryKey.KeyIdShortString())
-						fmt.Println("CreationTime:", ent.PrimaryKey.CreationTime)
-						fmt.Println("KeyId:", ent.PrimaryKey.KeyId)
-						fmt.Println("Fingerprint:", ent.PrimaryKey.Fingerprint)
+						log.Println("Identities:", ent.Identities)
+						log.Println("KeyIdShortString:", ent.PrimaryKey.KeyIdShortString())
+						log.Println("CreationTime:", ent.PrimaryKey.CreationTime)
+						log.Println("KeyId:", ent.PrimaryKey.KeyId)
+						log.Println("Fingerprint:", ent.PrimaryKey.Fingerprint)
 					} else {
-						fmt.Println("Could not validate signature of", os.Args[2]+":", err)
+						log.Println("Could not validate signature of", os.Args[2]+":", err)
 						os.Exit(1)
 					}
 				} else {
-					fmt.Println(os.Args[2], "does not exist")
+					log.Println(os.Args[2], "does not exist")
 					os.Exit(1)
 				}
 			} else {
@@ -142,15 +142,15 @@ func main() {
 					for _, section := range sections {
 						offset, length, err := helpers.GetSectionOffsetAndLength(os.Args[2], section)
 						if err != nil {
-							fmt.Println("Error getting ELF section", section, err)
+							log.Println("Error getting ELF section", section, err)
 						} else {
 							uidata, err := helpers.GetSectionData(os.Args[2], section)
 							fmt.Println("")
 							if err != nil {
 								os.Stderr.WriteString("Could not find  ELF section " + section + ", exiting\n")
-								fmt.Println("Error getting ELF section", section, err)
+								log.Println("Error getting ELF section", section, err)
 							} else {
-								fmt.Println("ELF section", section, "offset", offset, "length", length)
+								log.Println("ELF section", section, "offset", offset, "length", length)
 								fmt.Println("")
 								fmt.Println(uidata)
 								fmt.Println("")
@@ -164,11 +164,11 @@ func main() {
 						}
 					}
 				} else {
-					fmt.Println(os.Args[2], "does not exist")
+					log.Println(os.Args[2], "does not exist")
 					os.Exit(1)
 				}
 			} else {
-				fmt.Println("Please specify an AppImage to print the sections")
+				log.Println("Please specify an AppImage to print the sections")
 				os.Exit(1)
 			}
 			os.Exit(0)
@@ -183,7 +183,7 @@ func main() {
 	for _, t := range tools {
 		_, err := exec.LookPath(t)
 		if err != nil {
-			fmt.Println("Required helper tool", t, "missing")
+			log.Println("Required helper tool", t, "missing")
 			os.Exit(1)
 		}
 	}
@@ -225,12 +225,12 @@ func GenerateAppImage(appdir string) {
 	gitRoot := ""
 	gitRepo, err := helpers.GetGitRepository()
 	if err != nil {
-		fmt.Println("Apparently not in a git repository")
+		log.Println("Apparently not in a git repository")
 	} else {
 		gitWt, err := gitRepo.Worktree()
 		if err == nil {
 			gitRoot = gitWt.Filesystem.Root()
-			fmt.Println("git root:", gitRoot)
+			log.Println("git root:", gitRoot)
 			if version == "" {
 				gitHead, _ := gitRepo.Head()
 				version = gitHead.Hash().String()[:7] // This equals 'git rev-parse --short HEAD'
@@ -238,14 +238,21 @@ func GenerateAppImage(appdir string) {
 					os.Stderr.WriteString("Could not determine version automatically, please supply the application version as $VERSION " + filepath.Base(os.Args[0]) + " ... \n")
 					os.Exit(1)
 				} else {
-					fmt.Println("NOTE: Using", version, "from 'git rev-parse --short HEAD' as the version")
-					fmt.Println("      Please set the $VERSION environment variable if this is not intended")
+					log.Println("NOTE: Using", version, "from 'git rev-parse --short HEAD' as the version")
+					log.Println("      Please set the $VERSION environment variable if this is not intended")
 				}
 			}
 		} else {
 			fmt.Println("Could not get root of git repository")
 		}
 	}
+
+	// If no version found, exit
+	if version == "" {
+		os.Stderr.WriteString("Version not found, aborting. Set it with VERSION=... " + os.Args[0] + "\n")
+		os.Exit(1)
+	}
+
 
 	// If no desktop file found, exit
 	n := len(helpers.FilesWithSuffixInDirectory(appdir, ".desktop"))
@@ -296,7 +303,7 @@ func GenerateAppImage(appdir string) {
 		res, err := helpers.GetElfArchitecture(appdir + "/AppRun")
 		if err == nil {
 			archs = helpers.AppendIfMissing(archs, res)
-			fmt.Println("Architecture from AppRun:", res)
+			log.Println("Architecture from AppRun:", res)
 		} else {
 			err := filepath.Walk(appdir, func(path string, info os.FileInfo, err error) error {
 				if err != nil {
@@ -304,7 +311,9 @@ func GenerateAppImage(appdir string) {
 				} else if info.IsDir() == false && strings.Contains(info.Name(), ".so.") {
 					arch, err := helpers.GetElfArchitecture(path)
 					helpers.PrintError("Determine architecture", err)
-					fmt.Println("Architecture of", info.Name(), arch)
+					if helpers.SliceContains(archs, arch) == false {
+						log.Println("Architecture of", info.Name() + ":", arch)
+					}
 					archs = helpers.AppendIfMissing(archs, arch)
 				}
 				return nil
@@ -333,7 +342,7 @@ func GenerateAppImage(appdir string) {
 
 	// Construct target AppImage filename
 	target := nameWithUnderscores + "-" + version + "-" + arch + ".AppImage"
-	fmt.Println(target)
+	log.Println("Target AppImage filename:", target)
 
 	var iconfile string
 
@@ -346,26 +355,26 @@ func GenerateAppImage(appdir string) {
 		// Search in usr/share/icons/hicolor/256x256 and copy from there
 		input, err := ioutil.ReadFile(appdir + "/usr/share/icons/hicolor/256x256/" + iconname + ".png")
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 			return
 		}
 		err = ioutil.WriteFile(appdir+".DirIcon", input, 0644)
 		if err != nil {
-			fmt.Println("Error copying ticon to", appdir+".DirIcon")
-			fmt.Println(err)
+			log.Println("Error copying ticon to", appdir+".DirIcon")
+			log.Println(err)
 			return
 		}
 	} else {
 		os.Stderr.WriteString("Could not find icon file at " + appdir + "/" + iconname + ".png" + ", exiting\n")
 		os.Exit(1)
 	}
-	fmt.Println(iconfile)
+	log.Println("Icon file:", iconfile)
 
-	fmt.Println("TODO: Check validity and size of png")
+	log.Println("TODO: Check validity and size of png")
 
 	// "Deleting pre-existing .DirIcon"
 	if helpers.CheckIfFileExists(appdir+"/.DirIcon") == true {
-		fmt.Println("Deleting pre-existing .DirIcon")
+		log.Println("Deleting pre-existing .DirIcon")
 		os.Remove(appdir + "/.DirIcon")
 	}
 
@@ -380,7 +389,7 @@ func GenerateAppImage(appdir string) {
 	// If yes, use ximion's appstreamcli to make sure that desktop file and appdata match together and are valid
 	appstreamfile := appdir + "/usr/share/metainfo/" + strings.Replace(filepath.Base(desktopfile), ".desktop", ".appdata.xml", -1)
 	if helpers.CheckIfFileExists(appstreamfile) == false {
-		fmt.Println("WARNING: AppStream upstream metadata is missing, please consider creating it in")
+		log.Println("WARNING: AppStream upstream metadata is missing, please consider creating it in")
 		fmt.Println("         " + appdir + "/usr/share/metainfo/" + filepath.Base(desktopfile) + ".appdata.xml")
 		fmt.Println("         Please see https://www.freedesktop.org/software/appstream/docs/chap-Quickstart.html#sect-Quickstart-DesktopApps")
 		fmt.Println("         for more information or use the generator at")
@@ -405,8 +414,8 @@ func GenerateAppImage(appdir string) {
 	}
 	runtimefilepath := runtimedir + "/runtime-" + arch
 	if helpers.CheckIfFileExists(runtimefilepath) == false {
-		os.Stderr.WriteString("Cannot find " + runtimefilepath + ", exiting\n")
-		fmt.Println("It should have been bundled, but you can get it from https://github.com/AppImage/AppImageKit/releases/continuous")
+		log.Println("Cannot find " + runtimefilepath + ", exiting")
+		log.Println("It should have been bundled, but you can get it from https://github.com/AppImage/AppImageKit/releases/continuous")
 		// TODO: Download it from there?
 		os.Exit(1)
 	}
