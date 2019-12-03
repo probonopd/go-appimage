@@ -115,7 +115,6 @@ var copyrightFiles = make(map[string]string) // Need to use 'make', otherwise we
 // Key: Path of the file, value: name of the package
 var packagesContainingFiles = make(map[string]string) // Need to use 'make', otherwise we can't add to it
 
-
 /*
    man ld.so says:
 
@@ -385,11 +384,11 @@ func AppDirDeploy(path string) {
 	fmt.Println("")
 
 	/*
-	fmt.Println("")
-	log.Println("allELFs:")
-	for _, lib := range allELFs {
-		fmt.Println(lib)
-	}
+		fmt.Println("")
+		log.Println("allELFs:")
+		for _, lib := range allELFs {
+			fmt.Println(lib)
+		}
 	*/
 
 	log.Println("Only after this point should we start copying around any ELFs")
@@ -398,12 +397,12 @@ func AppDirDeploy(path string) {
 
 	// As soon as we bundle libnvidia*, we get a segfault.
 	// Hence we exit whenever libGL.so.1 requires libnvidia*
-		for _, elf := range allELFs {
-			if strings.HasPrefix(elf, "libnvidia") {
-				log.Println("System (most likely libGL) uses libnvidia*, please build on another system that does not use NVIDIA drivers, exiting")
-				os.Exit(1)
-			}
+	for _, elf := range allELFs {
+		if strings.HasPrefix(elf, "libnvidia") {
+			log.Println("System (most likely libGL) uses libnvidia*, please build on another system that does not use NVIDIA drivers, exiting")
+			os.Exit(1)
 		}
+	}
 
 	excludelistPrefixes := []string{} // {"", ""} // TODO: Implement excludelist (optionally). Note that if we don't run through ld-linux, we need to patch qt_prfxpath differently
 
@@ -475,7 +474,7 @@ func AppDirDeploy(path string) {
 			if err != nil {
 				helpers.PrintError("Could not compute the location of the Qt plugins directory:", err)
 				os.Exit(1)
-				} else {
+			} else {
 				log.Println("Relative path from ld-linux to Qt prefix directory in the AppDir:", relPathToQt)
 			}
 
@@ -521,7 +520,7 @@ func AppDirDeploy(path string) {
 	}
 	log.Println("Done")
 	log.Println("To check whether it is really self-contained, run:")
-	fmt.Println("LD_LIBRARY_PATH='' find "+appdir.Path+" -type f -exec ldd {} 2>&1 \\; | grep '=>' | grep -v " + appdir.Path)
+	fmt.Println("LD_LIBRARY_PATH='' find " + appdir.Path + " -type f -exec ldd {} 2>&1 \\; | grep '=>' | grep -v " + appdir.Path)
 }
 
 func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, path string) {
@@ -913,71 +912,137 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 
 		determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/platforms/libqxcb.so")
 
-		// TODO: Patch qt_prfxpath, see https://github.com/probonopd/linuxdeployqt/issues/12
-		/*
-			if err != nil {
-				log.Println("Could not find the Qt platforms directory")
-				os.Exit(1)
-			} else {
-				log.Println("Using Qt platforms directory:", res)
+		// From here on, mark for deployment certain Qt components if certain conditions are true
+		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1250
+		log.Println("Selecting for deployment required Qt plugins...")
+
+		// GTK Theme, if it exists
+		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1244
+		wants := []string{"libqgtk2.so", "libqgtk2style.so"}
+		for _, want := range wants {
+			found := helpers.FilesWithSuffixInDirectoryRecursive(qtPrfxpath, want)
+			if len(found) > 0 {
+				determineELFsInDirTree(appdir, found[0])
 			}
-
-		*/
-		// By default, Qt appears to look for the 'plugins' directory in the first(!) of the rpaths
-		// which is = libraryLocationsInAppDir [0]
-	}
-
-	// Find out which qmake to use - maybe we don't even need this?
-	/*
-		var qmakeCommand string
-		log.Println("Determining qmake...")
-		if helpers.IsCommandAvailable("qmake") {
-			qmakeCommand = "qmake"
-		}
-		if qmakeCommand == "" && qtVersion == 5 && helpers.IsCommandAvailable("qmake-qt5") {
-			qmakeCommand = "qmake-qt5"
-		}
-		if qmakeCommand == "" && qtVersion == 4 && helpers.IsCommandAvailable("qmake-qt4") {
-			qmakeCommand = "qmake-qt4"
 		}
 
-		if qmakeCommand == "" {
-			log.Println("Could not find qmake on the $PATH, exiting")
+		// iconengines and imageformats, if Qt5Gui.so.5 is about to be deployed
+		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1259
+		for _, lib := range allELFs {
+			if strings.HasSuffix(lib, "libQt5Gui.so.5") == true {
+				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/iconengines/")
+				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/imageformats/")
+				break
+			}
+		}
+
+		// Platform OpenGL context, if one of several libraries is about to be deployed
+		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1282
+		for _, lib := range allELFs {
+			if strings.HasSuffix(lib, "libQt5Gui.so.5") == true ||
+				strings.HasSuffix(lib, "libQt5OpenGL.so.5") == true ||
+				strings.HasSuffix(lib, "libQt5XcbQpa.so.5") == true ||
+				strings.HasSuffix(lib, "libxcb-glx.so") == true {
+				{
+					determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/xcbglintegrations/")
+					break
+				}
+			}
+		}
+
+		// CUPS print support plugin, if libQt5PrintSupport.so.5 is about to be deployed
+		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1299
+		for _, lib := range allELFs {
+			if strings.HasSuffix(lib, "libQt5PrintSupport.so.5") == true {
+				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/printsupport/libcupsprintersupport.so")
+				break
+			}
+		}
+
+		// Network bearers, if libQt5Network.so.5 is about to be deployed
+		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1304
+		for _, lib := range allELFs {
+			if strings.HasSuffix(lib, "libQt5Network.so.5") == true {
+				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/bearer/")
+				break
+			}
+		}
+
+		// Sql drivers, if libQt5Sql.so.5 is about to be deployed
+		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1312
+		for _, lib := range allELFs {
+			if strings.HasSuffix(lib, "libQt5Sql.so.5") == true {
+				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/sqldrivers/")
+				break
+			}
+		}
+
+		// Positioning plugins, if libQt5Positioning.so.5 is about to be deployed
+		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1320
+		for _, lib := range allELFs {
+			if strings.HasSuffix(lib, "libQt5Positioning.so.5") == true {
+				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/position/")
+				break
+			}
+		}
+
+		// Multimedia plugins, if libQt5Multimedia.so.5 is about to be deployed
+		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1328
+		for _, lib := range allELFs {
+			if strings.HasSuffix(lib, "libQt5Multimedia.so.5") == true {
+				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/mediaservice/")
+				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/audio/")
+				break
+			}
+		}
+
+		// WebEngine, if libQt5WebEngineCore.so.5 is about to be deployed
+		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1343
+		for _, lib := range allELFs {
+			if strings.HasSuffix(lib, "libQt5WebEngineCore.so.5") == true {
+				log.Println("TODO: Deploying Qt5WebEngine components...")
+				os.Exit(1)
+
+				wants := []string{"QtWebEngineProcess",
+					"qtwebengine_resources.pak",
+					"qtwebengine_devtools_resources.pak",
+					"qtwebengine_resources_100p.pak",
+					"qtwebengine_resources_200p.pak",
+					"icudtl.dat",
+					"qtwebengine_locales"}
+				for _, want := range wants {
+					found := helpers.FilesWithSuffixInDirectoryRecursive(qtPrfxpath, want)
+					if len(found) > 0 {
+						err = os.MkdirAll(filepath.Dir(appdir.Path+"/"+found[0]), 0755)
+						if err != nil {
+							helpers.PrintError("could not create directory", err)
+							os.Exit(1)
+						}
+						err = copy.Copy(found[0], appdir.Path+"/"+found[0]) // TODO: Test. Not tested yet
+						if err != nil {
+							helpers.PrintError("could not copy file or directory", err)
+							os.Exit(1)
+						}
+					}
+				}
+			}
+		}
+
+		// TODO: Deploy QML
+		// Similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1541
+		log.Println("TODO: Deploying QML components...")
+
+		qmlImportScanners := helpers.FilesWithSuffixInDirectoryRecursive(qtPrfxpath, "qmlimportscanner")
+		if len(qmlImportScanners) < 1 {
+			log.Println("qmlimportscanner not found, exiting")
 			os.Exit(1)
 		} else {
-			log.Println("Using qmake:", qmakeCommand)
+			log.Println("Found qmlimportscanner:", qmlImportScanners[0])
 		}
-
-		// Find the Qt installation that qmake belongs to
-		cmd := exec.Command(qmakeCommand, "-query")
-		output, err := cmd.Output()
-		if err != nil {
-			log.Println("Could not run qmake to find out the location of the Qt installation, exiting")
-			os.Exit(1)
-		}
-
-		qtInstallationPathLines := strings.Split(strings.TrimSpace(string(output)), "\n")
-		if len(qtInstallationPathLines) < 3 {
-			log.Println("Could not parse the location of the Qt installation from qmake output, exiting")
-			os.Exit(1)
-		}
-
-		for qtInstallationPathLine := range qtInstallationPathLines[1:] {
-			qtInstallationLineParts := strings.Split(strings.TrimSpace(string(qtInstallationPathLine)), ":")
-			fmt.Println(qtInstallationLineParts[0], "contains", qtInstallationLineParts[1])
-		}
-
-		qtInstallationPath := qtInstallationPathLines[1]
-
-		if helpers.Exists(qtInstallationPath) == false {
-			log.Println("Qt path could not be determined from qmake on the $PATH")
-			log.Println("Make sure you have the correct Qt on your $PATH")
-			log.Println("You can check this with qmake -v")
-			os.Exit(1)
-		}
-
-		log.Println("Qt installation path determined from qmake:", qtInstallationPath)
-	*/
+		// qmlImportScanner := qmlImportScanners[0]
+		// TODO: Implement the rest of QML deployment
+		// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+	}
 }
 
 func getQtPrfxpath(f *os.File, err error) string {
