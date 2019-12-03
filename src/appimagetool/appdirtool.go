@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -546,13 +547,20 @@ func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, 
 		return
 	}
 
+	// Be sure that the file we want to patch exists
+	if helpers.Exists(path) == false {
+		log.Println(path, "does not exist, hence we cannot set its rpath, exiting")
+		os.Exit(1)
+	}
+
 	// Call patchelf to set the rpath
 	if helpers.Exists(path) == true {
 		// log.Println("Rewriting rpath of", path)
 		cmd := exec.Command("patchelf", "--set-rpath", newRpathStringForElf, path)
 		// log.Println(cmd.Args)
-		_, err := cmd.CombinedOutput()
+		out, err := cmd.CombinedOutput()
 		if err != nil {
+			fmt.Println(out)
 			helpers.PrintError("patchelf --set-rpath "+path, err)
 			os.Exit(1)
 		}
@@ -1039,8 +1047,41 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		} else {
 			log.Println("Found qmlimportscanner:", qmlImportScanners[0])
 		}
-		// qmlImportScanner := qmlImportScanners[0]
+		qmlImportScanner := qmlImportScanners[0]
 		// TODO: Implement the rest of QML deployment
+
+		// Locate the qml directory, usually it is directly within the Qt prefix directory
+		// FIXME: Maybe a more elaborate logic for locating this is needed
+		importPath := qtPrfxpath + "/qml"
+
+		log.Println("Deploying QML imports ")
+		log.Println("Application QML file path(s) is" + filepath.Dir(appdir.MainExecutable))
+		log.Println("QML module search path(s) is" + importPath)
+		log.Println("TODO: Allow for users to supply additional '-importPath' paths")
+		// https://ilyabiz.com/2018/11/automatic-qml-import-by-qt-deployment-tools/
+		// PRs welcome
+
+		// Run qmlimportscanner
+		cmd := exec.Command(qmlImportScanner, "-rootPath", filepath.Dir(appdir.MainExecutable), "-importPath", importPath)
+		out, err := cmd.Output()
+		if err != nil {
+			helpers.PrintError("Could not run qmlimportscanner", err)
+		}
+
+		// Parse the JSON from qmlimportscanner
+		// "If you have data whose structure or property names you are not certain of,
+		// you cannot use structs to unmarshal your data. Instead you can use maps"
+		// https://www.sohamkamani.com/blog/2017/10/18/parsing-json-in-golang/
+		// "To deal with this case we create a map of strings to empty interfaces:"
+		var data map[string]interface{}
+		if err := json.Unmarshal(out, &data); err != nil {
+			panic(err)
+		}
+
+		// Note: if this turns out to be too hard to parse, then we may want to model
+		// the qmlimportscanner output with structs
+		fmt.Println(data)
+
 		// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 	}
 }
