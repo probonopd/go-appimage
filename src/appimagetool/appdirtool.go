@@ -560,8 +560,7 @@ func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, 
 		// log.Println(cmd.Args)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			fmt.Println(string(out))
-			helpers.PrintError("patchelf --set-rpath "+path, err)
+			helpers.PrintError("patchelf --set-rpath "+path+": "+string(out), err)
 			os.Exit(1)
 		}
 	}

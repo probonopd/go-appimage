@@ -218,9 +218,15 @@ func GenerateAppImage(appdir string) {
 		os.Exit(1)
 	}
 
-	// TODO: On Travis use Travis build numbers (too)
 	var version string
 	version = os.Getenv("VERSION")
+	travisBuildNumber := os.Getenv("TRAVIS_BUILD_NUMBER")
+	// On Travis use $TRAVIS_BUILD_NUMBER
+	if version == "" && travisBuildNumber != "" {
+		log.Println("NOTE: Using", travisBuildNumber, "from $TRAVIS_BUILD_NUMBER as the version")
+		log.Println("      Please set the $VERSION environment variable if this is not intended")
+		version = travisBuildNumber
+	}
 
 	gitRoot := ""
 	gitRepo, err := helpers.GetGitRepository()
@@ -252,7 +258,6 @@ func GenerateAppImage(appdir string) {
 		os.Stderr.WriteString("Version not found, aborting. Set it with VERSION=... " + os.Args[0] + "\n")
 		os.Exit(1)
 	}
-
 
 	// If no desktop file found, exit
 	n := len(helpers.FilesWithSuffixInDirectory(appdir, ".desktop"))
@@ -312,7 +317,7 @@ func GenerateAppImage(appdir string) {
 					arch, err := helpers.GetElfArchitecture(path)
 					helpers.PrintError("Determine architecture", err)
 					if helpers.SliceContains(archs, arch) == false {
-						log.Println("Architecture of", info.Name() + ":", arch)
+						log.Println("Architecture of", info.Name()+":", arch)
 					}
 					archs = helpers.AppendIfMissing(archs, arch)
 				}
