@@ -20,6 +20,16 @@ import "debug/elf"
 import "github.com/probonopd/go-appimage/internal/helpers"
 import "github.com/otiai10/copy"
 
+type QMLImport struct {
+	Classname    string `json:"classname,omitempty"`
+	Name         string `json:"name"`
+	Path         string `json:"path,omitempty"`
+	Plugin       string `json:"plugin,omitempty"`
+	RelativePath string `json:"relativePath,omitempty"`
+	Type         string `json:"type"`
+	Version      string `json:"version"`
+}
+
 var allELFs []string
 var libraryLocations []string // All directories in the host system that may contain libraries
 
@@ -1083,15 +1093,30 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		// var data map[string]interface{}
 		// The above gives
 		// panic: json: cannot unmarshal array into Go value of type map[string]interface {}
-		// so we are trying this:
-		var data []map[string]interface{}
-		if err := json.Unmarshal(out, &data); err != nil {
+		// so we are using this, which apparently works:
+		// var data []map[string]interface{}
+		// if err := json.Unmarshal(out, &data); err != nil {
+		//	panic(err)
+		// }
+
+		var qmlImports []QMLImport
+		if err := json.Unmarshal(out, &qmlImports); err != nil {
 			panic(err)
 		}
 
-		// Note: if this turns out to be too hard to parse, then we may want to model
-		// the qmlimportscanner output with structs
-		fmt.Println(data)
+		fmt.Println(qmlImports)
+
+		for _, qmlImport := range qmlImports {
+
+			if qmlImport.Type == "module" && qmlImport.Path != "" {
+				log.Println("qmlImport.Type:", qmlImport.Type)
+				log.Println("qmlImport.Name:", qmlImport.Name)
+				log.Println("qmlImport.Path:", qmlImport.Path)
+				log.Println("qmlImport.RelativePath:", qmlImport.RelativePath)
+				os.MkdirAll(filepath.Dir(appdir.Path+"/"+qmlImport.Path), 0755)
+				copy.Copy(qmlImport.Path, appdir.Path+"/"+qmlImport.Path)
+			}
+		}
 
 		// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 	}
