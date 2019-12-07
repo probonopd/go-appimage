@@ -1077,7 +1077,7 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		// PRs welcome
 
 		// Run qmlimportscanner
-		cmd := exec.Command(qmlImportScanner, "-rootPath", filepath.Dir(appdir.MainExecutable), "-importPath", importPath)
+		cmd := exec.Command(qmlImportScanner, "-rootPath", filepath.Dir(appdir.Path), "-importPath", importPath)
 		out, err := cmd.Output()
 		if err != nil {
 			fmt.Println(cmd.String())
