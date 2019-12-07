@@ -187,14 +187,14 @@ func AppDirDeploy(path string) {
 					whatToPatchAway := helpers.FilesWithSuffixInDirectoryRecursive(loc, "libpixbufloader-png.so")
 					if len(whatToPatchAway) < 1 {
 						helpers.PrintError("whatToPatchAway", errors.New("could not find directory that contains libpixbufloader-png.so"))
-						os.Exit(1)
+						break // os.Exit(1)
 					}
 
 					log.Println("Patching", appdir.Path+loadersCaches[0], "removing", filepath.Dir(whatToPatchAway[0])+"/")
 					err = PatchFile(appdir.Path+loadersCaches[0], filepath.Dir(whatToPatchAway[0])+"/", "")
 					if err != nil {
 						helpers.PrintError("PatchFile loaders.cache", err)
-						os.Exit(1)
+						break // os.Exit(1)
 					}
 
 				}
