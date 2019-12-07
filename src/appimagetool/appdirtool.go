@@ -1060,8 +1060,8 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		importPath := qtPrfxpath + "/qml"
 
 		log.Println("Deploying QML imports ")
-		log.Println("Application QML file path(s) is" + filepath.Dir(appdir.MainExecutable))
-		log.Println("QML module search path(s) is" + importPath)
+		log.Println("Application QML file path(s) is " + filepath.Dir(appdir.MainExecutable))
+		log.Println("QML module search path(s) is " + importPath)
 		log.Println("TODO: Allow for users to supply additional '-importPath' paths")
 		// https://ilyabiz.com/2018/11/automatic-qml-import-by-qt-deployment-tools/
 		// PRs welcome
@@ -1070,6 +1070,7 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		cmd := exec.Command(qmlImportScanner, "-rootPath", filepath.Dir(appdir.MainExecutable), "-importPath", importPath)
 		out, err := cmd.Output()
 		if err != nil {
+			fmt.Println(cmd.String())
 			helpers.PrintError("Could not run qmlimportscanner", err)
 		}
 
