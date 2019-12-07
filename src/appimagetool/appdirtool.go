@@ -1114,7 +1114,8 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 				log.Println("qmlImport.Path:", qmlImport.Path)
 				log.Println("qmlImport.RelativePath:", qmlImport.RelativePath)
 				os.MkdirAll(filepath.Dir(appdir.Path+"/"+qmlImport.Path), 0755)
-				copy.Copy(qmlImport.Path, appdir.Path+"/"+qmlImport.Path)
+				copy.Copy(qmlImport.Path, appdir.Path+"/"+qmlImport.Path) // FIXME: Ideally we would not copy here but only after the point where we start copying everything
+				determineELFsInDirTree(appdir, appdir.Path+"/"+qmlImport.Path)
 			}
 		}
 
