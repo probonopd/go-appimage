@@ -1071,7 +1071,8 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		out, err := cmd.Output()
 		if err != nil {
 			fmt.Println(cmd.String())
-			helpers.PrintError("Could not run qmlimportscanner", err)
+			helpers.PrintError("qmlscanner: "+string(out), err)
+			os.Exit(1)
 		}
 
 		// Parse the JSON from qmlimportscanner
