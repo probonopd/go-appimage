@@ -47,6 +47,7 @@ func main() {
 		log.Println("Running inside Docker. Please make sure that the environment variables from Travis CI")
 		log.Println("available inside Docker if you are running on Travis CI.")
 		log.Println("This can be achieved by using something along the lines of 'docker run --env-file <(env)'.")
+		log.Println("Please see https://github.com/docker/cli/issues/2210.")
 	}
 
 	sections := []string{".upd_info", ".sha256_sig", ".sig_key", ".digest_md5"}
