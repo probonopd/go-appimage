@@ -14,8 +14,7 @@ sudo apt-get -y remove appimagelauncher || true
 # Clear cache
 rm "$HOME"/.local/share/applications/appimage*
 
-# Put Firejail and AppImageUpdate on your $PATH (with those exact names)
-# to benefit from additional functionality
+# Optionally, install Firejail (if you want sandboxing functionality)
 
 # Download
 wget -c https://github.com/$(wget -q https://github.com/probonopd/go-appimage/releases -O - | grep "appimaged-.*-x86_64.AppImage" | head -n 1 | cut -d '"' -f 2)
