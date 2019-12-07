@@ -1080,7 +1080,11 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		// you cannot use structs to unmarshal your data. Instead you can use maps"
 		// https://www.sohamkamani.com/blog/2017/10/18/parsing-json-in-golang/
 		// "To deal with this case we create a map of strings to empty interfaces:"
-		var data map[string]interface{}
+		// var data map[string]interface{}
+		// The above gives
+		// panic: json: cannot unmarshal array into Go value of type map[string]interface {}
+		// so we are trying this:
+		var data []map[string]interface{}
 		if err := json.Unmarshal(out, &data); err != nil {
 			panic(err)
 		}
