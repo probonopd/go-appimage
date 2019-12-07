@@ -663,7 +663,11 @@ func readRpaths(path string) ([]string, error) {
 	cmd := exec.Command("patchelf", "--print-rpath", path)
 	// log.Println("patchelf cmd.Args:", cmd.Args)
 	out, err := cmd.CombinedOutput()
-	// log.Println("patchelf CombinedOutput:", out)
+	if err != nil {
+		fmt.Println(cmd.String())
+		helpers.PrintError("patchelf --print-rpath "+path+": "+string(out), err)
+		os.Exit(1)
+	}
 	rpathStringInELF := strings.TrimSpace(string(out))
 	if rpathStringInELF == "" {
 		return []string{}, err
