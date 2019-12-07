@@ -400,7 +400,7 @@ func AppDirDeploy(path string) {
 	// As soon as we bundle libnvidia*, we get a segfault.
 	// Hence we exit whenever libGL.so.1 requires libnvidia*
 	for _, elf := range allELFs {
-		if strings.HasPrefix(elf, "libnvidia") {
+		if strings.HasPrefix(filepath.Base(elf), "libnvidia") {
 			log.Println("System (most likely libGL) uses libnvidia*, please build on another system that does not use NVIDIA drivers, exiting")
 			os.Exit(1)
 		}
