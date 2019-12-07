@@ -78,6 +78,7 @@ fi
 # This allows the bundle to run even on older systems than the one it was built on
 ############################################################################################
 
+cd "$HERE/usr" # Not all applications will need this; TODO: Make this opt-in
 MAIN_BIN=$(find "$HERE/usr/bin" -name "$MAIN" | head -n 1)
 LD_LINUX=$(find "$HERE" -name 'ld-linux-*.so.*' | head -n 1)
 if [ -e "$LD_LINUX" ] ; then
