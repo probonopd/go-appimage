@@ -36,6 +36,8 @@ type QMLImport struct {
 var allELFs []string
 var libraryLocations []string // All directories in the host system that may contain libraries
 
+var doNotPatchQtPrfxPath = false
+
 var AppRunData = `#!/bin/sh
 
 HERE="$(dirname "$(readlink -f "${0}")")"
@@ -53,10 +55,7 @@ export XDG_DATA_DIRS="${HERE}"/usr/share/:"${XDG_DATA_DIRS}"
 # Use bundled Python
 ############################################################################################
 
-if [ -e "${HERE}"/usr/share/pyshared/ ] ; then
-  export PYTHONPATH="${HERE}"/usr/share/pyshared/:"${PYTHONPATH}"
-  export PYTHONHOME="${HERE}"/usr/
-fi
+export PYTHONHOME="${HERE}"/usr/
 
 ############################################################################################
 # Use bundled Tcl/Tk
@@ -453,7 +452,7 @@ func AppDirDeploy(path string) {
 
 		patchRpathsInElf(appdir, libraryLocationsInAppDir, lib)
 
-		if strings.Contains(lib, "libQt5Core.so.5") {
+		if strings.Contains(lib, "libQt5Core.so.5") && doNotPatchQtPrfxPath == false {
 			log.Println("Patching qt_prfxpath, otherwise can't load platform plugin...")
 
 			f, err := os.Open(appdir.Path + "/" + lib) // Open file for reading/determining the offset
@@ -1175,8 +1174,7 @@ func getQtPrfxpath(f *os.File, err error, qtVersion int) string {
 	// Special case:
 	// Some distributions, including Ubuntu and Alpine,
 	// have qt_prfxpath set to '/usr' but the files are actually in e.g., '/usr/lib/qt5'
-	// FIXME: In this case, we need to symlink /usr/lib/qt5/lib/qt5 to /usr/lib/qt5 which is an indication
-	// that this is not entirely correct. Any help appreciated
+	// In this case, we should NOT patch it
 	if helpers.IsDirectory(qt_prfxpath+"/plugins") == false {
 		log.Println("Got qt_prfxpath but it does not contain 'plugins'")
 		results := helpers.FilesWithSuffixInDirectoryRecursive(qt_prfxpath, "plugins")
@@ -1185,7 +1183,7 @@ func getQtPrfxpath(f *os.File, err error, qtVersion int) string {
 			if strings.HasPrefix(filepath.Base(filepath.Dir(result)), "qt"+strconv.Itoa(qtVersion)) {
 				qt_prfxpath = filepath.Dir(result)
 				log.Println("Guessed qt_prfxpath to be", qt_prfxpath)
-				// TODO: syscall.Mkdir()
+				doNotPatchQtPrfxPath = true
 			}
 		}
 	}
