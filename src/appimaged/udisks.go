@@ -122,9 +122,10 @@ func monitorUdisks() {
 	}
 
 	if satisfied == false {
+		sendErrorDesktopNotification("Cannot see volumes come and go", "Not implemented yet for this kind of system")
 		log.Println("ERROR: Don't know how to get notified about mounted and unmounted devices on this system", e)
 		log.Println("using dbus. Every system seems to do it differently.", e)
-		os.Exit(1)
+		// os.Exit(1)
 	}
 
 	var rules = []string{

@@ -93,7 +93,7 @@ fi
 
 cd "$HERE/usr" # Not all applications will need this; TODO: Make this opt-in
 MAIN_BIN=$(find "$HERE/usr/bin" -name "$MAIN" | head -n 1)
-LD_LINUX=$(find "$HERE" -name 'ld-linux-*.so.*' | head -n 1)
+LD_LINUX=$(find "$HERE" -name 'ld-*.so.*' | head -n 1)
 if [ -e "$LD_LINUX" ] ; then
   echo "Run experimental self-contained bundle"
   export GCONV_PATH="$HERE/usr/lib/gconv"
@@ -112,7 +112,10 @@ if [ -e "$LD_LINUX" ] ; then
   fi
   export QT_PLUGIN_PATH="${HERE}"/usr/lib/qt4/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt4/plugins/:"${HERE}"/usr/lib32/qt4/plugins/:"${HERE}"/usr/lib64/qt4/plugins/:"${HERE}"/usr/lib/qt5/plugins/:"${HERE}"/usr/lib/i386-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib/x86_64-linux-gnu/qt5/plugins/:"${HERE}"/usr/lib32/qt5/plugins/:"${HERE}"/usr/lib64/qt5/plugins/:"${QT_PLUGIN_PATH}"
   # exec "${LD_LINUX}" --inhibit-cache --library-path "${LIBRARY_PATH}" "${MAIN_BIN}" "$@"
-  exec "${LD_LINUX}" --inhibit-cache "${MAIN_BIN}" "$@"
+  case $line in
+    "ld-linux"*) exec "${LD_LINUX}" --inhibit-cache "${MAIN_BIN}" "$@" ;;
+    *) exec "${LD_LINUX}" "${MAIN_BIN}" "$@" ;;
+  esac
 else
   exec "${MAIN_BIN}" "$@"
 fi
@@ -1173,6 +1176,8 @@ func getQtPrfxpath(f *os.File, err error, qtVersion int) string {
 	// Special case:
 	// Some distributions, including Ubuntu and Alpine,
 	// have qt_prfxpath set to '/usr' but the files are actually in e.g., '/usr/lib/qt5'
+	// FIXME: In this case, we need to symlink /usr/lib/qt5/lib/qt5 to /usr/lib/qt5 which is an indication
+	// that this is not entirely correct. Any help appreciated
 	if helpers.IsDirectory(qt_prfxpath+"/plugins") == false {
 		log.Println("Got qt_prfxpath but it does not contain 'plugins'")
 		results := helpers.FilesWithSuffixInDirectoryRecursive(qt_prfxpath, "plugins")
@@ -1181,6 +1186,7 @@ func getQtPrfxpath(f *os.File, err error, qtVersion int) string {
 			if strings.HasPrefix(filepath.Base(filepath.Dir(result)), "qt"+strconv.Itoa(qtVersion)) {
 				qt_prfxpath = filepath.Dir(result)
 				log.Println("Guessed qt_prfxpath to be", qt_prfxpath)
+				// TODO: syscall.Mkdir()
 			}
 		}
 	}
