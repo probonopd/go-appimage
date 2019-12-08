@@ -26,10 +26,11 @@ Implemented
 * Bundle GStreamer
 * Bundle Qt
 * Bundle Qml
-* Obey excludelist (unless invoked in self-contained mode)
+* Obey excludelist (unless invoked in self-contained a.k.a. "bundle everything" mode)
 
 Envisioned
 * Bundle QtWebEngine (untested)
+* Bundle Python
 * GitLab support
 * OBS support
 * ...
