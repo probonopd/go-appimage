@@ -20,6 +20,8 @@ import "debug/elf"
 import "github.com/probonopd/go-appimage/internal/helpers"
 import "github.com/otiai10/copy"
 
+//go:generate go run genexclude.go
+
 type QMLImport struct {
 	Classname    string `json:"classname,omitempty"`
 	Name         string `json:"name"`
