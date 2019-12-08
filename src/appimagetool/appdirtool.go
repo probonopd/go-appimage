@@ -1074,19 +1074,18 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 			}
 		}
 
-		// TODO: Deploy QML
+		// eploy QML
 		// Similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1541
 		log.Println("TODO: Deploying QML components...")
 
 		qmlImportScanners := helpers.FilesWithSuffixInDirectoryRecursive(qtPrfxpath, "qmlimportscanner")
 		if len(qmlImportScanners) < 1 {
-			log.Println("qmlimportscanner not found, exiting")
-			os.Exit(1)
+			log.Println("qmlimportscanner not found, skipping QML deployment") // TODO: Exit if we have qml files and qmlimportscanner is not there
+			return
 		} else {
 			log.Println("Found qmlimportscanner:", qmlImportScanners[0])
 		}
 		qmlImportScanner := qmlImportScanners[0]
-		// TODO: Implement the rest of QML deployment
 
 		// Locate the qml directory, usually it is directly within the Qt prefix directory
 		// FIXME: Maybe a more elaborate logic for locating this is needed
