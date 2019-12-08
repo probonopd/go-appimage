@@ -8,7 +8,7 @@ Assuming you are using a 64-bit Intel machine (arm64, also known as x86_64), you
 
 ```
 wget -c https://github.com/$(wget -q https://github.com/probonopd/go-appimage/releases -O - | grep "appimagetool-.*-x86_64.AppImage" | head -n 1 | cut -d '"' -f 2)
-chmod +x appimagetool-.*.AppImage
+chmod +x appimagetool-*.AppImage
 VERSION=1.0 ./appimagetool-*.AppImage ./Some.AppDir
 ```
 
@@ -24,9 +24,13 @@ Implemented
 * Automatic upload to GitHub Releases
 * Prepare self-contained AppDirs using the `deploy` verb
 * Bundle GStreamer
+* Bundle Qt
+* Bundle Qml
+* Obey excludelist (unless invoked in self-contained a.k.a. "bundle everything" mode)
 
 Envisioned
-
+* Bundle QtWebEngine (untested)
+* Bundle Python
 * GitLab support
 * OBS support
 * ...
