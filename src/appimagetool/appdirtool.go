@@ -279,7 +279,7 @@ func AppDirDeploy(path string) {
 	src, err := os.Readlink(ldLinux)
 	if err != nil {
 		helpers.PrintError("Could not get the location of ld-linux", err)
-		os.Exit(1)
+		src = ldLinux
 	}
 
 	if *standalonePtr == true {
@@ -939,7 +939,7 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 			os.Exit(1)
 		}
 
-		qtPrfxpath := getQtPrfxpath(f, err)
+		qtPrfxpath := getQtPrfxpath(f, err, qtVersion)
 
 		if qtPrfxpath == "" {
 			log.Println("Got empty qtPrfxpath, exiting")
@@ -1143,7 +1143,7 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 	}
 }
 
-func getQtPrfxpath(f *os.File, err error) string {
+func getQtPrfxpath(f *os.File, err error, qtVersion int) string {
 	f.Seek(0, 0)
 	// Search from the beginning of the file
 	search := []byte("qt_prfxpath=")
@@ -1168,6 +1168,21 @@ func getQtPrfxpath(f *os.File, err error) string {
 	if qt_prfxpath == "" {
 		log.Println("Could not get qt_prfxpath")
 		return ""
+	}
+
+	// Special case:
+	// Some distributions, including Ubuntu and Alpine,
+	// have qt_prfxpath set to '/usr' but the files are actually in e.g., '/usr/lib/qt5'
+	if helpers.IsDirectory(qt_prfxpath+"/plugins") == false {
+		log.Println("Got qt_prfxpath but it does not contain 'plugins'")
+		results := helpers.FilesWithSuffixInDirectoryRecursive(qt_prfxpath, "plugins")
+		log.Println("results", results)
+		for _, result := range results {
+			if strings.HasPrefix(filepath.Base(filepath.Dir(result)), "qt"+strconv.Itoa(qtVersion)) {
+				qt_prfxpath = filepath.Dir(result)
+				log.Println("Guessed qt_prfxpath to be", qt_prfxpath)
+			}
+		}
 	}
 
 	return qt_prfxpath
