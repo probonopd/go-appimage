@@ -36,7 +36,7 @@ type QMLImport struct {
 var allELFs []string
 var libraryLocations []string // All directories in the host system that may contain libraries
 
-var doNotPatchQtPrfxPath = false
+var quirksModePatchQtPrfxPath = false
 
 var AppRunData = `#!/bin/sh
 
@@ -452,7 +452,7 @@ func AppDirDeploy(path string) {
 
 		patchRpathsInElf(appdir, libraryLocationsInAppDir, lib)
 
-		if strings.Contains(lib, "libQt5Core.so.5") && doNotPatchQtPrfxPath == false {
+		if strings.Contains(lib, "libQt5Core.so.5") {
 			log.Println("Patching qt_prfxpath, otherwise can't load platform plugin...")
 
 			f, err := os.Open(appdir.Path + "/" + lib) // Open file for reading/determining the offset
@@ -511,7 +511,11 @@ func AppDirDeploy(path string) {
 
 			// Now that we know where in the file the information is, go write it
 			f.Seek(offset, 0)
-			_, err = f.Write([]byte(relPathToQt + "\x00"))
+			if quirksModePatchQtPrfxPath == false {
+				_, err = f.Write([]byte(relPathToQt + "\x00"))
+			} else {
+				_, err = f.Write([]byte("." + "\x00"))
+			}
 			if err != nil {
 				helpers.PrintError("Could not patch qt_prfxpath in "+appdir.Path+"/"+lib, err)
 			}
@@ -1183,7 +1187,7 @@ func getQtPrfxpath(f *os.File, err error, qtVersion int) string {
 			if strings.HasPrefix(filepath.Base(filepath.Dir(result)), "qt"+strconv.Itoa(qtVersion)) {
 				qt_prfxpath = filepath.Dir(result)
 				log.Println("Guessed qt_prfxpath to be", qt_prfxpath)
-				doNotPatchQtPrfxPath = true
+				quirksModePatchQtPrfxPath = true
 			}
 		}
 	}
