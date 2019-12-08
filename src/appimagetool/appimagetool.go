@@ -88,7 +88,6 @@ func main() {
 	}
 
 	flag.Parse()
-	log.Println("*standalonePtr", *standalonePtr)
 
 	// Always show version
 	fmt.Fprintf(os.Stderr, "\n")
