@@ -24,9 +24,12 @@ Implemented
 * Automatic upload to GitHub Releases
 * Prepare self-contained AppDirs using the `deploy` verb
 * Bundle GStreamer
+* Bundle Qt
+* Bundle Qml
+* Obey excludelist (unless invoked in self-contained mode)
 
 Envisioned
-
+* Bundle QtWebEngine (untested)
 * GitLab support
 * OBS support
 * ...
