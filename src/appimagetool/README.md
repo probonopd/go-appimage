@@ -8,7 +8,7 @@ Assuming you are using a 64-bit Intel machine (arm64, also known as x86_64), you
 
 ```
 wget -c https://github.com/$(wget -q https://github.com/probonopd/go-appimage/releases -O - | grep "appimagetool-.*-x86_64.AppImage" | head -n 1 | cut -d '"' -f 2)
-chmod +x appimagetool-.*.AppImage
+chmod +x appimagetool-*.AppImage
 VERSION=1.0 ./appimagetool-*.AppImage ./Some.AppDir
 ```
 
