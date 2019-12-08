@@ -27,6 +27,8 @@ import (
 // go build -ldflags "-X main.commit=$TRAVIS_BUILD_NUMBER"
 var commit string
 
+var standalonePtr = flag.Bool("s", false, "Make standalone (self-contained) bundle")
+
 func main() {
 
 	var version string
@@ -84,7 +86,9 @@ func main() {
 
 		flag.PrintDefaults()
 	}
+
 	flag.Parse()
+	log.Println("*standalonePtr", *standalonePtr)
 
 	// Always show version
 	fmt.Fprintf(os.Stderr, "\n")
@@ -94,25 +98,42 @@ func main() {
 	// Add the location of the executable to the $PATH
 	helpers.AddHereToPath()
 
-	if len(os.Args) > 1 {
-		switch os.Args[1] {
+	// Check for needed files on $PATH
+	tools := []string{"file", "mksquashfs", "desktop-file-validate", "uploadtool", "patchelf", "desktop-file-validate", "glib-compile-schemas", "curl", "sh", "strings", "grep", "patchelf"}
+	// curl is needed by uploadtool; TODO: Replace uploadtool with native Go code
+	// "sh", "strings", "grep" are needed by appdirtool to parse qt_prfxpath; TODO: Replace with native Go code
+	for _, t := range tools {
+		_, err := exec.LookPath(t)
+		if err != nil {
+			log.Println("Required helper tool", t, "missing")
+			os.Exit(1)
+		}
+	}
+
+	// Check whether we have a sufficient version of mksquashfs for -offset
+	if helpers.CheckIfSquashfsVersionSufficient("mksquashfs") == false {
+		os.Exit(1)
+	}
+
+	if len(flag.Args()) > 0 {
+		switch flag.Args()[0] {
 		case "deploy":
-			if len(os.Args) < 3 {
+			if len(flag.Args()) < 2 {
 				log.Println("Please supply the path to a desktop file in an FHS-like AppDir")
 				log.Println("a FHS-like structure, e.g.:")
 				log.Println(os.Args[0], "appdir/usr/share/applications/myapp.desktop")
 				os.Exit(1)
 			}
-			AppDirDeploy(os.Args[2])
+			AppDirDeploy(flag.Args()[1])
 			os.Exit(0)
 		case "validate":
-			if len(os.Args) > 2 {
+			if len(flag.Args()) > 1 {
 				if helpers.CheckIfFileExists(os.Args[2]) {
 					d := helpers.CalculateSHA256Digest(os.Args[2])
 					log.Println("Calculated sha256 digest:", d)
 					ent, err := helpers.CheckSignature(os.Args[2])
 					if err == nil {
-						log.Println(os.Args[2], "has a valid signature")
+						log.Println(flag.Args()[1], "has a valid signature")
 						// TODO: Do something useful with this information
 						log.Println("Identities:", ent.Identities)
 						log.Println("KeyIdShortString:", ent.PrimaryKey.KeyIdShortString())
@@ -124,7 +145,7 @@ func main() {
 						os.Exit(1)
 					}
 				} else {
-					log.Println(os.Args[2], "does not exist")
+					log.Println(flag.Args()[1], "does not exist")
 					os.Exit(1)
 				}
 			} else {
@@ -136,16 +157,16 @@ func main() {
 			setupSigning()
 			os.Exit(0)
 		case "sections":
-			if len(os.Args) > 2 {
-				if helpers.CheckIfFileExists(os.Args[2]) {
+			if len(flag.Args()) > 1 {
+				if helpers.CheckIfFileExists(flag.Args()[1]) {
 
 					fmt.Println("")
 					for _, section := range sections {
-						offset, length, err := helpers.GetSectionOffsetAndLength(os.Args[2], section)
+						offset, length, err := helpers.GetSectionOffsetAndLength(flag.Args()[1], section)
 						if err != nil {
 							log.Println("Error getting ELF section", section, err)
 						} else {
-							uidata, err := helpers.GetSectionData(os.Args[2], section)
+							uidata, err := helpers.GetSectionData(flag.Args()[1], section)
 							fmt.Println("")
 							if err != nil {
 								os.Stderr.WriteString("Could not find  ELF section " + section + ", exiting\n")
@@ -165,7 +186,7 @@ func main() {
 						}
 					}
 				} else {
-					log.Println(os.Args[2], "does not exist")
+					log.Println(flag.Args()[1], "does not exist")
 					os.Exit(1)
 				}
 			} else {
@@ -177,31 +198,14 @@ func main() {
 		}
 	}
 
-	// Check for needed files on $PATH
-	tools := []string{"file", "mksquashfs", "desktop-file-validate", "uploadtool", "patchelf", "desktop-file-validate", "glib-compile-schemas", "curl", "sh", "strings", "grep"}
-	// curl is needed by uploadtool; TODO: Replace uploadtool with native Go code
-	// "sh", "strings", "grep" are needed by appdirtool to parse qt_prfxpath; TODO: Replace with native Go code
-	for _, t := range tools {
-		_, err := exec.LookPath(t)
-		if err != nil {
-			log.Println("Required helper tool", t, "missing")
-			os.Exit(1)
-		}
-	}
-
-	// Check whether we have a sufficient version of mksquashfs for -offset
-	if helpers.CheckIfSquashfsVersionSufficient("mksquashfs") == false {
-		os.Exit(1)
-	}
-
 	// Check if first argument is present, exit otherwise
-	if len(os.Args) < 2 {
+	if len(flag.Args()) < 1 {
 		os.Stderr.WriteString("Please specify an AppDir to be converted to an AppImage \n")
 		os.Exit(1)
 	}
 
 	// Check if is directory, then assume we want to convert an AppDir into an AppImage
-	firstArg, _ := filepath.EvalSymlinks(os.Args[1])
+	firstArg, _ := filepath.EvalSymlinks(flag.Args()[0])
 	if info, err := os.Stat(firstArg); err == nil && info.IsDir() {
 		GenerateAppImage(firstArg)
 	} else {

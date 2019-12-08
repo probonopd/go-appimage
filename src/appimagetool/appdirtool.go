@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"log"
 	"strconv"
+	"syscall"
 
 	"os"
 	"os/exec"
@@ -113,7 +114,7 @@ if [ -e "$LD_LINUX" ] ; then
   # exec "${LD_LINUX}" --inhibit-cache --library-path "${LIBRARY_PATH}" "${MAIN_BIN}" "$@"
   exec "${LD_LINUX}" --inhibit-cache "${MAIN_BIN}" "$@"
 else
-  echo "Bundle has issues, cannot launch"
+  exec "${MAIN_BIN}" "$@"
 fi
 `
 
@@ -264,39 +265,48 @@ func AppDirDeploy(path string) {
 	}
 	ldLinux := strings.TrimSpace(string(out))
 
-	if helpers.Exists(appdir.Path+ldLinux) == false {
-
-		// ld-linux might be a symlink; hence we first need to resolve it
-		src, err := os.Readlink(ldLinux)
+	if helpers.Exists(appdir.Path+"/"+ldLinux) == true {
+		log.Println("Removing pre-existing", ldLinux+"...")
+		err = syscall.Unlink(appdir.Path + "/" + ldLinux)
 		if err != nil {
-			helpers.PrintError("Could not get the location of ld-linux", err)
+			helpers.PrintError("Could not remove pre-existing ld-linux", err)
 			os.Exit(1)
 		}
 
+	}
+
+	// ld-linux might be a symlink; hence we first need to resolve it
+	src, err := os.Readlink(ldLinux)
+	if err != nil {
+		helpers.PrintError("Could not get the location of ld-linux", err)
+		os.Exit(1)
+	}
+
+	if *standalonePtr == true {
+		log.Println("Deploying", ldLinux+"...")
 		err = copy.Copy(src, appdir.Path+ldLinux)
 		if err != nil {
 			helpers.PrintError("Could not copy ld-linux", err)
 			os.Exit(1)
 		}
-	}
+		// Do what we do in the Scribus AppImage script, namely
+		// sed -i -e 's|/usr|/xxx|g' lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+		err = PatchFile(appdir.Path+ldLinux, "/usr", "/xxx")
+		if err != nil {
+			helpers.PrintError("PatchFile", err)
+			os.Exit(1)
+		}
 
-	// Do what we do in the Scribus AppImage script, namely
-	// sed -i -e 's|/usr|/xxx|g' lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
-
-	// This prevents an unpatched libGL.so.1 from finding its deps in /usr, so we are NOT doing this for now? XXXXXXXXXXXXXXXXXxx
-	err = PatchFile(appdir.Path+ldLinux, "/usr", "/xxx")
-	if err != nil {
-		helpers.PrintError("PatchFile", err)
-		os.Exit(1)
-	}
-
-	log.Println("Determining gconv (for GCONV_PATH)...")
-	// Search in all of the system's library directories for a directory called gconv
-	// and put it into the a location which matches the GCONV_PATH we export in AppRun
-	gconvs, err := findWithPrefixInLibraryLocations("gconv")
-	if err == nil {
-		// Target location must match GCONV_PATH exported in AppRun
-		determineELFsInDirTree(appdir, gconvs[0])
+		log.Println("Determining gconv (for GCONV_PATH)...")
+		// Search in all of the system's library directories for a directory called gconv
+		// and put it into the a location which matches the GCONV_PATH we export in AppRun
+		gconvs, err := findWithPrefixInLibraryLocations("gconv")
+		if err == nil {
+			// Target location must match GCONV_PATH exported in AppRun
+			determineELFsInDirTree(appdir, gconvs[0])
+		}
+	} else {
+		log.Println("Not deploying", ldLinux, "because it was not requested or it is not needed")
 	}
 
 	if helpers.Exists(appdir.Path + "/usr/share/glib-2.0/schemas") {
@@ -418,13 +428,11 @@ func AppDirDeploy(path string) {
 		}
 	}
 
-	excludelistPrefixes := []string{} // {"", ""} // TODO: Implement excludelist (optionally). Note that if we don't run through ld-linux, we need to patch qt_prfxpath differently
-
 	for _, lib := range allELFs {
 
 		shoudDoIt := true
-		for _, excludePrefix := range excludelistPrefixes {
-			if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true {
+		for _, excludePrefix := range ExcludedLibraries {
+			if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true && *standalonePtr == false {
 				log.Println("Skipping", lib, "because it is on the excludelist")
 				shoudDoIt = false
 				break
@@ -513,8 +521,8 @@ func AppDirDeploy(path string) {
 	for _, lib := range allELFs {
 
 		shoudDoIt := true
-		for _, excludePrefix := range excludelistPrefixes {
-			if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true {
+		for _, excludePrefix := range ExcludedLibraries {
+			if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true && *standalonePtr == false {
 				log.Println("Skipping copyright file for ", lib, "because it is on the excludelist")
 				shoudDoIt = false
 				break
@@ -533,8 +541,11 @@ func AppDirDeploy(path string) {
 		}
 	}
 	log.Println("Done")
-	log.Println("To check whether it is really self-contained, run:")
-	fmt.Println("LD_LIBRARY_PATH='' find " + appdir.Path + " -type f -exec ldd {} 2>&1 \\; | grep '=>' | grep -v " + appdir.Path)
+
+	if *standalonePtr == true {
+		log.Println("To check whether it is really self-contained, run:")
+		fmt.Println("LD_LIBRARY_PATH='' find " + appdir.Path + " -type f -exec ldd {} 2>&1 \\; | grep '=>' | grep -v " + appdir.Path)
+	}
 }
 
 func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, path string) {
@@ -617,6 +628,13 @@ func deployGtkDirectory(appdir helpers.AppDir, gtkVersion int) {
 // appendLib appends library in path to allELFs and adds its location as well as any pre-existing rpaths to libraryLocations
 func appendLib(path string) {
 
+	for _, excludedlib := range ExcludedLibraries {
+		if filepath.Base(path) == excludedlib && *standalonePtr == false {
+			// log.Println("Skipping", excludedlib, "because it is on the excludelist")
+			return
+		}
+	}
+
 	// Find out whether there are pre-existing rpaths and if so, add them to libraryLocations
 	// so that we can find libraries there, too
 	// See if the library had a pre-existing rpath that did not start with $. If so, replace it by one that
@@ -694,7 +712,7 @@ func readRpaths(path string) ([]string, error) {
 func findAllExecutablesAndLibraries(path string) ([]string, error) {
 	var allExecutablesAndLibraries []string
 
-	fmt.Println("xxxxxxxxxxxxxxxxxxxxxxxxxxxxx checking", path)
+	// fmt.Println(" findAllExecutablesAndLibrarieschecking", path)
 
 	// If we have a file, then there is nothing to walk and we can return it directly
 	if helpers.IsDirectory(path) != true {
