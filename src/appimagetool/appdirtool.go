@@ -794,13 +794,42 @@ func findWithPrefixInLibraryLocations(prefix string) ([]string, error) {
 	return found, errors.New("did not find " + prefix)
 }
 
+// getDirsFromSoConf returns a []string with the directories specified
+// in the ld config file at path, usually '/etc/ld.so.conf',
+// and in its included config files. We need to search in those locations
+// for libraries as well
+func getDirsFromSoConf(path string) []string {
+	var out []string
+	f, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.TrimSpace(line) == "" || strings.HasPrefix(line, "#") {
+			continue
+		} else if strings.HasPrefix(line, "include ") {
+			p := strings.Split(line, " ")[1]
+			files, err := filepath.Glob(p)
+			if err != nil {
+				return out
+			}
+			for _, file := range files {
+				out = append(out, getDirsFromSoConf(file)...)
+			}
+			continue
+		}
+		out = append(out, strings.TrimSpace(line))
+	}
+	return out
+}
+
 func findLibrary(filename string) (string, error) {
 
-	// Look for libraries in the same locations in which the system looks for libraries
-	// TODO: Instead of hardcoding libraryLocations, get them from the system - see the comment at the top xxxxxxxxx
+	// Look for libraries in commonly used default locations
 	locs := []string{"/usr/lib64", "/lib64", "/usr/lib", "/lib",
-		// The following was determined on Ubuntu 18.04 using
-		// $ find /etc/ld.so.conf.d/ -type f -exec cat {} \;
 		"/usr/lib/x86_64-linux-gnu/libfakeroot",
 		"/usr/local/lib",
 		"/usr/local/lib/x86_64-linux-gnu",
@@ -808,9 +837,16 @@ func findLibrary(filename string) (string, error) {
 		"/usr/lib/x86_64-linux-gnu",
 		"/lib32",
 		"/usr/lib32"}
-
 	for _, loc := range locs {
 		libraryLocations = helpers.AppendIfMissing(libraryLocations, filepath.Clean(loc))
+	}
+
+	// Additionally, look for libraries in the same locations in which glibc ld.so looks for libraries
+	if helpers.Exists("/etc/ld.so.conf") {
+		locs := getDirsFromSoConf("/etc/ld.so.conf")
+		for _, loc := range locs {
+			libraryLocations = helpers.AppendIfMissing(libraryLocations, filepath.Clean(loc))
+		}
 	}
 
 	// Also look for libraries in in LD_LIBRARY_PATH
