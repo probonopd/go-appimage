@@ -572,8 +572,8 @@ func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, 
 	newRpathStringForElf = strings.Join(newRpathStrings, ":")
 	// fmt.Println("Computed newRpathStringForElf:", appdir.Path+"/"+lib, newRpathStringForElf)
 
-	if strings.HasPrefix(filepath.Base(path), "ld-linux") == true {
-		log.Println("Not writing rpath in", path, "because its name starts with ld-linux")
+	if strings.HasPrefix(filepath.Base(path), "ld-") == true {
+		log.Println("Not writing rpath in", path, "because its name starts with ld-...")
 		return
 	}
 
@@ -979,8 +979,16 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1259
 		for _, lib := range allELFs {
 			if strings.HasSuffix(lib, "libQt5Gui.so.5") == true {
-				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/iconengines/")
-				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/imageformats/")
+				if helpers.Exists(qtPrfxpath + "/plugins/iconengines/") {
+					determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/iconengines/")
+				} else {
+					fmt.Println("Skipping", appdir, qtPrfxpath+"/plugins/iconengines/", "because it does not exist")
+				}
+				if helpers.Exists(qtPrfxpath + "/plugins/imageformats/") {
+					determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/imageformats/")
+				} else {
+					fmt.Println("Skipping", appdir, qtPrfxpath+"/plugins/imageformats/", "because it does not exist")
+				}
 				break
 			}
 		}
