@@ -293,12 +293,17 @@ func AppDirDeploy(path string) {
 		}
 		// Do what we do in the Scribus AppImage script, namely
 		// sed -i -e 's|/usr|/xxx|g' lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+		err = PatchFile(appdir.Path+ldLinux, "/lib", "/XXX")
+		if err != nil {
+			helpers.PrintError("PatchFile", err)
+			os.Exit(1)
+		}
 		err = PatchFile(appdir.Path+ldLinux, "/usr", "/xxx")
 		if err != nil {
 			helpers.PrintError("PatchFile", err)
 			os.Exit(1)
 		}
-
+		
 		log.Println("Determining gconv (for GCONV_PATH)...")
 		// Search in all of the system's library directories for a directory called gconv
 		// and put it into the a location which matches the GCONV_PATH we export in AppRun
