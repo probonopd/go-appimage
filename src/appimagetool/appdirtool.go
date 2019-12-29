@@ -262,7 +262,8 @@ func AppDirDeploy(path string) {
 	cmd := exec.Command("patchelf", "--print-interpreter", appdir.MainExecutable)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		helpers.PrintError("patchelf --print-interpreter", err)
+		fmt.Println(cmd.String())
+		helpers.PrintError("patchelf --print-interpreter "+appdir.MainExecutable+": "+string(out), err)		
 		os.Exit(1)
 	}
 	ldLinux := strings.TrimSpace(string(out))
