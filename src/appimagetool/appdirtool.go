@@ -86,7 +86,7 @@ if [ ! -z "$UIFILES" ] ; then
 fi
 
 ############################################################################################
-# Use bundled Gstreamer
+# Use bundled GStreamer
 ############################################################################################
 
 under_GST_PLUGIN_SYSTEM_PATH=$(find "${HERE}" -name "libgstcoreelements.so" -type f | head -n 1)
