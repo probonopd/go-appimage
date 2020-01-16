@@ -64,8 +64,9 @@ script:
     ./configure --prefix=/usr
     make -j$(nproc) LDFLAGS=-static
     strip src/patchelf
+    cd -
     mkdir -p appimagetool.AppDir/usr/bin
-    cp src/patchelf appimagetool.AppDir/usr/bin/
+    cp patchelf-*/src/patchelf appimagetool.AppDir/usr/bin/
     chmod +x appimagetool.AppDir/usr/bin/*
     cp appimagetool-amd64 appimagetool.AppDir/usr/bin/appimagetool
     ( cd appimagetool.AppDir/ ; ln -s usr/bin/appimagetool AppRun)
