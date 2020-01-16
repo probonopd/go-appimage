@@ -18,9 +18,9 @@ script:
   - wget -q https://dl.google.com/go/go1.13.4.linux-$ARCH.tar.gz
   - sudo tar -C /usr/local -xzf go*.tar.gz
   - export PATH=/usr/local/go/bin:$PATH
-  - if [ $(go env GOHOSTARCH) == "amd64" ] ; then sudo apt-get -y install gcc-multilib g++-multilib ; fi
+  - if [ $(go env GOHOSTARCH) == "amd64" ] ; then sudo apt-get -y install gcc-multilib g++-multilib autoconf ; fi
   # if [ $(go env GOHOSTARCH) == "amd64" ] ; then wget -c -q https://github.com/upx/upx/releases/download/v3.95/upx-3.95-amd64_linux.tar.xz ; fi
-  - if [ $(go env GOHOSTARCH) == "arm64" ] ; then sudo apt-get -y install gcc-arm-linux-gnueabi ; fi
+  - if [ $(go env GOHOSTARCH) == "arm64" ] ; then sudo apt-get -y install gcc-arm-linux-gnueabi autoconf ; fi
   # if [ $(go env GOHOSTARCH) == "arm64" ] ; then wget -c -q https://github.com/upx/upx/releases/download/v3.95/upx-3.95-arm64_linux.tar.xz ; fi
   # tar xf upx-*_linux.tar.xz
   - export PATH=$(readlink -f upx-*_linux/):$PATH
@@ -57,10 +57,13 @@ script:
     ( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/mksquashfs )
     ( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/AppImage/AppImageKit/releases/download/continuous/runtime-x86_64 )
     ( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh -O uploadtool )
-    cd appimagetool.AppDir/
-    wget -c https://ftp.fau.de/debian/pool/main/p/patchelf/patchelf_0.9-1+b1_amd64.deb
-    dpkg -x patchelf_*_amd64.deb . ; rm *.deb
-    cd -
+    wget https://github.com/NixOS/patchelf/archive/0.9.tar.gz # 0.10 cripples my files, puts XXXXX inside
+    tar xf *.tar.gz 
+    cd patchelf-*/
+    ./bootstrap.sh
+    ./configure --prefix=/usr
+    make -j$(nproc) LDFLAGS=-static
+    cp src/patchelf appimagetool.AppDir/usr/bin
     chmod +x appimagetool.AppDir/usr/bin/*
     cp appimagetool-amd64 appimagetool.AppDir/usr/bin/appimagetool
     ( cd appimagetool.AppDir/ ; ln -s usr/bin/appimagetool AppRun)
