@@ -87,11 +87,14 @@ fi
 
 ############################################################################################
 # Use bundled GStreamer
+# NOTE: May need to remove libgstvaapi.so
 ############################################################################################
 
-under_GST_PLUGIN_SYSTEM_PATH=$(find "${HERE}" -name "libgstcoreelements.so" -type f | head -n 1)
-if [ ! -z "$under_GST_PLUGIN_SYSTEM_PATH" ] ; then
-  export GST_PLUGIN_SYSTEM_PATH=$(dirname under_GST_PLUGIN_SYSTEM_PATH)
+if [ ! -z $(find "${HERE}" -name "libgstcoreelements.so" -type f) ] ; then
+  export GST_PLUGIN_PATH=$(dirname $(readlink -f $(find squashfs-root/ -name "libgstcoreelements.so" -type f | head -n 1)))
+  export GST_PLUGIN_SCANNER=$(find "${HERE}" -name "gst-plugin-scanner" -type f | head -n 1)
+  export GST_PLUGIN_SYSTEM_PATH=$GST_PLUGIN_PATH
+  env | grep GST
 fi
 
 ############################################################################################
