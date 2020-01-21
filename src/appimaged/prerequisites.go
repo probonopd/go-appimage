@@ -57,7 +57,7 @@ func checkPrerequisites() {
 			log.Println("Not running from within an AppImage, exiting")
 			os.Exit(1)
 		} else {
-			// Note that this exception is for use during develpment of this tool only and may go away at any time.
+			// Note that this exception is for use during development of this tool only and may go away at any time.
 			sendDesktopNotification("Not running from an AppImage", "This is discouraged because some functionality may not be available", 5000)
 		}
 	}
