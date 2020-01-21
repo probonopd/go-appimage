@@ -104,7 +104,7 @@ func ValidateUpdateInformation(updateinformation string) error {
 
 	// Currently updateinformation needs to end in "zsync" for all transport mechanisms,
 	// although this might change in the future
-	// Note that it is allowable to have somehting like "some.zsync?foo=bar", which is why we parse it as an URL
+	// Note that it is allowable to have something like "some.zsync?foo=bar", which is why we parse it as an URL
 	u, err := url.Parse(parts[len(parts)-1])
 	if err != nil {
 		return errors.New("Cannot parse URL")
