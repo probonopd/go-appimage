@@ -12,6 +12,7 @@ import (
 	"os"
 )
 
+// CalculateElfSize returns the size of an ELF binary as an int64 based on the information in the ELF header
 func CalculateElfSize(file string) int64 {
 
 	// Open given elf file
