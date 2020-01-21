@@ -1253,7 +1253,7 @@ func getQtPrfxpath(f *os.File, err error, qtVersion int) string {
 	return qt_prfxpath
 }
 
-// ScanFile returns the offset of the first occurence of a []byte in a file from the current position,
+// ScanFile returns the offset of the first occurrence of a []byte in a file from the current position,
 // or -1 if []byte was not found in file, and seeks to the beginning of the searched []byte
 // https://forum.golangbridge.org/t/how-to-find-the-offset-of-a-byte-in-a-large-binary-file/16457/
 func ScanFile(f io.ReadSeeker, search []byte) int64 {
