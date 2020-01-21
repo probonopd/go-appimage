@@ -27,7 +27,7 @@ import (
 func RunCmdTransparently(command []string) error {
 	cmd := exec.Command(command[0], command[1:]...)
 	// Similar to the Unix tee(1) command.
-	// Needed if we want to process the output futher?
+	// Needed if we want to process the output further?
 	// mwriter := io.MultiWriter(f, os.Stdout)
 	cmd.Stdout = os.Stdout // or: mwriter
 	cmd.Stderr = os.Stderr
