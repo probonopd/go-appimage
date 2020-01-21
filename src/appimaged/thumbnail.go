@@ -6,7 +6,7 @@ import (
 	issvg "github.com/h2non/go-is-svg"
 	"github.com/probonopd/go-appimage/internal/helpers"
 	"github.com/sabhiram/png-embed" // For embedding metadata into PNG
-	. "github.com/srwiley/oksvg"
+	. "github.com/srwiley/oksvg@gradfix"
 	. "github.com/srwiley/rasterx"
 	"gopkg.in/ini.v1"
 	"image"
