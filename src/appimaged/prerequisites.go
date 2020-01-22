@@ -111,14 +111,9 @@ func checkPrerequisites() {
 	err = os.MkdirAll(home+"/.cache/applications/", os.ModePerm)
 	helpers.LogError("main:", err)
 
-	// Some systems may expect thumbnails in another (old?) location
-
-	if helpers.Exists(home+"/.thumbnails/normal/") && helpers.Exists(ThumbnailsDirNormal) {
-		sendDesktopNotification("Error", "Two potential locations for thumbanils found. TODO: Handle this case", -1)
-		os.Exit(1)
-	}
-
-	if helpers.Exists(home+"/.thumbnails/normal/") == true {
+	// Some systems may expect thumbnails in another (old?) location. Use that old location if it exists and the new location does not exist
+	// TODO: Find a more robust mechanism
+	if helpers.Exists(ThumbnailsDirNormal) == false &&  helpers.Exists(home+"/.thumbnails/normal/") == true {
 		log.Println("Using", ThumbnailsDirNormal, "as the location for thumbnails")
 		ThumbnailsDirNormal = home + "/.thumbnails/normal/"
 	}
