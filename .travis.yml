@@ -38,6 +38,7 @@ script:
   - if [ $(go env GOHOSTARCH) == "arm64" ] ; then mv ./appimagetool appimagetool-arm ; fi
   # appimaged
   - go get -v github.com/probonopd/go-appimage/src/appimaged || true # FIXME: Why does this comand return a non-0 exit status?
+  - ( cd $GOPATH/src/github.com/srwiley/oksvg ; git checkout gradfix ) # FIXME: This is probably not the way to do it
   - go build -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimaged
   # upx -9 appimaged
   - mv ./appimaged appimaged-$(go env GOHOSTARCH)
