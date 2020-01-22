@@ -57,10 +57,9 @@ func writeDesktopFile(ai AppImage) {
 	// FIXME: KDE seems to have a problem when the AppImage is on a partition of which the disklabel contains "_"?
 	// Then the desktop file won't run the application
 
-	cfg.Section("Desktop Entry").Key("Exec").SetValue(os.Args[0] + " wrap \"" + ai.path + "\"")
+	cfg.Section("Desktop Entry").Key("Exec").SetValue(helpers.Here() + " wrap \"" + ai.path + "\"")  // Resolve to a full path
 	cfg.Section("Desktop Entry").Key(ExecLocationKey).SetValue(ai.path)
-
-	cfg.Section("Desktop Entry").Key("TryExec").SetValue(os.Args[0])
+	cfg.Section("Desktop Entry").Key("TryExec").SetValue(helpers.Here()) // Resolve to a full path
 	cfg.Section("Desktop Entry").Key("Type").SetValue("Application")
 	// Construct the Name entry based on the actual filename
 	// so that renaming the file in the file manager results in a changed name in the menu
