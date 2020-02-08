@@ -21,7 +21,7 @@ func connect(clientId string, uri *url.URL) mqtt.Client {
 	for !token.WaitTimeout(3 * time.Second) {
 	}
 	if err := token.Error(); err != nil {
-		log.Fatal(err)
+		helpers.PrintError("MQTT", err) // We land here in "horror network" situations, so this must not be fatal
 	}
 	return client
 }
@@ -135,8 +135,8 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 						helpers.PrintError("mqtt: GetCommitMessageForLatestCommit:", err)
 					} else {
 						// The following could not be tested yet
-						// go sendUpdateDesktopNotification(ai.niceName, version, changelog_url)
-						sendDesktopNotification("Update available for "+ai.niceName, "It can be updated to version "+version+". \n"+msg, 120000)
+						go sendUpdateDesktopNotification(ai, version, msg)
+						//sendDesktopNotification("Update available for "+ai.niceName, "It can be updated to version "+version+". \n"+msg, 120000)
 					}
 				}
 			} else {

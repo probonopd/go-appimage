@@ -99,3 +99,7 @@ func GetCommitMessageForThisCommitOnTravis() (string, error) {
 	}
 
 }
+
+// TODO: uploadtool functionality
+// Create continuous release, upload files to it
+// See the existing Go tools for GitHub Releases

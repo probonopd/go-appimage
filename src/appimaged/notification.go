@@ -17,7 +17,7 @@ import (
 // sendUpdateDesktopNotification sends a desktop notification for an update.
 // Use this with "go" prefixed to it so that it runs in the background, because it waits
 // until the user clicks on "Update" or the timeout occurs
-func sendUpdateDesktopNotification(appname string, version string, changelogUrl string) {
+func sendUpdateDesktopNotification(ai AppImage, version string, changelogUrl string) {
 
 	conn, err := dbus.SessionBusPrivate() // When using SessionBusPrivate(), need to follow with Auth(nil) and Hello()
 	defer conn.Close()
@@ -44,11 +44,11 @@ func sendUpdateDesktopNotification(appname string, version string, changelogUrl 
 	// Create a Notification to send
 	iconName := "software-update-available"
 	n := notify.Notification{
-		AppName:       appname,
+		AppName:       ai.niceName,
 		ReplacesID:    uint32(0),
 		AppIcon:       iconName,
 		Summary:       "Update available",
-		Body:          appname + " can be updated to version " + version + ". \n<a href='" + changelogUrl + "'>View Changelog</a>",
+		Body:          ai.niceName + " can be updated to version " + version + ". \n<a href='" + changelogUrl + "'>View Changelog</a>",
 		Actions:       []string{"update", "Update", "changelog", "View Changelog"}, // tuples of (action_key, label)
 		Hints:         map[string]dbus.Variant{},
 		ExpireTimeout: int32(120000),
@@ -92,11 +92,36 @@ func sendUpdateDesktopNotification(appname string, version string, changelogUrl 
 	actions := notifier.ActionInvoked()
 	go func() {
 		action := <-actions
-		log.Printf("ActionInvoked: %v Key: %v", action.ID, action.ActionKey)
+		if action != nil { // Without this if we get a crash if user just closes the notification w/o an action
+			log.Printf("ActionInvoked: %v Key: %v", action.ID, action.ActionKey)
+			if action.ActionKey == "update" {
+				log.Println("TODO: Update to be implemented here")
+				runUpdate(ai.path)
+			}
+		}
 	}()
 
-	closer := <-notifier.NotificationClosed()
-	log.Printf("NotificationClosed: %v Reason: %v", closer.ID, closer.Reason)
+	closer := <-notifier.NotificationClosed() // Without this it doesn't wait for a user reaction
+
+	/*
+		FIXME: This seems to be triggered on all, not only on the matching ID
+		So when the user closes one notification, the others don't function anymore
+		is this a bug in the library?
+
+		2020/02/08 09:14:49 sent notification id: 42
+		(...)
+		2020/02/08 09:14:49 sent notification id: 43
+		(user dismisses ONE of them, we get:)
+		2020/02/08 09:15:15 NotificationClosed: 43 Reason: DismissedByUser
+		2020/02/08 09:15:15 its all over, go home
+		2020/02/08 09:15:15 NotificationClosed: 43 Reason: DismissedByUser
+		2020/02/08 09:15:15 its all over, go home
+		(the buttons in notification 42 are now without function)
+	*/
+
+	if closer != nil {
+		log.Printf("NotificationClosed: %v Reason: %v", closer.ID, closer.Reason)
+	}
 
 }
 

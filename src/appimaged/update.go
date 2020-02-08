@@ -19,7 +19,10 @@ func update() {
 		fmt.Println("Argument missing")
 		os.Exit(1)
 	}
+	runUpdate(os.Args[2])
+}
 
+func runUpdate(path string) {
 	// I think this way of doing things is really clever because
 	// this way we can even put the update action into menus if
 	// no updater is on the system yet at that time, and give the user
@@ -48,7 +51,7 @@ func update() {
 		cmd := []string{a}
 		cmd = append(cmd, "-n")
 		cmd = append(cmd, "-d")
-		cmd = append(cmd, os.Args[2:]...)
+		cmd = append(cmd, path)
 		err := helpers.RunCmdTransparently(cmd)
 		helpers.LogError("update", err)
 	}
