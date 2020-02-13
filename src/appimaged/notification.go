@@ -8,6 +8,7 @@ package main
 import (
 	"log"
 	"os"
+	"sync"
 
 	"github.com/esiqveland/notify"
 	"github.com/godbus/dbus"
@@ -18,6 +19,8 @@ import (
 // Use this with "go" prefixed to it so that it runs in the background, because it waits
 // until the user clicks on "Update" or the timeout occurs
 func sendUpdateDesktopNotification(ai AppImage, version string, changelogUrl string) {
+
+	wg := &sync.WaitGroup{}
 
 	conn, err := dbus.SessionBusPrivate() // When using SessionBusPrivate(), need to follow with Auth(nil) and Hello()
 	defer conn.Close()
@@ -75,8 +78,37 @@ func sendUpdateDesktopNotification(ai AppImage, version string, changelogUrl str
 	log.Printf("Version: %v\n", info.Version)
 	log.Printf("Spec:    %v\n", info.SpecVersion)
 
+	var memory = map[uint32]*notify.Notification{} // https://github.com/esiqveland/notify/issues/8#issuecomment-584881627
+
+	// Listen for actions invoked!
+	onAction := func(action *notify.ActionInvokedSignal) {
+		log.Printf("ActionInvoked: %v Key: %v", action.ID, action.ActionKey)
+		log.Println("memory[action.ID]:", memory[action.ID]) // https://github.com/esiqveland/notify/issues/8#issuecomment-584881627
+		// TODO: Check based on the information from the line above whether this onAction belongs to the notification we sent
+		if action != nil { // Without this if we get a crash if user just closes the notification w/o an action
+			log.Printf("ActionInvoked: %v Key: %v", action.ID, action.ActionKey)
+			if action.ActionKey == "update" {
+				log.Println("TODO: Update to be implemented here")
+				runUpdate(ai.path)
+			}
+		}
+		wg.Done()
+	}
+
+	onClosed := func(closer *notify.NotificationClosedSignal) {
+		log.Printf("NotificationClosed: %v Reason: %v", closer.ID, closer.Reason)
+	}
+
 	// Notifier interface with event delivery
-	notifier, err := notify.New(conn)
+	notifier, err := notify.New(
+		conn,
+		// action event handler
+		notify.WithOnAction(onAction),
+		// closed event handler
+		notify.WithOnClosed(onClosed),
+		// override with custom logger
+		notify.WithLogger(log.New(os.Stdout, "notify: ", log.Flags())),
+	)
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -85,44 +117,13 @@ func sendUpdateDesktopNotification(ai AppImage, version string, changelogUrl str
 	id, err := notifier.SendNotification(n)
 	if err != nil {
 		log.Printf("error sending notification: %v", err)
-	}
-	log.Printf("sent notification id: %v", id)
-
-	// Listen for actions invoked
-	actions := notifier.ActionInvoked()
-	go func() {
-		action := <-actions
-		if action != nil { // Without this if we get a crash if user just closes the notification w/o an action
-			log.Printf("ActionInvoked: %v Key: %v", action.ID, action.ActionKey)
-			if action.ActionKey == "update" {
-				log.Println("TODO: Update to be implemented here")
-				runUpdate(ai.path)
-			}
-		}
-	}()
-
-	closer := <-notifier.NotificationClosed() // Without this it doesn't wait for a user reaction
-
-	/*
-		FIXME: This seems to be triggered on all, not only on the matching ID
-		So when the user closes one notification, the others don't function anymore
-		is this a bug in the library?
-
-		2020/02/08 09:14:49 sent notification id: 42
-		(...)
-		2020/02/08 09:14:49 sent notification id: 43
-		(user dismisses ONE of them, we get:)
-		2020/02/08 09:15:15 NotificationClosed: 43 Reason: DismissedByUser
-		2020/02/08 09:15:15 its all over, go home
-		2020/02/08 09:15:15 NotificationClosed: 43 Reason: DismissedByUser
-		2020/02/08 09:15:15 its all over, go home
-		(the buttons in notification 42 are now without function)
-	*/
-
-	if closer != nil {
-		log.Printf("NotificationClosed: %v Reason: %v", closer.ID, closer.Reason)
+	} else {
+		memory[id] = &n
+		log.Printf("sent notification id: %v", id)
 	}
 
+	wg.Add(2)
+	wg.Wait()
 }
 
 func sendDesktopNotification(title string, body string, durationms int32) {
