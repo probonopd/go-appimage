@@ -80,15 +80,16 @@ func sendUpdateDesktopNotification(ai AppImage, version string, changelogUrl str
 
 	var memory = map[uint32]*notify.Notification{} // https://github.com/esiqveland/notify/issues/8#issuecomment-584881627
 
-	// Listen for actions invoked!
+	// Listen for actions invoked
 	onAction := func(action *notify.ActionInvokedSignal) {
 		log.Printf("ActionInvoked: %v Key: %v", action.ID, action.ActionKey)
-		log.Println("memory[action.ID]:", memory[action.ID]) // https://github.com/esiqveland/notify/issues/8#issuecomment-584881627
-		// TODO: Check based on the information from the line above whether this onAction belongs to the notification we sent
 		if action != nil { // Without this if we get a crash if user just closes the notification w/o an action
 			log.Printf("ActionInvoked: %v Key: %v", action.ID, action.ActionKey)
-			if action.ActionKey == "update" {
-				log.Println("TODO: Update to be implemented here")
+			// Check based on &n == memory[action.ID] whether this onAction belongs to the notification we sent,
+			// Only act on notifications with "our" action ID
+			// https://github.com/esiqveland/notify/issues/8#issuecomment-584881627
+			if action.ActionKey == "update" && &n == memory[action.ID] {
+				log.Println("runUpdate", ai.path)
 				runUpdate(ai.path)
 			}
 		}
