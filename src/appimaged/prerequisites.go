@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -337,4 +338,144 @@ func setMyselfAsAutostart(){
 	}
 
 	log.Println("Done!")
+}
+
+
+// setupToRunThroughSystemd checks if this process has been launched through
+// systemd on a systemd system and takes appropriate measures if it has not,
+// either because systemd was not yet set up to launch it, or because
+// another (newer?) version has been launched manually by the user outside
+// of systemd
+func setupToRunThroughSystemd() {
+
+	// When this process is being launched, then check whether we have been
+	// launched by systemd. If the system is using systemd this process has
+	// not been launched through it, then we probably want to exit here and let
+	// systemd launch appimaged. We need to set up systemd to be able to do that
+	// in case it is not already set up this way.
+
+	if CheckIfRunningSystemd() == false {
+		log.Println("This system is not running systemd")
+		log.Println("This is not a problem; skipping checking the systemd service")
+		return
+	}
+
+	if CheckIfInvokedBySystemd() == false {
+
+		log.Println("Manually launched, not by systemd. Check if activated in systemd...")
+
+		prc := exec.Command("systemctl", "--user", "status", "appimaged")
+		out, err := prc.CombinedOutput()
+		if err != nil {
+			log.Println(prc.String())
+			log.Println(err)
+			// Note that if the service is stopped, we get an error exit code
+			// with "exit status 3", hence this must not be fatal here
+		}
+		output := strings.TrimSpace(string(out))
+
+		if strings.Contains(output, " enabled; ") {
+			log.Println("Already activated in systemd: restarting...")
+			prc := exec.Command("systemctl", "--user", "restart", "appimaged")
+			_, err := prc.CombinedOutput()
+			if err != nil {
+				log.Println(prc.String())
+				log.Println(err)
+			} else {
+				log.Println("Exiting...")
+				os.Exit(0)
+			}
+		} else {
+			log.Println("Not yet activated in systemd")
+			log.Println("TODO: activate")
+
+			if _, err := os.Stat("/etc/systemd/user/appimaged.service"); os.IsNotExist(err) {
+				log.Println("/etc/systemd/user/appimaged.service does not exist")
+				log.Println("TODO: Create it, or a $HOME-based variant of it")
+			}
+
+			if _, err := os.Stat("/usr/bin/appimagedlauncher"); os.IsNotExist(err) {
+				log.Println("/usr/bin/appimagedlauncher does not exist")
+				log.Println("TODO: Create it, or a $HOME-based variant of it")
+			}
+
+			log.Println("Activating systemd service...")
+			prc := exec.Command("systemctl", "--user", "activate", "appimaged")
+			_, err := prc.CombinedOutput()
+			if err != nil {
+				log.Println(prc.String())
+				log.Println(err)
+			}
+			log.Println("Starting systemd service...")
+			prc = exec.Command("systemctl", "--user", "start", "appimaged")
+			_, err = prc.CombinedOutput()
+			if err != nil {
+				log.Println(prc.String())
+				log.Println(err)
+			} else {
+				log.Println("Exiting...")
+				os.Exit(0)
+			}
+		}
+
+	}
+
+}
+
+// CheckIfRunningSystemd returns true if pid 1 is (a symlink to) systemd,
+// otherwise false
+func CheckIfRunningSystemd() bool {
+
+	prc := exec.Command("ps", "-p", "1", "-o", "comm=")
+	out, err := prc.Output()
+	if err != nil {
+		log.Println(prc.String())
+		log.Println(err)
+		return (false)
+	}
+	if strings.TrimSpace(string(out)) == "systemd" {
+		return true
+	}
+	return false
+}
+
+// CheckIfInvokedBySystemd returns true if this process has been invoked
+// by systemd directly or indirectly, false in case it hasn't, the system is not
+// using systemd, or we are not sure
+func CheckIfInvokedBySystemd() bool {
+
+	if CheckIfRunningSystemd() == false {
+		log.Println("This system is not running systemd")
+		return false
+	}
+
+	// https://serverfault.com/a/927481
+	// systemd v232 added the concept of an invocation ID of a unit,
+	// which is passed to the unit in the $INVOCATION_ID
+	// environment variable. You can check if that’s set or not.
+	prc := exec.Command("systemd", "--version")
+	out, err := prc.Output()
+	if err != nil {
+		log.Println(prc.String())
+		log.Println(err)
+		return (false)
+	}
+	output := strings.TrimSpace(string(out))
+	systemdVersion, err := strconv.Atoi(strings.Split(strings.Split(output, "\n")[0], " ")[1])
+	if err != nil {
+		log.Println(err)
+		return (false)
+	}
+	log.Println("systemd version:", systemdVersion)
+
+	if systemdVersion < 232 {
+		log.Println("systemd version lower than 232, hence we cannot determine")
+		log.Println("whether we have been launched by it using $INVOCATION_ID")
+	}
+
+	if invocationId, ok := os.LookupEnv("INVOCATION_ID"); ok {
+		log.Println("Launched by systemd: INVOCATION_ID", invocationId)
+		return true
+	}
+	return false
 }
