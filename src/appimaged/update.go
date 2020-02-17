@@ -48,6 +48,7 @@ func runUpdate(path string) {
 		sendDesktopNotification("AppImageUpdater missing", "Please download the AppImageUpdater\nAppImage and try again", 30000)
 		// Tried making a hyperlink but when I click it in Xfce, nothing happens.
 	} else {
+		os.Unsetenv("INVOCATION_ID") // This is a variable that systemd sets; we use it to determine whether we were launched through systemd
 		cmd := []string{a}
 		cmd = append(cmd, "-n")
 		cmd = append(cmd, "-d")
