@@ -18,7 +18,7 @@ import (
 // sendUpdateDesktopNotification sends a desktop notification for an update.
 // Use this with "go" prefixed to it so that it runs in the background, because it waits
 // until the user clicks on "Update" or the timeout occurs
-func sendUpdateDesktopNotification(ai AppImage, version string, changelogUrl string) {
+func sendUpdateDesktopNotification(ai AppImage, version string, changelog string) {
 
 	wg := &sync.WaitGroup{}
 
@@ -51,8 +51,8 @@ func sendUpdateDesktopNotification(ai AppImage, version string, changelogUrl str
 		ReplacesID:    uint32(0),
 		AppIcon:       iconName,
 		Summary:       "Update available",
-		Body:          ai.niceName + " can be updated to version " + version + ". \n<a href='" + changelogUrl + "'>View Changelog</a>",
-		Actions:       []string{"update", "Update", "changelog", "View Changelog"}, // tuples of (action_key, label)
+		Body:          ai.niceName + " can be updated to version " + version + ". \nchangelog",
+		Actions:       []string{"update", "Update"}, // tuples of (action_key, label)
 		Hints:         map[string]dbus.Variant{},
 		ExpireTimeout: int32(120000),
 	}
