@@ -130,9 +130,10 @@ func main() {
 	}
 
 	checkPrerequisites()
-
-	fmt.Println("Setting as autostart...")
-	setMyselfAsAutostart()
+	
+	setupToRunThroughSystemd()
+	// fmt.Println("Setting as autostart...")
+	// setMyselfAsAutostart()
 
 	// Watch the filesystem for accesses using fanotify
 	// FANotifyMonitor() // fanotifymonitor error: operation not permitted
