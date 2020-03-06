@@ -1,6 +1,6 @@
 # appimagetool
 
-This is an experimental implementation of the AppImage command line tool, `appimagetool`, in Go, mainly to see what is possible.
+This is an experimental implementation of the AppImage command line tool, `appimagetool`, in Go, mainly to see what is possible. It can also do what [linuxdeployqt]() does using the `deploy` verb.
 
 ## Installation and usage
 
@@ -9,7 +9,11 @@ Assuming you are using a 64-bit Intel machine (arm64, also known as x86_64), you
 ```
 wget -c https://github.com/$(wget -q https://github.com/probonopd/go-appimage/releases -O - | grep "appimagetool-.*-x86_64.AppImage" | head -n 1 | cut -d '"' -f 2)
 chmod +x appimagetool-*.AppImage
-VERSION=1.0 ./appimagetool-*.AppImage ./Some.AppDir
+./appimagetool-*.AppImage -s deploy appdir/usr/share/applications/*.desktop # Bundle EVERYTHING
+# or 
+./appimagetool-*.AppImage deploy appdir/usr/share/applications/*.desktop # Bundle everything expect what comes with the base system
+# and
+VERSION=1.0 ./appimagetool-*.AppImage ./Some.AppDir # turn AppDir into AppImage
 ```
 
 https://github.com/probonopd/go-appimage/releases/tag/continuous has builds for 32-bit Intel, 32-bit ARM (e.g., Raspberry Pi), and 64-bit ARM.
