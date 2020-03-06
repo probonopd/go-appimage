@@ -91,7 +91,7 @@ fi
 ############################################################################################
 
 if [ ! -z $(find "${HERE}" -name "libgstcoreelements.so" -type f) ] ; then
-  export GST_PLUGIN_PATH=$(dirname $(readlink -f $(find squashfs-root/ -name "libgstcoreelements.so" -type f | head -n 1)))
+  export GST_PLUGIN_PATH=$(dirname $(readlink -f $(find "${HERE}" -name "libgstcoreelements.so" -type f | head -n 1)))
   export GST_PLUGIN_SCANNER=$(find "${HERE}" -name "gst-plugin-scanner" -type f | head -n 1)
   export GST_PLUGIN_SYSTEM_PATH=$GST_PLUGIN_PATH
   env | grep GST
@@ -265,13 +265,52 @@ func AppDirDeploy(path string) {
 	// Same as above, but for Gtk 2
 	deployGtkDirectory(appdir, 2)
 
+	// ALSA
+	// FIXME: Doesn't seem to get loaded. Is ALSA_PLUGIN_DIR needed and working in ALSA?
+	// Is something like https://github.com/flatpak/freedesktop-sdk-images/blob/1.6/alsa-lib-plugin-path.patch needed in the bundled ALSA?
+	// TODO: What about the `share/alsa` subdirectory? libasound.so.* refers to it as well
+	for _, lib := range allELFs {
+		if strings.HasPrefix(filepath.Base(lib), "libasound.so") {
+			log.Println("Bundling alsa-lib directory (for <tbd>)...")
+			locs, err := findWithPrefixInLibraryLocations("alsa-lib")
+			if err != nil {
+				log.Println("Could not find alsa-lib directory")
+				log.Println("E.g., in Alpine Linux: apk add alsa-plugins alsa-plugins-pulse")
+				os.Exit(1)
+			} else {
+				log.Println("Bundling dependencies of alsa-lib directory...")
+				determineELFsInDirTree(appdir, locs[0])
+			}
+
+			break
+		}
+	}
+
+	// PulseAudio
+	// TODO: What about the `/usr/lib/pulse-*` directory?
+	for _, lib := range allELFs {
+		if strings.HasPrefix(filepath.Base(lib), "libpulse.so") {
+			log.Println("Bundling pulseaudio directory (for <tbd>)...")
+			locs, err := findWithPrefixInLibraryLocations("pulseaudio")
+			if err != nil {
+				log.Println("Could not find pulseaudio directory")
+				os.Exit(1)
+			} else {
+				log.Println("Bundling dependencies of pulseaudio directory...")
+				determineELFsInDirTree(appdir, locs[0])
+			}
+
+			break
+		}
+	}
+
 	log.Println("Patching ld-linux...")
 
 	cmd := exec.Command("patchelf", "--print-interpreter", appdir.MainExecutable)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(cmd.String())
-		helpers.PrintError("patchelf --print-interpreter "+appdir.MainExecutable+": "+string(out), err)		
+		helpers.PrintError("patchelf --print-interpreter "+appdir.MainExecutable+": "+string(out), err)
 		os.Exit(1)
 	}
 	ldLinux := strings.TrimSpace(string(out))
@@ -312,7 +351,7 @@ func AppDirDeploy(path string) {
 			helpers.PrintError("PatchFile", err)
 			os.Exit(1)
 		}
-		
+
 		log.Println("Determining gconv (for GCONV_PATH)...")
 		// Search in all of the system's library directories for a directory called gconv
 		// and put it into the a location which matches the GCONV_PATH we export in AppRun
