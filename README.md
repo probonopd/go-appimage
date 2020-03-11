@@ -19,14 +19,9 @@ I am playing around with Go because
 * Go is designed with concurrency and networking in mind - stuff that will come in handy for building in p2p distribution and updating
 * Go is something I want to learn - and one learns best using a concrete project
 
-## Ideas
-
-* Build in p2p distribution using IPFS (which is written in Go)? https://github.com/hsanjuan/ipfs-lite/ or https://github.com/ipfs/go-ipfs/tree/master/docs/examples/go-ipfs-as-a-library
-* Build in zsync (Go should be a good choice for it)? https://github.com/agriardyan/go-zsyncmake/ + TBD
-
 ## TODO
 
-* Get rid of C code embedded in Go (e.g., for the calculation of the size of an ELF)
+* Get rid of C code embedded in Go
 * Write tests
 
 ## Conventions
