@@ -21,4 +21,15 @@ cache:
     - $HOME/.cache/go-build # https://restic.net/blog/2018-09-02/travis-build-cache
     - $HOME/gopath/pkg/mod # https://restic.net/blog/2018-09-02/travis-build-cache
     - $GOPATH/pkg/mod # https://evilmartians.com/chronicles/speeding-up-go-modules-for-docker-and-ci
-#   - $HOME/gopath/src # This is where my code gets downloaded to as well, so maybe not the best solution
+   # $HOME/gopath/src # This is where my code gets downloaded to as well, so maybe not the best solution
+
+notifications:
+  irc:
+    channels:
+      - "chat.freenode.net#AppImage"
+    on_success: always  # options: [always|never|change] default: always
+    on_failure: always  # options: [always|never|change] default: always
+    on_start: always    # options: [always|never|change] default: always
+    template:
+      - "%{repository} build %{build_number}: %{result} %{build_url}"
+    use_notice: true
