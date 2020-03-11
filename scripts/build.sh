@@ -39,6 +39,7 @@ sudo tar -C /usr/local -xzf go*.tar.gz
 export PATH=/usr/local/go/bin:$PATH
 
 # Get dependencies needed for CGo # FIXME: Get rid of the need for CGo and, in return, those dependencies
+sudo apt-get -q update
 if [ $(go env GOHOSTARCH) == "amd64" ] ; then sudo apt-get -y install gcc-multilib autoconf ; fi
 if [ $(go env GOHOSTARCH) == "arm64" ] ; then sudo apt-get -y install gcc-arm-linux-gnueabi autoconf ; fi
 
