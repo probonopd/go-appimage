@@ -8,8 +8,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/agriardyan/go-zsyncmake/zsync"
-	"gopkg.in/ini.v1"
 	"io/ioutil"
 	"log"
 	"os"
@@ -18,6 +16,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/agriardyan/go-zsyncmake/zsync"
+	"gopkg.in/ini.v1"
 
 	"github.com/probonopd/go-appimage/internal/helpers"
 )
@@ -450,15 +451,18 @@ func GenerateAppImage(appdir string) {
 		fmt.Println("Time conversion error:", fstime, "is not an integer.")
 		FSTime = time.Unix(0, 0)
 	}
-	
+
 	// Exit if we cannot set the permissions of the AppDir,
 	// this is important e.g., for Firejail
 	// https://github.com/AppImage/AppImageKit/issues/1032#issuecomment-596225173
-	if err := os.Chmod(appdir, 0755); err != nil {
-		helpers.PrintError("Cannot set permissions on AppDir:", err)
+	info, err := os.Stat(appdir)
+	m := info.Mode()
+	if m&(1<<2) == 0 {
+		// Other users don't have read permission, https://stackoverflow.com/a/45430141
+		helpers.PrintError("Wrong permissions on AppDir, please set it to 0755 and try again", err)
 		os.Exit(1)
 	}
-	
+
 	// "mksquashfs", source, destination, "-offset", offset, "-comp", "gzip", "-root-owned", "-noappend"
 	cmd := exec.Command("mksquashfs", appdir, target, "-offset", strconv.FormatInt(offset, 10), "-fstime", fstime, "-comp", "gzip", "-root-owned", "-noappend")
 	fmt.Println(cmd.String())
