@@ -459,7 +459,7 @@ func GenerateAppImage(appdir string) {
 	m := info.Mode()
 	if m&(1<<2) == 0 {
 		// Other users don't have read permission, https://stackoverflow.com/a/45430141
-		Log.Println("Wrong permissions on AppDir, please set it to 0755 and try again")
+		log.Println("Wrong permissions on AppDir, please set it to 0755 and try again")
 		os.Exit(1)
 	}
 
