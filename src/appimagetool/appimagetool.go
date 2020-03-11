@@ -455,11 +455,11 @@ func GenerateAppImage(appdir string) {
 	// Exit if we cannot set the permissions of the AppDir,
 	// this is important e.g., for Firejail
 	// https://github.com/AppImage/AppImageKit/issues/1032#issuecomment-596225173
-	info, err := os.Stat(appdir)
+	info, err := os.Stat(appdir) // TODO: Walk all directories instead of just looking at the AppDir itself
 	m := info.Mode()
 	if m&(1<<2) == 0 {
 		// Other users don't have read permission, https://stackoverflow.com/a/45430141
-		helpers.PrintError("Wrong permissions on AppDir, please set it to 0755 and try again", err)
+		Log.Println("Wrong permissions on AppDir, please set it to 0755 and try again")
 		os.Exit(1)
 	}
 
