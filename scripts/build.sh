@@ -106,7 +106,7 @@ mkdir -p appimagetool.AppDir/usr/bin
 ( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/mksquashfs )
 ( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/AppImage/AppImageKit/releases/download/continuous/runtime-x86_64 )
 ( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh -O uploadtool )
-wget https://github.com/NixOS/patchelf/archive/0.9.tar.gz # 0.10 cripples files, hence se 0.9
+wget https://github.com/NixOS/patchelf/archive/0.9.tar.gz # 0.10 cripples files, hence use 0.9
 tar xf 0.9.tar.gz 
 cd patchelf-*/
 ./bootstrap.sh
