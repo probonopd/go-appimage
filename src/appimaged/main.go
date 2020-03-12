@@ -441,7 +441,7 @@ func watchDirectoriesReally(watchedDirectories []string) {
 		infos, err := ioutil.ReadDir(v)
 		if err != nil {
 			helpers.PrintError("watchDirectoriesReally", err)
-			return
+			continue
 		}
 		for _, info := range infos {
 			if err != nil {
