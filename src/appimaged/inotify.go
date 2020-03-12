@@ -41,7 +41,7 @@ func inotifyWatch(path string) {
 	if err := notify.Watch(path, c, notify.InCloseWrite, notify.InMovedTo,
 		notify.InMovedFrom, notify.InDelete,
 		notify.InDeleteSelf); err != nil {
-		log.Fatal(err)
+		log.Println(err) // Don't be fatal if a directory cannot be read (e.g., no read rights)
 	}
 	defer notify.Stop(c)
 
