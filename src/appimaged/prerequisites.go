@@ -446,25 +446,26 @@ func CheckIfInvokedBySystemd() bool {
 // AppImage in $XDG_DATA_HOME/systemd/user or $HOME/.local/share/systemd/user
 func installServiceFileInHome() {
 	var err error
-	log.Println("Creating ~/.local/share/systemd/user/appimaged.service")
 	home, _ := os.UserHomeDir()
 	// Note that https://www.freedesktop.org/software/systemd/man/systemd.unit.html
-	// says $XDG_DATA_HOME/systemd/user or $HOME/.local/share/systemd/user
+	// says $XDG_CONFIG_HOME/systemd/user or $HOME/.config/systemd/user
 	// Units of packages that have been installed in the home directory
-	// ($XDG_DATA_HOME is used if set, ~/.local/share otherwise)
+	// ($XDG_CONFIG_HOME is used if set, ~/.config otherwise)
 	var pathToServiceDir string
-	if os.Getenv("XDG_DATA_HOME") != "" {
-		err = os.MkdirAll(xdg.DataHome+"/systemd/user/", os.ModePerm)
+	if os.Getenv("XDG_CONFIG_HOME") != "" {
+		log.Println("Creating $XDG_CONFIG_HOME/systemd/user/appimaged.service")
+		err = os.MkdirAll(xdg.ConfigHome+"/systemd/user/", os.ModePerm)
 		if err == nil {
-			pathToServiceDir = xdg.DataHome + "/systemd/user/"
+			pathToServiceDir = xdg.ConfigHome + "/systemd/user/"
 		} else {
 			helpers.LogError("Failed making directory for service files", err)
 			return
 		}
 	} else {
-		err = os.MkdirAll(home+"/.local/share/systemd/user/", os.ModePerm)
+		log.Println("Creating ~/.config/systemd/user/appimaged.service")
+		err = os.MkdirAll(home+"/.config/systemd/user/", os.ModePerm)
 		if err == nil {
-			pathToServiceDir = home + "/.local/share/systemd/user/"
+			pathToServiceDir = home + "/.config/systemd/user/"
 		} else {
 			helpers.LogError("Failed making directory for service files", err)
 			return
@@ -493,7 +494,7 @@ WantedBy=default.target`)
 	err = ioutil.WriteFile(pathToServiceDir+"appimaged.service", d1, 0644)
 	helpers.LogError("Error writing service file", err)
 
-	prc := exec.Command("systemctl", "daemon-reload")
+	prc := exec.Command("systemctl", "--user", "daemon-reload")
 	_, err = prc.CombinedOutput()
 	if err != nil {
 		log.Println(prc.String())
