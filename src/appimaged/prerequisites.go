@@ -453,7 +453,7 @@ func CheckIfInvokedBySystemd() bool {
 	// systemd v232 added the concept of an invocation ID of a unit,
 	// which is passed to the unit in the $INVOCATION_ID
 	// environment variable. You can check if that’s set or not.
-	prc := exec.Command("systemd", "--version")
+	prc := exec.Command("systemctl", "--version") // systemd is not on $PATH e.g., on openSUSE, hence use this
 	out, err := prc.Output()
 	if err != nil {
 		log.Println(prc.String())
