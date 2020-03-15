@@ -74,7 +74,6 @@ go get -v golang.org/x/xerrors
 # 64-bit
 go get -v github.com/probonopd/go-appimage/src/appimaged || true # FIXME: Why does this comand return a non-0 exit status?
 ( cd $GOPATH/src/github.com/srwiley/oksvg ; git checkout gradfix ) # FIXME: This is probably not the way to do it
-( cd $GOPATH/src/github.com/go-language-server/uri ; git checkout a822a9b ) # FIXME: Workaround for: appimage.go:23:2: code in directory /home/me/go/src/github.com/go-language-server/uri expects import "go.lsp.dev/uri"
 go build -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimaged
 mv ./appimaged appimaged-$(go env GOHOSTARCH)
 
