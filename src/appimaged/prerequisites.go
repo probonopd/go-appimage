@@ -335,6 +335,12 @@ func setupToRunThroughSystemd() {
 
 		log.Println("Manually launched, not by systemd. Check if activated in systemd...")
 
+		if _, err := os.Stat("/etc/systemd/user/appimaged.service"); os.IsNotExist(err) {
+			log.Println("/etc/systemd/user/appimaged.service does not exist")
+			log.Println("Creating ~/.local/share/systemd/user/appimaged.service")
+			installServiceFileInHome()
+		}
+
 		prc := exec.Command("systemctl", "--user", "status", "appimaged")
 		out, err := prc.CombinedOutput()
 		if err != nil {
@@ -357,19 +363,6 @@ func setupToRunThroughSystemd() {
 				os.Exit(0)
 			}
 		} else {
-			log.Println("Not yet activated in systemd")
-			log.Println("TODO: activate")
-
-			if _, err := os.Stat("/etc/systemd/user/appimaged.service"); os.IsNotExist(err) {
-				log.Println("/etc/systemd/user/appimaged.service does not exist")
-				log.Println("TODO: Create it, or a $HOME-based variant of it")
-			}
-
-			if _, err := os.Stat("/usr/bin/appimagedlauncher"); os.IsNotExist(err) {
-				log.Println("/usr/bin/appimagedlauncher does not exist")
-				log.Println("TODO: Create it, or a $HOME-based variant of it")
-			}
-
 			log.Println("Activating systemd service...")
 			prc := exec.Command("systemctl", "--user", "activate", "appimaged")
 			_, err := prc.CombinedOutput()
@@ -449,4 +442,55 @@ func CheckIfInvokedBySystemd() bool {
 		return true
 	}
 	return false
+}
+
+// installServiceFileInHome installs a service file for the currently running
+// AppImage in $XDG_DATA_HOME/systemd/user or $HOME/.local/share/systemd/user
+func installServiceFileInHome() {
+	var err error
+	log.Println("Creating ~/.local/share/systemd/user/appimaged.service")
+	home, _ := os.UserHomeDir()
+	// Note that https://www.freedesktop.org/software/systemd/man/systemd.unit.html
+	// says $XDG_DATA_HOME/systemd/user or $HOME/.local/share/systemd/user
+	// Units of packages that have been installed in the home directory
+	// ($XDG_DATA_HOME is used if set, ~/.local/share otherwise)
+	var pathToServiceDir string
+	if os.Getenv("XDG_DATA_HOME") != "" {
+		err = os.MkdirAll(xdg.DataHome+"/systemd/user/", os.ModePerm)
+		if err == nil {
+			pathToServiceDir = xdg.DataHome + "/systemd/user/"
+		} else {
+			helpers.LogError("Failed making directory for service files", err)
+			return
+		}
+	} else {
+		err = os.MkdirAll(home+"/.local/share/systemd/user/", os.ModePerm)
+		if err == nil {
+			pathToServiceDir = home + "/.local/share/systemd/user/"
+		} else {
+			helpers.LogError("Failed making directory for service files", err)
+			return
+		}
+	}
+
+	d1 := []byte(`[Unit]
+Description=AppImage system integration daemon
+After=syslog.target network.target
+
+[Service]
+Type=simple
+ExecStart=` + thisai.path + `
+
+RestartSec=3
+Restart=always
+
+StandardOutput=syslog
+StandardError=syslog
+
+SyslogIdentifier=appimaged
+
+[Install]
+WantedBy=default.target`)
+	err = ioutil.WriteFile(pathToServiceDir+"appimaged.service", d1, 0644)
+	helpers.LogError("Writing service file", err)
 }
