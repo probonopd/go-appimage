@@ -492,4 +492,12 @@ SyslogIdentifier=appimaged
 WantedBy=default.target`)
 	err = ioutil.WriteFile(pathToServiceDir+"appimaged.service", d1, 0644)
 	helpers.LogError("Error writing service file", err)
+
+	prc := exec.Command("systemctl", "daemon-reload")
+	_, err = prc.CombinedOutput()
+	if err != nil {
+		log.Println(prc.String())
+		log.Println(err)
+	}
+
 }
