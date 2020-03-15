@@ -111,7 +111,7 @@ func setupSigning() {
 
 	_, response, err := client.Authentication.UsingGithubToken(context.Background(), token)
 	if got, want := response.StatusCode, 200; got != want {
-		fmt.Println("UsingGithubToken fails: invalid http response %s", response.Status)
+		fmt.Println("UsingGithubToken fails: invalid http response " + string(response.Status))
 	}
 
 	if err != nil {
