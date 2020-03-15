@@ -473,6 +473,7 @@ func installServiceFileInHome() {
 		}
 	}
 
+	log.Println("thisai.path:", thisai.path)
 	d1 := []byte(`[Unit]
 Description=AppImage system integration daemon
 After=syslog.target network.target
@@ -492,5 +493,5 @@ SyslogIdentifier=appimaged
 [Install]
 WantedBy=default.target`)
 	err = ioutil.WriteFile(pathToServiceDir+"appimaged.service", d1, 0644)
-	helpers.LogError("Writing service file", err)
+	helpers.LogError("Error writing service file", err)
 }
