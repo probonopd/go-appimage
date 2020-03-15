@@ -20,8 +20,8 @@ import (
 	"time"
 
 	"github.com/adrg/xdg"
-	"github.com/go-language-server/uri"
 	"github.com/probonopd/go-appimage/internal/helpers"
+	"go.lsp.dev/uri"
 )
 
 // Handles AppImage files.

@@ -2,13 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/ProtonMail/go-autostart"
+
 	"github.com/acobaugh/osrelease"
 	"github.com/adrg/xdg"
+
 	//	"github.com/amenzhinsky/go-polkit"
-	systemddbus "github.com/coreos/go-systemd/dbus"
-	"github.com/probonopd/go-appimage/internal/helpers"
-	"github.com/shirou/gopsutil/process"
 	"io/ioutil"
 	"log"
 	"os"
@@ -17,6 +15,10 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	systemddbus "github.com/coreos/go-systemd/dbus"
+	"github.com/probonopd/go-appimage/internal/helpers"
+	"github.com/shirou/gopsutil/process"
 )
 
 func checkPrerequisites() {
@@ -114,7 +116,7 @@ func checkPrerequisites() {
 
 	// Some systems may expect thumbnails in another (old?) location. Use that old location if it exists and the new location does not exist
 	// TODO: Find a more robust mechanism
-	if helpers.Exists(ThumbnailsDirNormal) == false &&  helpers.Exists(home+"/.thumbnails/normal/") == true {
+	if helpers.Exists(ThumbnailsDirNormal) == false && helpers.Exists(home+"/.thumbnails/normal/") == true {
 		log.Println("Using", ThumbnailsDirNormal, "as the location for thumbnails")
 		ThumbnailsDirNormal = home + "/.thumbnails/normal/"
 	}
@@ -309,37 +311,6 @@ fi
 systemctl restart udisks2
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++`)
 }
-
-// Set this application as autostart so that it is started with the user session
-// TODO: Autostart removal procedure
-// TODO: Detect if we are running on a Live system and act differently then
-func setMyselfAsAutostart(){
-	var whatToAutostart string
-	if thisai.imagetype > 0 {
-		whatToAutostart = thisai.path
-	} else {
-		whatToAutostart, _ = os.Readlink("/proc/self/exe")
-	}
-
-	app := &autostart.App{
-		Name: "appimaged",
-		DisplayName: thisai.niceName,
-		Exec: []string{whatToAutostart},
-	}
-
-	if app.IsEnabled() {
-		log.Println("App is already enabled for autostart")
-	} else {
-		log.Println("Enabling app for autostart...")
-
-		if err := app.Enable(); err != nil {
-			log.Fatal(err)
-		}
-	}
-
-	log.Println("Done!")
-}
-
 
 // setupToRunThroughSystemd checks if this process has been launched through
 // systemd on a systemd system and takes appropriate measures if it has not,
