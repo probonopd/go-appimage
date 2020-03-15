@@ -88,6 +88,8 @@ var candidateDirectories = []string{
 
 func main() {
 
+	thisai.path = helpers.HereArgs0()
+
 	// As quickly as possible go there if we are invoked from the command line with a command
 	takeCareOfCommandlineCommands()
 
@@ -130,7 +132,7 @@ func main() {
 	}
 
 	checkPrerequisites()
-	
+
 	setupToRunThroughSystemd()
 	// fmt.Println("Setting as autostart...")
 	// setMyselfAsAutostart()

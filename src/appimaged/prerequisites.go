@@ -337,7 +337,6 @@ func setupToRunThroughSystemd() {
 
 		if _, err := os.Stat("/etc/systemd/user/appimaged.service"); os.IsNotExist(err) {
 			log.Println("/etc/systemd/user/appimaged.service does not exist")
-			log.Println("Creating ~/.local/share/systemd/user/appimaged.service")
 			installServiceFileInHome()
 		}
 
@@ -352,14 +351,13 @@ func setupToRunThroughSystemd() {
 		output := strings.TrimSpace(string(out))
 
 		if strings.Contains(output, " enabled; ") {
-			log.Println("Already activated in systemd: restarting...")
+			log.Println("Restarting via systemd...")
 			prc := exec.Command("systemctl", "--user", "restart", "appimaged")
 			_, err := prc.CombinedOutput()
 			if err != nil {
 				log.Println(prc.String())
 				log.Println(err)
 			} else {
-				log.Println("Exiting...")
 				os.Exit(0)
 			}
 		} else {
