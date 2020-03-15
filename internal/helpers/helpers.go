@@ -45,7 +45,8 @@ func LogError(context string, e error) {
 	}
 }
 
-// Here returns the location of the executable based on /proc/self/exe
+// Here returns the absolute path to the parent directory
+// of the executable based on /proc/self/exe
 // This will only work on Linux. For AppImages, it will resolve to the
 // inside of an AppImage
 func Here() string {
@@ -53,10 +54,22 @@ func Here() string {
 	return filepath.Dir(fi)
 }
 
-// Here returns the location of the executable based on os.Args[0]
+// HereArgs0 returns the absolute path to the parent directory
+// of the executable based on os.Args[0]
 // For AppImages, it will resolve to the outside of an AppImage
 func HereArgs0() string {
 	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		log.Println(err)
+		return ""
+	}
+	return dir
+}
+
+// Args0 returns the absolute path to the executable based on os.Args[0]
+// For AppImages, it will resolve to the outside of an AppImage
+func Args0() string {
+	dir, err := filepath.Abs(os.Args[0])
 	if err != nil {
 		log.Println(err)
 		return ""
