@@ -48,8 +48,8 @@ if [ $(go env GOHOSTARCH) == "arm64" ] ; then sudo apt-get -y install gcc-arm-li
 # Build appimagetool
 ##############################################################
 
-go get -v github.com/probonopd/go-appimage/...
 cd $GOPATH/src
+go get -v github.com/probonopd/go-appimage/...
 
 # 64-bit
 go build -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimagetool
