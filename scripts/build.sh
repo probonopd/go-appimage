@@ -19,7 +19,7 @@ set -x
 ##############################################################
 
 # Disregard any other Go environment that may be on the system (e.g., on Travis CI)
-unset GOARCH GOBIN GOEXE GOHOSTARCH GOHOSTOS GOOS GORACE GOROOT GOTOOLDIR CC GOGCCFLAGS CGO_ENABLED
+unset GOARCH GOBIN GOEXE GOHOSTARCH GOHOSTOS GOOS GORACE GOROOT GOTOOLDIR CC GOGCCFLAGS CGO_ENABLED GO111MODULE
 export GOPATH=$HOME/go
 
 # Export version and build number
@@ -47,8 +47,10 @@ if [ $(go env GOHOSTARCH) == "arm64" ] ; then sudo apt-get -y install gcc-arm-li
 # Build appimagetool
 ##############################################################
 
+go get -v github.com/probonopd/go-appimage/...
+cd $GOPATH/src
+
 # 64-bit
-go get -v github.com/probonopd/go-appimage/src/appimagetool
 go build -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimagetool
 mv ./appimagetool appimagetool-$(go env GOHOSTARCH)
 
@@ -65,15 +67,7 @@ fi
 # Bild appimaged
 ##############################################################
 
-# FIXME: Workaround for:
-# go/src/github.com/go-language-server/uri/uri.go:15:2: cannot find package "golang.org/x/xerrors" in any of:
-# 	/usr/local/go/src/golang.org/x/xerrors (from $GOROOT)
-# 	/home/me/go/src/golang.org/x/xerrors (from $GOPATH)
-go get -v golang.org/x/xerrors
-
 # 64-bit
-go get -v github.com/probonopd/go-appimage/src/appimaged || true # FIXME: Why does this comand return a non-0 exit status?
-( cd $GOPATH/src/github.com/srwiley/oksvg ; git checkout gradfix ) # FIXME: This is probably not the way to do it
 go build -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimaged
 mv ./appimaged appimaged-$(go env GOHOSTARCH)
 
