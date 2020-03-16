@@ -72,8 +72,7 @@ fi
 go get -v golang.org/x/xerrors
 
 # 64-bit
-go get -v github.com/probonopd/go-appimage/src/appimaged || true # FIXME: Why does this comand return a non-0 exit status?
-( cd $GOPATH/src/github.com/srwiley/oksvg ; git checkout gradfix ) # FIXME: This is probably not the way to do it
+go get -v github.com/probonopd/go-appimage/src/appimaged 
 go build -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimaged
 mv ./appimaged appimaged-$(go env GOHOSTARCH)
 
