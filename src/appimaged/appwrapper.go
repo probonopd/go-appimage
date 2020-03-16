@@ -14,7 +14,7 @@ import (
 	"syscall"
 
 	"github.com/adrg/xdg"
-	"github.com/godbus/dbus"
+	"github.com/godbus/dbus/v5"
 	"github.com/probonopd/go-appimage/internal/helpers"
 	"gopkg.in/ini.v1"
 )

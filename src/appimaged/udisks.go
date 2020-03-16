@@ -6,7 +6,7 @@ import (
 
 	"github.com/probonopd/go-appimage/internal/helpers"
 
-	"github.com/godbus/dbus"
+	"github.com/godbus/dbus/v5"
 )
 
 /*

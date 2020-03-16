@@ -197,7 +197,7 @@ func AppDirDeploy(path string) {
 	// PulseAudio
 	handlePulseAudio(appdir)
 
-	ldLinux, err := appdir.GetElfInterpreter()
+	ldLinux, err := appdir.GetElfInterpreter(appdir)
 	if err != nil {
 		helpers.PrintError("Could not determine ELF interpreter", err)
 		os.Exit(1)
@@ -221,13 +221,13 @@ func AppDirDeploy(path string) {
 	}
 
 	if *standalonePtr == true {
-		err = deployInterpreter(ldLinux, err, src, appdir)
+		err = deployInterpreter(ldLinux, src, appdir)
 	} else {
 		log.Println("Not deploying", ldLinux, "because it was not requested or it is not needed")
 	}
 
 	if helpers.Exists(appdir.Path + "/usr/share/glib-2.0/schemas") {
-		err = handleGlibSchemas(appdir, err)
+		err = handleGlibSchemas(appdir)
 		if err != nil {
 			helpers.PrintError("Could not deploy GLib schemas", err)
 		}
@@ -710,7 +710,7 @@ func deployGtkDirectory(appdir helpers.AppDir, gtkVersion int) {
 		var dirswithUiFiles []string
 		for _, uifile := range uifiles {
 			dirswithUiFiles = helpers.AppendIfMissing(dirswithUiFiles, filepath.Dir(uifile))
-			err = PatchFile(appdir.MainExecutable, "/usr", "././")
+			err := PatchFile(appdir.MainExecutable, "/usr", "././")
 			if err != nil {
 				helpers.PrintError("PatchFile", err)
 				os.Exit(1)

@@ -16,7 +16,7 @@ import (
 	"strconv"
 	"strings"
 
-	systemddbus "github.com/coreos/go-systemd/dbus"
+	systemddbus "github.com/coreos/go-systemd/v22/dbus"
 	"github.com/probonopd/go-appimage/internal/helpers"
 	"github.com/shirou/gopsutil/process"
 )

@@ -11,7 +11,7 @@ import (
 	"sync"
 
 	"github.com/esiqveland/notify"
-	"github.com/godbus/dbus"
+	"github.com/godbus/dbus/v5"
 	"github.com/probonopd/go-appimage/internal/helpers"
 )
 

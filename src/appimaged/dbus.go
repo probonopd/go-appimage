@@ -25,7 +25,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/godbus/dbus"
+	"github.com/godbus/dbus/v5"
 	"github.com/probonopd/go-appimage/internal/helpers"
 	"go.lsp.dev/uri"
 )
