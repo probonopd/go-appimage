@@ -6,6 +6,7 @@ import (
 	"gopkg.in/ini.v1"
 	"io/ioutil"
 	"log"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -104,4 +105,16 @@ func NewAppDir(desktopFilePath string) (AppDir, error) {
 	ad.MainExecutable = ad.Path + "/usr/bin/" + strings.Split(exec.String(), " ")[0] // TODO: Do not hardcode /usr/bin, instead search the AppDir for an executable file with that name?
 
 	return ad, nil
+}
+
+func (AppDir) GetElfInterpreter(appdir AppDir) (string, error) {
+	cmd := exec.Command("patchelf", "--print-interpreter", appdir.MainExecutable)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(cmd.String())
+		PrintError("patchelf --print-interpreter "+appdir.MainExecutable+": "+string(out), err)
+		return "", err
+	}
+	ldLinux := strings.TrimSpace(string(out))
+	return ldLinux, nil
 }

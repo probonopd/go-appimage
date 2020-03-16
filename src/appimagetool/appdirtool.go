@@ -176,12 +176,328 @@ func AppDirDeploy(path string) {
 	log.Println("Gathering all required libraries for the AppDir...")
 	determineELFsInDirTree(appdir, appdir.Path)
 
+	// Gdk
+	handleGdk(appdir)
+
+	// GStreamer
+	handleGStreamer(appdir)
+
+	// Gtk 3 modules/plugins
+	// If there is a .so with the name libgtk-3 inside the AppDir, then we need to
+	// bundle Gdk modules/plugins
+	deployGtkDirectory(appdir, 3)
+
+	// Gtk 2 modules/plugins
+	// Same as above, but for Gtk 2
+	deployGtkDirectory(appdir, 2)
+
+	// ALSA
+	handleAlsa(appdir)
+
+	// PulseAudio
+	handlePulseAudio(appdir)
+
+	ldLinux, err := appdir.GetElfInterpreter()
+	if err != nil {
+		helpers.PrintError("Could not determine ELF interpreter", err)
+		os.Exit(1)
+	}
+
+	if helpers.Exists(appdir.Path+"/"+ldLinux) == true {
+		log.Println("Removing pre-existing", ldLinux+"...")
+		err = syscall.Unlink(appdir.Path + "/" + ldLinux)
+		if err != nil {
+			helpers.PrintError("Could not remove pre-existing ld-linux", err)
+			os.Exit(1)
+		}
+
+	}
+
+	// ld-linux might be a symlink; hence we first need to resolve it
+	src, err := os.Readlink(ldLinux)
+	if err != nil {
+		helpers.PrintError("Could not get the location of ld-linux", err)
+		src = ldLinux
+	}
+
+	if *standalonePtr == true {
+		err = deployInterpreter(ldLinux, err, src, appdir)
+	} else {
+		log.Println("Not deploying", ldLinux, "because it was not requested or it is not needed")
+	}
+
+	if helpers.Exists(appdir.Path + "/usr/share/glib-2.0/schemas") {
+		err = handleGlibSchemas(appdir, err)
+		if err != nil {
+			helpers.PrintError("Could not deploy GLib schemas", err)
+		}
+	}
+
+	if helpers.Exists(appdir.Path+"/etc/fonts") == false {
+		log.Println("Adding fontconfig symlink... (is this really the right thing to do?)")
+		err = os.MkdirAll(appdir.Path+"/etc/fonts", 0755)
+		if err != nil {
+			helpers.PrintError("MkdirAll", err)
+			os.Exit(1)
+		}
+		err = os.Symlink("/etc/fonts/fonts.conf", appdir.Path+"/etc/fonts/fonts.conf")
+		if err != nil {
+			helpers.PrintError("MkdirAll", err)
+			os.Exit(1)
+		}
+	}
+
+	log.Println("Adding AppRun...")
+
+	err = ioutil.WriteFile(appdir.Path+"/AppRun", []byte(AppRunData), 0755)
+	if err != nil {
+		helpers.PrintError("write AppRun", err)
+		os.Exit(1)
+	}
+
+	log.Println("Find out whether Qt is a dependency of the application to be bundled...")
+
+	qtVersionDetected := 0
+
+	if containsString(allELFs, "libQt5Core.so.5") == true {
+		log.Println("Detected Qt 5")
+		qtVersionDetected = 5
+	}
+
+	if containsString(allELFs, "libQtCore.so.4") == true {
+		log.Println("Detected Qt 4")
+		qtVersionDetected = 4
+	}
+
+	if qtVersionDetected > 0 {
+		handleQt(appdir, qtVersionDetected)
+	}
+
+	fmt.Println("")
+	log.Println("libraryLocations:")
+	for _, lib := range libraryLocations {
+		fmt.Println(lib)
+	}
+	fmt.Println("")
+
+	// This is used when calculating the rpath that gets written into the ELFs as they are copied into the AppDir
+	// and when modifying the ELFs that were pre-existing in the AppDir so that they become aware of the other locations
+	var libraryLocationsInAppDir []string
+	for _, lib := range libraryLocations {
+		if strings.HasPrefix(lib, appdir.Path) == false {
+			lib = appdir.Path + lib
+		}
+		libraryLocationsInAppDir = helpers.AppendIfMissing(libraryLocationsInAppDir, lib)
+	}
+	fmt.Println("")
+
+	log.Println("libraryLocationsInAppDir:")
+	for _, lib := range libraryLocationsInAppDir {
+		fmt.Println(lib)
+	}
+	fmt.Println("")
+
+	/*
+		fmt.Println("")
+		log.Println("allELFs:")
+		for _, lib := range allELFs {
+			fmt.Println(lib)
+		}
+	*/
+
+	log.Println("Only after this point should we start copying around any ELFs")
+
+	log.Println("Copying in and patching ELFs which are not already in the AppDir...")
+
+	handleNvidia()
+
+	for _, lib := range allELFs {
+
+		deployElf(lib, appdir, err)
+
+		patchRpathsInElf(appdir, libraryLocationsInAppDir, lib)
+
+		if strings.Contains(lib, "libQt5Core.so.5") {
+			patchQtPrfxpath(appdir, lib, libraryLocationsInAppDir, ldLinux)
+		}
+	}
+
+	deployCopyrightFiles(appdir)
+}
+
+// deployElf deploys an ELF (executable or shared library) to the AppDir
+// if it is not on the exclude list and it is not yet at the target location
+func deployElf(lib string, appdir helpers.AppDir, err error) {
+	shoudDoIt := true
+	for _, excludePrefix := range ExcludedLibraries {
+		if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true && *standalonePtr == false {
+			log.Println("Skipping", lib, "because it is on the excludelist")
+			shoudDoIt = false
+			break
+		}
+	}
+	if shoudDoIt == true && strings.HasPrefix(lib, appdir.Path) == false && helpers.Exists(appdir.Path+"/"+lib) == false {
+		err = helpers.CopyFile(lib, appdir.Path+"/"+lib)
+		if err != nil {
+			log.Println(appdir.Path+"/"+lib, "could not be copied:", err)
+			os.Exit(1)
+		}
+	}
+}
+
+// patchQtPrfxpath patches qt_prfxpath of the libQt5Core.so.5 in an AppDir
+// so that the Qt installation finds its own components in the AppDir
+func patchQtPrfxpath(appdir helpers.AppDir, lib string, libraryLocationsInAppDir []string, ldLinux string) {
+	log.Println("Patching qt_prfxpath, otherwise can't load platform plugin...")
+	f, err := os.Open(appdir.Path + "/" + lib)
+	// Open file for reading/determining the offset
+	defer f.Close()
+	if err != nil {
+		helpers.PrintError("Could not open libQt5Core.so.5 for reading", err)
+		os.Exit(1)
+	}
+	f.Seek(0, 0)
+	// Search from the beginning of the file
+	search := []byte("qt_prfxpath=")
+	offset := ScanFile(f, search) + int64(len(search))
+	log.Println("Offset of qt_prfxpath:", offset)
+	/*
+		What does qt_prfxpath=. actually mean on a Linux system? Where is "."?
+		Looks like it means "relative to args[0]".
+
+		So 'qt_prfxpath=.' would be wrong if we load the application through ld-linux.so because that one
+		lives in, e.g., appdir/lib64 which is actually not where the Qt 'plugins' directory is.
+		Hence we do NOT have to patch qt_prfxpath=. but to q't_prfxpath=../opt/qt512/'
+		(the relative path from args[0] to the directory in which the Qt 'plugins' directory is)
+	*/
+	// Note: The following is correct only if we bundle (and run through) ld-linux; in all other cases
+	// we should calculate the relative path relative to the main binary
+	var qtPrefixDir string
+	for _, libraryLocationInAppDir := range libraryLocationsInAppDir {
+		if strings.HasSuffix(libraryLocationInAppDir, "/plugins/platforms") {
+			qtPrefixDir = filepath.Dir(filepath.Dir(libraryLocationInAppDir))
+			break
+		}
+	}
+	if qtPrefixDir == "" {
+		helpers.PrintError("Could not determine the the Qt prefix directory:", err)
+		os.Exit(1)
+	} else {
+		log.Println("Qt prefix directory in the AppDir:", qtPrefixDir)
+	}
+	relPathToQt, err := filepath.Rel(filepath.Dir(appdir.Path+ldLinux), qtPrefixDir)
+	if err != nil {
+		helpers.PrintError("Could not compute the location of the Qt plugins directory:", err)
+		os.Exit(1)
+	} else {
+		log.Println("Relative path from ld-linux to Qt prefix directory in the AppDir:", relPathToQt)
+	}
+	f, err = os.OpenFile(appdir.Path+"/"+lib, os.O_WRONLY, 0644)
+	// Open file writable, why is this so complicated
+	defer f.Close()
+	if err != nil {
+		helpers.PrintError("Could not open libQt5Core.so.5 for writing", err)
+		os.Exit(1)
+	}
+	// Now that we know where in the file the information is, go write it
+	f.Seek(offset, 0)
+	if quirksModePatchQtPrfxPath == false {
+		_, err = f.Write([]byte(relPathToQt + "\x00"))
+	} else {
+		_, err = f.Write([]byte("." + "\x00"))
+	}
+	if err != nil {
+		helpers.PrintError("Could not patch qt_prfxpath in "+appdir.Path+"/"+lib, err)
+	}
+}
+
+// deployCopyrightFiles deploys copyright files into the AppDir
+// for each ELF in allELFs that are inside the AppDir and have matching equivalents outside of the AppDir
+func deployCopyrightFiles(appdir helpers.AppDir) {
+	log.Println("Copying in copyright files...")
+	for _, lib := range allELFs {
+
+		shoudDoIt := true
+		for _, excludePrefix := range ExcludedLibraries {
+			if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true && *standalonePtr == false {
+				log.Println("Skipping copyright file for ", lib, "because it is on the excludelist")
+				shoudDoIt = false
+				break
+			}
+		}
+
+		if shoudDoIt == true && strings.HasPrefix(lib, appdir.Path) == false {
+			// Copy copyright files into the AppImage
+			copyrightFile, err := getCopyrightFile(lib)
+			// It is perfectly fine for this to error - on non-dpkg systems, or if lib was not in a deb package
+			if err == nil {
+				os.MkdirAll(filepath.Dir(appdir.Path+copyrightFile), 0755)
+				copy.Copy(copyrightFile, appdir.Path+copyrightFile)
+			}
+
+		}
+	}
+	log.Println("Done")
+	if *standalonePtr == true {
+		log.Println("To check whether it is really self-contained, run:")
+		fmt.Println("LD_LIBRARY_PATH='' find " + appdir.Path + " -type f -exec ldd {} 2>&1 \\; | grep '=>' | grep -v " + appdir.Path)
+	}
+}
+
+// handleGlibSchemas compiles GLib schemas if the subdirectory is present in the AppImage.
+// AppRun has to export GSETTINGS_SCHEMA_DIR for this to work
+func handleGlibSchemas(appdir helpers.AppDir) error {
+	var err error
+	if helpers.Exists(appdir.Path + "/usr/share/glib-2.0/schemas") {
+		log.Println("Compiling glib-2.0 schemas...")
+		cmd := exec.Command("glib-compile-schemas", ".")
+		cmd.Dir = appdir.Path + "/usr/share/glib-2.0/schemas"
+		err = cmd.Run()
+		if err != nil {
+			helpers.PrintError("Run glib-compile-schemas", err)
+			os.Exit(1)
+		}
+	}
+	return err
+}
+
+func deployInterpreter(ldLinux string, src string, appdir helpers.AppDir) error {
+	log.Println("Deploying", ldLinux+"...")
+	err := copy.Copy(src, appdir.Path+ldLinux)
+	if err != nil {
+		helpers.PrintError("Could not copy ld-linux", err)
+		os.Exit(1)
+	}
+	// Do what we do in the Scribus AppImage script, namely
+	// sed -i -e 's|/usr|/xxx|g' lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+	log.Println("Patching ld-linux...")
+	err = PatchFile(appdir.Path+ldLinux, "/lib", "/XXX")
+	if err != nil {
+		helpers.PrintError("PatchFile", err)
+		os.Exit(1)
+	}
+	err = PatchFile(appdir.Path+ldLinux, "/usr", "/xxx")
+	if err != nil {
+		helpers.PrintError("PatchFile", err)
+		os.Exit(1)
+	}
+	log.Println("Determining gconv (for GCONV_PATH)...")
+	// Search in all of the system's library directories for a directory called gconv
+	// and put it into the a location which matches the GCONV_PATH we export in AppRun
+	gconvs, err := findWithPrefixInLibraryLocations("gconv")
+	if err == nil {
+		// Target location must match GCONV_PATH exported in AppRun
+		determineELFsInDirTree(appdir, gconvs[0])
+	}
+	return err
+}
+
+func handleGdk(appdir helpers.AppDir) {
 	// If there is a .so with the name libgdk_pixbuf inside the AppDir, then we need to
 	// bundle Gdk pixbuf loaders without which the bundled Gtk does not work
 	// cp /usr/lib/x86_64-linux-gnu/gdk-pixbuf-*/*/loaders/* usr/lib/x86_64-linux-gnu/gdk-pixbuf-*/*/loaders/
 	// cp /usr/lib/x86_64-linux-gnu/gdk-pixbuf-*/*/loaders.cache usr/lib/x86_64-linux-gnu/gdk-pixbuf-*/*/ -
 	// this file must also be patched not to contain paths to the libraries
-
 	for _, lib := range allELFs {
 		if strings.HasPrefix(filepath.Base(lib), "libgdk_pixbuf") {
 			log.Println("Determining Gdk pixbuf loaders (for GDK_PIXBUF_MODULEDIR and GDK_PIXBUF_MODULE_FILE)...")
@@ -226,8 +542,61 @@ func AppDirDeploy(path string) {
 			break
 		}
 	}
+}
 
-	// GStreamer
+func handlePulseAudio(appdir helpers.AppDir) {
+	// TODO: What about the `/usr/lib/pulse-*` directory?
+	for _, lib := range allELFs {
+		if strings.HasPrefix(filepath.Base(lib), "libpulse.so") {
+			log.Println("Bundling pulseaudio directory (for <tbd>)...")
+			locs, err := findWithPrefixInLibraryLocations("pulseaudio")
+			if err != nil {
+				log.Println("Could not find pulseaudio directory")
+				os.Exit(1)
+			} else {
+				log.Println("Bundling dependencies of pulseaudio directory...")
+				determineELFsInDirTree(appdir, locs[0])
+			}
+
+			break
+		}
+	}
+}
+
+func handleNvidia() {
+	// As soon as we bundle libnvidia*, we get a segfault.
+	// Hence we exit whenever libGL.so.1 requires libnvidia*
+	for _, elf := range allELFs {
+		if strings.HasPrefix(filepath.Base(elf), "libnvidia") {
+			log.Println("System (most likely libGL) uses libnvidia*, please build on another system that does not use NVIDIA drivers, exiting")
+			os.Exit(1)
+		}
+	}
+}
+
+func handleAlsa(appdir helpers.AppDir) {
+	// FIXME: Doesn't seem to get loaded. Is ALSA_PLUGIN_DIR needed and working in ALSA?
+	// Is something like https://github.com/flatpak/freedesktop-sdk-images/blob/1.6/alsa-lib-plugin-path.patch needed in the bundled ALSA?
+	// TODO: What about the `share/alsa` subdirectory? libasound.so.* refers to it as well
+	for _, lib := range allELFs {
+		if strings.HasPrefix(filepath.Base(lib), "libasound.so") {
+			log.Println("Bundling alsa-lib directory (for <tbd>)...")
+			locs, err := findWithPrefixInLibraryLocations("alsa-lib")
+			if err != nil {
+				log.Println("Could not find alsa-lib directory")
+				log.Println("E.g., in Alpine Linux: apk add alsa-plugins alsa-plugins-pulse")
+				os.Exit(1)
+			} else {
+				log.Println("Bundling dependencies of alsa-lib directory...")
+				determineELFsInDirTree(appdir, locs[0])
+			}
+
+			break
+		}
+	}
+}
+
+func handleGStreamer(appdir helpers.AppDir) {
 	for _, lib := range allELFs {
 		if strings.HasPrefix(filepath.Base(lib), "libgstreamer-1.0") {
 			log.Println("Bundling GStreamer 1.0 directory (for GST_PLUGIN_PATH)...")
@@ -254,356 +623,6 @@ func AppDirDeploy(path string) {
 
 			break
 		}
-	}
-
-	// Gtk 3 modules/plugins
-	// If there is a .so with the name libgtk-3 inside the AppDir, then we need to
-	// bundle Gdk modules/plugins
-	deployGtkDirectory(appdir, 3)
-
-	// Gtk 2 modules/plugins
-	// Same as above, but for Gtk 2
-	deployGtkDirectory(appdir, 2)
-
-	// ALSA
-	// FIXME: Doesn't seem to get loaded. Is ALSA_PLUGIN_DIR needed and working in ALSA?
-	// Is something like https://github.com/flatpak/freedesktop-sdk-images/blob/1.6/alsa-lib-plugin-path.patch needed in the bundled ALSA?
-	// TODO: What about the `share/alsa` subdirectory? libasound.so.* refers to it as well
-	for _, lib := range allELFs {
-		if strings.HasPrefix(filepath.Base(lib), "libasound.so") {
-			log.Println("Bundling alsa-lib directory (for <tbd>)...")
-			locs, err := findWithPrefixInLibraryLocations("alsa-lib")
-			if err != nil {
-				log.Println("Could not find alsa-lib directory")
-				log.Println("E.g., in Alpine Linux: apk add alsa-plugins alsa-plugins-pulse")
-				os.Exit(1)
-			} else {
-				log.Println("Bundling dependencies of alsa-lib directory...")
-				determineELFsInDirTree(appdir, locs[0])
-			}
-
-			break
-		}
-	}
-
-	// PulseAudio
-	// TODO: What about the `/usr/lib/pulse-*` directory?
-	for _, lib := range allELFs {
-		if strings.HasPrefix(filepath.Base(lib), "libpulse.so") {
-			log.Println("Bundling pulseaudio directory (for <tbd>)...")
-			locs, err := findWithPrefixInLibraryLocations("pulseaudio")
-			if err != nil {
-				log.Println("Could not find pulseaudio directory")
-				os.Exit(1)
-			} else {
-				log.Println("Bundling dependencies of pulseaudio directory...")
-				determineELFsInDirTree(appdir, locs[0])
-			}
-
-			break
-		}
-	}
-
-	log.Println("Patching ld-linux...")
-
-	cmd := exec.Command("patchelf", "--print-interpreter", appdir.MainExecutable)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(cmd.String())
-		helpers.PrintError("patchelf --print-interpreter "+appdir.MainExecutable+": "+string(out), err)
-		os.Exit(1)
-	}
-	ldLinux := strings.TrimSpace(string(out))
-
-	if helpers.Exists(appdir.Path+"/"+ldLinux) == true {
-		log.Println("Removing pre-existing", ldLinux+"...")
-		err = syscall.Unlink(appdir.Path + "/" + ldLinux)
-		if err != nil {
-			helpers.PrintError("Could not remove pre-existing ld-linux", err)
-			os.Exit(1)
-		}
-
-	}
-
-	// ld-linux might be a symlink; hence we first need to resolve it
-	src, err := os.Readlink(ldLinux)
-	if err != nil {
-		helpers.PrintError("Could not get the location of ld-linux", err)
-		src = ldLinux
-	}
-
-	if *standalonePtr == true {
-		log.Println("Deploying", ldLinux+"...")
-		err = copy.Copy(src, appdir.Path+ldLinux)
-		if err != nil {
-			helpers.PrintError("Could not copy ld-linux", err)
-			os.Exit(1)
-		}
-		// Do what we do in the Scribus AppImage script, namely
-		// sed -i -e 's|/usr|/xxx|g' lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
-		err = PatchFile(appdir.Path+ldLinux, "/lib", "/XXX")
-		if err != nil {
-			helpers.PrintError("PatchFile", err)
-			os.Exit(1)
-		}
-		err = PatchFile(appdir.Path+ldLinux, "/usr", "/xxx")
-		if err != nil {
-			helpers.PrintError("PatchFile", err)
-			os.Exit(1)
-		}
-
-		log.Println("Determining gconv (for GCONV_PATH)...")
-		// Search in all of the system's library directories for a directory called gconv
-		// and put it into the a location which matches the GCONV_PATH we export in AppRun
-		gconvs, err := findWithPrefixInLibraryLocations("gconv")
-		if err == nil {
-			// Target location must match GCONV_PATH exported in AppRun
-			determineELFsInDirTree(appdir, gconvs[0])
-		}
-	} else {
-		log.Println("Not deploying", ldLinux, "because it was not requested or it is not needed")
-	}
-
-	if helpers.Exists(appdir.Path + "/usr/share/glib-2.0/schemas") {
-		log.Println("Compiling glib-2.0 schemas...")
-		// Do what we do in pkg2appimage
-		// Compile GLib schemas if the subdirectory is present in the AppImage
-		// AppRun has to export GSETTINGS_SCHEMA_DIR for this to work
-		if helpers.Exists(appdir.Path + "/usr/share/glib-2.0/schemas") {
-			cmd := exec.Command("glib-compile-schemas", ".")
-			cmd.Dir = appdir.Path + "/usr/share/glib-2.0/schemas"
-			err = cmd.Run()
-			if err != nil {
-				helpers.PrintError("Run glib-compile-schemas", err)
-				os.Exit(1)
-			}
-		}
-	}
-
-	if helpers.Exists(appdir.Path+"/etc/fonts") == false {
-		log.Println("Adding fontconfig symlink... (is this really the right thing to do?)")
-		err = os.MkdirAll(appdir.Path+"/etc/fonts", 0755)
-		if err != nil {
-			helpers.PrintError("MkdirAll", err)
-			os.Exit(1)
-		}
-		err = os.Symlink("/etc/fonts/fonts.conf", appdir.Path+"/etc/fonts/fonts.conf")
-		if err != nil {
-			helpers.PrintError("MkdirAll", err)
-			os.Exit(1)
-		}
-	}
-
-	// Check for the presence of Gtk .ui files
-	uifiles := helpers.FilesWithSuffixInDirectoryRecursive(appdir.Path, ".ui")
-	if len(uifiles) > 0 {
-		log.Println("Gtk .ui files found. Need to take care to have them loaded from a relative rather than absolute path")
-		log.Println("TODO: Check if they are at hardcoded absolute paths in the application and if yes, patch")
-		var dirswithUiFiles []string
-		for _, uifile := range uifiles {
-			dirswithUiFiles = helpers.AppendIfMissing(dirswithUiFiles, filepath.Dir(uifile))
-			err = PatchFile(appdir.MainExecutable, "/usr", "././")
-			if err != nil {
-				helpers.PrintError("PatchFile", err)
-				os.Exit(1)
-			}
-		}
-		log.Println("Directories with .ui files:", dirswithUiFiles)
-	}
-
-	log.Println("Adding AppRun...")
-
-	err = ioutil.WriteFile(appdir.Path+"/AppRun", []byte(AppRunData), 0755)
-	if err != nil {
-		helpers.PrintError("write AppRun", err)
-		os.Exit(1)
-	}
-
-	log.Println("Find out whether Qt is a dependency of the application to be bundled...")
-
-	qtVersionDetected := 0
-
-	if containsString(allELFs, "libQt5Core.so.5") == true {
-		log.Println("Detected Qt 5")
-		qtVersionDetected = 5
-	}
-
-	if containsString(allELFs, "libQtCore.so.4") == true {
-		log.Println("Detected Qt 4")
-		qtVersionDetected = 4
-
-	}
-
-	if qtVersionDetected > 0 {
-		handleQt(appdir, qtVersionDetected)
-	}
-
-	fmt.Println("")
-	log.Println("libraryLocations:")
-	for _, lib := range libraryLocations {
-		fmt.Println(lib)
-	}
-	fmt.Println("")
-
-	// This is used when calculating the rpath that gets written into the ELFs as they are copied into the AppDir
-	// and when modifying the ELFs that were pre-existing in the AppDir so that they become aware of the other locations
-	var libraryLocationsInAppDir []string
-	for _, lib := range libraryLocations {
-		if strings.HasPrefix(lib, appdir.Path) == false {
-			lib = appdir.Path + lib
-		}
-		libraryLocationsInAppDir = helpers.AppendIfMissing(libraryLocationsInAppDir, lib)
-	}
-	fmt.Println("")
-
-	log.Println("libraryLocationsInAppDir:")
-	for _, lib := range libraryLocationsInAppDir {
-		fmt.Println(lib)
-	}
-	fmt.Println("")
-
-	/*
-		fmt.Println("")
-		log.Println("allELFs:")
-		for _, lib := range allELFs {
-			fmt.Println(lib)
-		}
-	*/
-
-	log.Println("Only after this point should we start copying around any ELFs")
-
-	log.Println("Copying in and patching ELFs which are not already in the AppDir...")
-
-	// As soon as we bundle libnvidia*, we get a segfault.
-	// Hence we exit whenever libGL.so.1 requires libnvidia*
-	for _, elf := range allELFs {
-		if strings.HasPrefix(filepath.Base(elf), "libnvidia") {
-			log.Println("System (most likely libGL) uses libnvidia*, please build on another system that does not use NVIDIA drivers, exiting")
-			os.Exit(1)
-		}
-	}
-
-	for _, lib := range allELFs {
-
-		shoudDoIt := true
-		for _, excludePrefix := range ExcludedLibraries {
-			if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true && *standalonePtr == false {
-				log.Println("Skipping", lib, "because it is on the excludelist")
-				shoudDoIt = false
-				break
-			}
-		}
-
-		if shoudDoIt == true && strings.HasPrefix(lib, appdir.Path) == false && helpers.Exists(appdir.Path+"/"+lib) == false {
-
-			err = helpers.CopyFile(lib, appdir.Path+"/"+lib)
-			if err != nil {
-				log.Println(appdir.Path+"/"+lib, "could not be copied:", err)
-				os.Exit(1)
-			}
-		}
-
-		patchRpathsInElf(appdir, libraryLocationsInAppDir, lib)
-
-		if strings.Contains(lib, "libQt5Core.so.5") {
-			log.Println("Patching qt_prfxpath, otherwise can't load platform plugin...")
-
-			f, err := os.Open(appdir.Path + "/" + lib) // Open file for reading/determining the offset
-			defer f.Close()
-			if err != nil {
-				helpers.PrintError("Could not open libQt5Core.so.5 for reading", err)
-				os.Exit(1)
-			}
-			f.Seek(0, 0)
-			// Search from the beginning of the file
-			search := []byte("qt_prfxpath=")
-			offset := ScanFile(f, search) + int64(len(search))
-			log.Println("Offset of qt_prfxpath:", offset)
-
-			/*
-				What does qt_prfxpath=. actually mean on a Linux system? Where is "."?
-				Looks like it means "relative to args[0]".
-
-				So 'qt_prfxpath=.' would be wrong if we load the application through ld-linux.so because that one
-				lives in, e.g., appdir/lib64 which is actually not where the Qt 'plugins' directory is.
-				Hence we do NOT have to patch qt_prfxpath=. but to q't_prfxpath=../opt/qt512/'
-				(the relative path from args[0] to the directory in which the Qt 'plugins' directory is)
-			*/
-
-			// Note: The following is correct only if we bundle (and run through) ld-linux; in all other cases
-			// we should calculate the relative path relative to the main binary
-			var qtPrefixDir string
-			for _, libraryLocationInAppDir := range libraryLocationsInAppDir {
-				if strings.HasSuffix(libraryLocationInAppDir, "/plugins/platforms") {
-					qtPrefixDir = filepath.Dir(filepath.Dir(libraryLocationInAppDir))
-					break
-				}
-			}
-
-			if qtPrefixDir == "" {
-				helpers.PrintError("Could not determine the the Qt prefix directory:", err)
-				os.Exit(1)
-			} else {
-				log.Println("Qt prefix directory in the AppDir:", qtPrefixDir)
-			}
-
-			relPathToQt, err := filepath.Rel(filepath.Dir(appdir.Path+ldLinux), qtPrefixDir)
-			if err != nil {
-				helpers.PrintError("Could not compute the location of the Qt plugins directory:", err)
-				os.Exit(1)
-			} else {
-				log.Println("Relative path from ld-linux to Qt prefix directory in the AppDir:", relPathToQt)
-			}
-
-			f, err = os.OpenFile(appdir.Path+"/"+lib, os.O_WRONLY, 0644) // Open file writable, why is this so complicated
-			defer f.Close()
-			if err != nil {
-				helpers.PrintError("Could not open libQt5Core.so.5 for writing", err)
-				os.Exit(1)
-			}
-
-			// Now that we know where in the file the information is, go write it
-			f.Seek(offset, 0)
-			if quirksModePatchQtPrfxPath == false {
-				_, err = f.Write([]byte(relPathToQt + "\x00"))
-			} else {
-				_, err = f.Write([]byte("." + "\x00"))
-			}
-			if err != nil {
-				helpers.PrintError("Could not patch qt_prfxpath in "+appdir.Path+"/"+lib, err)
-			}
-		}
-	}
-
-	log.Println("Copying in copyright files...")
-
-	for _, lib := range allELFs {
-
-		shoudDoIt := true
-		for _, excludePrefix := range ExcludedLibraries {
-			if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true && *standalonePtr == false {
-				log.Println("Skipping copyright file for ", lib, "because it is on the excludelist")
-				shoudDoIt = false
-				break
-			}
-		}
-
-		if shoudDoIt == true && strings.HasPrefix(lib, appdir.Path) == false {
-			// Copy copyright files into the AppImage
-			copyrightFile, err := getCopyrightFile(lib)
-			// It is perfectly fine for this to error - on non-dpkg systems, or if lib was not in a deb package
-			if err == nil {
-				os.MkdirAll(filepath.Dir(appdir.Path+copyrightFile), 0755)
-				copy.Copy(copyrightFile, appdir.Path+copyrightFile)
-			}
-
-		}
-	}
-	log.Println("Done")
-
-	if *standalonePtr == true {
-		log.Println("To check whether it is really self-contained, run:")
-		fmt.Println("LD_LIBRARY_PATH='' find " + appdir.Path + " -type f -exec ldd {} 2>&1 \\; | grep '=>' | grep -v " + appdir.Path)
 	}
 }
 
@@ -681,6 +700,23 @@ func deployGtkDirectory(appdir helpers.AppDir, gtkVersion int) {
 			}
 			break
 		}
+	}
+
+	// Check for the presence of Gtk .ui files
+	uifiles := helpers.FilesWithSuffixInDirectoryRecursive(appdir.Path, ".ui")
+	if len(uifiles) > 0 {
+		log.Println("Gtk .ui files found. Need to take care to have them loaded from a relative rather than absolute path")
+		log.Println("TODO: Check if they are at hardcoded absolute paths in the application and if yes, patch")
+		var dirswithUiFiles []string
+		for _, uifile := range uifiles {
+			dirswithUiFiles = helpers.AppendIfMissing(dirswithUiFiles, filepath.Dir(uifile))
+			err = PatchFile(appdir.MainExecutable, "/usr", "././")
+			if err != nil {
+				helpers.PrintError("PatchFile", err)
+				os.Exit(1)
+			}
+		}
+		log.Println("Directories with .ui files:", dirswithUiFiles)
 	}
 }
 
