@@ -19,8 +19,9 @@ set -x
 ##############################################################
 
 # Disregard any other Go environment that may be on the system (e.g., on Travis CI)
-unset GOARCH GOBIN GOEXE GOHOSTARCH GOHOSTOS GOOS GORACE GOROOT GOTOOLDIR CC GOGCCFLAGS CGO_ENABLED GO111MODULE
-export GOPATH=$HOME/go
+unset GOARCH GOBIN GOEXE GOHOSTARCH GOHOSTOS GOOS GORACE GOROOT GOPATH GOTOOLDIR CC GOGCCFLAGS CGO_ENABLED GO111MODULE
+export GOPATH=/tmp/go
+mkdir -p $GOPATH/src
 
 # Export version and build number
 if [ ! -z "$TRAVIS_BUILD_NUMBER" ] ; then
