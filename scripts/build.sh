@@ -65,12 +65,6 @@ fi
 # Bild appimaged
 ##############################################################
 
-# FIXME: Workaround for:
-# go/src/github.com/go-language-server/uri/uri.go:15:2: cannot find package "golang.org/x/xerrors" in any of:
-# 	/usr/local/go/src/golang.org/x/xerrors (from $GOROOT)
-# 	/home/me/go/src/golang.org/x/xerrors (from $GOPATH)
-go get -v golang.org/x/xerrors
-
 # 64-bit
 go get -v github.com/probonopd/go-appimage/src/appimaged 
 go build -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimaged
