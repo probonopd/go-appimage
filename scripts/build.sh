@@ -19,7 +19,7 @@ set -x
 ##############################################################
 
 # Disregard any other Go environment that may be on the system (e.g., on Travis CI)
-unset GOARCH GOBIN GOEXE GOHOSTARCH GOHOSTOS GOOS GORACE GOROOT GOTOOLDIR CC GOGCCFLAGS CGO_ENABLED
+unset GOARCH GOBIN GOEXE GOHOSTARCH GOHOSTOS GOOS GORACE GOROOT GOTOOLDIR CC GOGCCFLAGS CGO_ENABLED GO111MODULE
 export GOPATH=$HOME/go
 
 # Export version and build number
