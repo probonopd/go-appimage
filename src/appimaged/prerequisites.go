@@ -443,12 +443,11 @@ func CheckIfInvokedBySystemd() bool {
 		return true
 	}
 	*/
-
-	if 0 == os.Getppid() {
-		log.Println("PPID is 0: Launched by systemd")
+	if _, ok := os.LookupEnv("LAUNCHED_BY_SYSTEMD"); ok {
+		log.Println("Launched by systemd: LAUNCHED_BY_SYSTEMD is present")
 		return true
 	}
-	log.Println("PPID is not 0: Probably not launched by systemd (please file an issue if this is wrong)")
+	log.Println("Probably not launched by systemd (please file an issue if this is wrong)")
 	return false
 }
 
@@ -498,6 +497,8 @@ StandardOutput=syslog
 StandardError=syslog
 
 SyslogIdentifier=appimaged
+
+Environment=LAUNCHED_BY_SYSTEMD=1
 
 [Install]
 WantedBy=default.target`)
