@@ -13,7 +13,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
-	"strconv"
+
 	"strings"
 
 	systemddbus "github.com/coreos/go-systemd/v22/dbus"
@@ -404,6 +404,8 @@ func CheckIfRunningSystemd() bool {
 // CheckIfInvokedBySystemd returns true if this process has been invoked
 // by systemd directly or indirectly, false in case it hasn't, the system is not
 // using systemd, or we are not sure
+// NOTE: INVOCATION_ID is proven to be unreliable, as this variable is exported
+// to a normal shell on e.g., Clear Linux OS
 func CheckIfInvokedBySystemd() bool {
 
 	if CheckIfRunningSystemd() == false {
@@ -415,6 +417,7 @@ func CheckIfInvokedBySystemd() bool {
 	// systemd v232 added the concept of an invocation ID of a unit,
 	// which is passed to the unit in the $INVOCATION_ID
 	// environment variable. You can check if that’s set or not.
+	/*
 	prc := exec.Command("systemctl", "--version") // systemd is not on $PATH e.g., on openSUSE, hence use this
 	out, err := prc.Output()
 	if err != nil {
@@ -439,6 +442,13 @@ func CheckIfInvokedBySystemd() bool {
 		log.Println("Launched by systemd: INVOCATION_ID", invocationId)
 		return true
 	}
+	*/
+
+	if 0 == os.Getppid() {
+		log.Println("PPID is 0: Launched by systemd")
+		return true
+	}
+	log.Println("PPID is not 0: Probably not launched by systemd (please file an issue if this is wrong)")
 	return false
 }
 
