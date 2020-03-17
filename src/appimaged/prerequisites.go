@@ -333,7 +333,7 @@ func setupToRunThroughSystemd() {
 
 	if CheckIfInvokedBySystemd() == false {
 
-		log.Println("Manually launched, not by systemd. Check if activated in systemd...")
+		log.Println("Manually launched, not by systemd. Check if enabled in systemd...")
 
 		if _, err := os.Stat("/etc/systemd/user/appimaged.service"); os.IsNotExist(err) {
 			log.Println("/etc/systemd/user/appimaged.service does not exist")
@@ -361,15 +361,15 @@ func setupToRunThroughSystemd() {
 				os.Exit(0)
 			}
 		} else {
-			log.Println("Activating systemd service...")
-			prc := exec.Command("systemctl", "--user", "activate", "appimaged")
+			log.Println("Enabling systemd service...")
+			prc := exec.Command("systemctl", "--user", "enable", "appimaged")
 			_, err := prc.CombinedOutput()
 			if err != nil {
 				log.Println(prc.String())
 				log.Println(err)
 			}
 			log.Println("Starting systemd service...")
-			prc = exec.Command("systemctl", "--user", "start", "appimaged")
+			prc = exec.Command("systemctl", "--user", "restart", "appimaged")
 			_, err = prc.CombinedOutput()
 			if err != nil {
 				log.Println(prc.String())
