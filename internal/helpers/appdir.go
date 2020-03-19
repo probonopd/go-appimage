@@ -6,6 +6,7 @@ import (
 	"gopkg.in/ini.v1"
 	"io/ioutil"
 	"log"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -95,14 +96,32 @@ func NewAppDir(desktopFilePath string) (AppDir, error) {
 		return ad, err
 	}
 
-	// Do not allow absolute paths in the Exec= key
+	// Do not allow paths in the Exec= key
 	fmt.Println("Exec= key contains:", filepath.Base(strings.Split(exec.String(), " ")[0]))
 	if strings.Split(exec.String(), " ")[0] != filepath.Base(strings.Split(exec.String(), " ")[0]) {
-		err = errors.New("Exec= contains absolute path")
+		err = errors.New("Exec= contains a path, please remove it")
 		return ad, err
 	}
 
 	ad.MainExecutable = ad.Path + "/usr/bin/" + strings.Split(exec.String(), " ")[0] // TODO: Do not hardcode /usr/bin, instead search the AppDir for an executable file with that name?
+
+	iconName, err := sect.GetKey("Icon")
+	if err != nil {
+		return ad, err
+	}
+
+	// Do not allow paths in the Icon= key
+	fmt.Println("Icon= key contains:", filepath.Base(strings.Split(iconName.String(), " ")[0]))
+	if strings.Split(iconName.String(), " ")[0] != filepath.Base(strings.Split(iconName.String(), " ")[0]) {
+		err = errors.New("Icon= contains a path, please remove it")
+		return ad, err
+	}
+
+	// Copy the main icon to the AppDir root directory if it is not there yet
+	err = ad.CopyMainIconToRoot(iconName.String())
+	if err != nil {
+		return ad, err
+	}
 
 	return ad, nil
 }
@@ -117,4 +136,36 @@ func (AppDir) GetElfInterpreter(appdir AppDir) (string, error) {
 	}
 	ldLinux := strings.TrimSpace(string(out))
 	return ldLinux, nil
+}
+
+// CreateIconDirectories creates empty directories
+// in <AppDir>/usr/share/icons/<size>/apps
+func (appdir AppDir) CreateIconDirectories() (error) {
+	// Only use the most common sizes in the hope that at least
+	// those will work on all target systems
+	iconSizes := []int{ 512, 256, 128, 48, 32, 24, 22, 16, 8 }
+	var err error = nil
+	for _, iconSize := range iconSizes {
+		err = os.MkdirAll(appdir.Path+"/usr/share/icons/hicolor/"+string(iconSize)+"x"+string(iconSize)+"/apps", 0755)
+	}
+	return err
+}
+
+// CopyMainIconToRoot copies the most suitable icon for the
+// Icon= entry in DesktopFilePath to the root of the AppDir
+func (appdir AppDir) CopyMainIconToRoot(iconName string) (error) {
+	var err error = nil
+	iconPreferenceOrder := []int{ 128, 256, 512, 48, 32, 24, 22, 16, 8 }
+	if Exists(appdir.Path + "/" + iconName+  ".png") {
+		log.Println("Top-level icon already exists, leaving untouched")
+	} else {
+	for _, iconSize := range iconPreferenceOrder {
+		log.Println(iconPreferenceOrder)
+		candidate := appdir.Path+"/usr/share/icons/hicolor/"+string(iconSize)+"x"+string(iconSize)+"/apps/" + iconName + ".png"
+		if Exists(candidate){
+			CopyFile(candidate,appdir.Path + "/" + iconName+  ".png" )
+		}
+	}
+	}
+	return err
 }
