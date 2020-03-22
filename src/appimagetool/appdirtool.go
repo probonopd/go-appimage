@@ -214,7 +214,7 @@ func AppDirDeploy(path string) {
 	}
 
 	// ld-linux might be a symlink; hence we first need to resolve it
-	src, err := os.Readlink(ldLinux)
+	src, err := filepath.EvalSymlinks(ldLinux)
 	if err != nil {
 		helpers.PrintError("Could not get the location of ld-linux", err)
 		src = ldLinux
