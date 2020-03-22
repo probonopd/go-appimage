@@ -130,6 +130,9 @@ func (AppDir) GetElfInterpreter(appdir AppDir) (string, error) {
 	cmd := exec.Command("patchelf", "--print-interpreter", appdir.MainExecutable)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		// In this case, it might be that we have a script there that starts with a shebang
+		// TODO: get binary from shebang (resolve to ELF absolute path)
+		// and determine its ELF interpreter instead (or use the next best ELF binary in the AppDir)
 		fmt.Println(cmd.String())
 		PrintError("patchelf --print-interpreter "+appdir.MainExecutable+": "+string(out), err)
 		return "", err
