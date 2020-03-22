@@ -448,7 +448,7 @@ func deployCopyrightFiles(appdir helpers.AppDir) {
 // AppRun has to export GSETTINGS_SCHEMA_DIR for this to work
 func handleGlibSchemas(appdir helpers.AppDir) error {
 	var err error
-	if helpers.Exists(appdir.Path + "/usr/share/glib-2.0/schemas") {
+	if helpers.Exists(appdir.Path+"/usr/share/glib-2.0/schemas") && !helpers.Exists(appdir.Path+"/usr/share/glib-2.0/schemas/gschemas.compiled") {
 		log.Println("Compiling glib-2.0 schemas...")
 		cmd := exec.Command("glib-compile-schemas", ".")
 		cmd.Dir = appdir.Path + "/usr/share/glib-2.0/schemas"
