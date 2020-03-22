@@ -481,6 +481,12 @@ func deployInterpreter(ldLinux string, src string, appdir helpers.AppDir) error 
 		helpers.PrintError("PatchFile", err)
 		os.Exit(1)
 	}
+	// --inhibit-cache is not working, it is still using /etc/ld.so.cache
+	err = PatchFile(appdir.Path+ldLinux, "/etc", "/EEE")
+	if err != nil {
+		helpers.PrintError("PatchFile", err)
+		os.Exit(1)
+	}
 	log.Println("Determining gconv (for GCONV_PATH)...")
 	// Search in all of the system's library directories for a directory called gconv
 	// and put it into the a location which matches the GCONV_PATH we export in AppRun
