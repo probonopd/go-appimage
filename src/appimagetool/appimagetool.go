@@ -53,6 +53,11 @@ func main() {
 		log.Println("Please see https://github.com/docker/cli/issues/2210.")
 	}
 
+	if os.Getenv("TRAVIS_TEST_RESULT") == "1" {
+		log.Println("$TRAVIS_TEST_RESULT is 1, exiting...")
+		os.Exit(1)
+	}
+
 	sections := []string{".upd_info", ".sha256_sig", ".sig_key", ".digest_md5"}
 
 	flag.Usage = func() {
