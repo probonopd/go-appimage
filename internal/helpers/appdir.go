@@ -163,7 +163,6 @@ func (appdir AppDir) CopyMainIconToRoot(iconName string) (error) {
 		log.Println("Top-level icon already exists, leaving untouched")
 	} else {
 	for _, iconSize := range iconPreferenceOrder {
-		log.Println(iconPreferenceOrder)
 		candidate := appdir.Path+"/usr/share/icons/hicolor/"+string(iconSize)+"x"+string(iconSize)+"/apps/" + iconName + ".png"
 		if Exists(candidate){
 			CopyFile(candidate,appdir.Path + "/" + iconName+  ".png" )
