@@ -1323,7 +1323,7 @@ func getQtPrfxpath(f *os.File, err error, qtVersion int) string {
 		results := helpers.FilesWithSuffixInDirectoryRecursive(qt_prfxpath, "plugins")
 		log.Println("results", results)
 		for _, result := range results {
-			if strings.HasPrefix(filepath.Base(filepath.Dir(result)), "qt"+strconv.Itoa(qtVersion)) {
+			if helpers.Exists(result + "/platforms") {
 				qt_prfxpath = filepath.Dir(result)
 				log.Println("Guessed qt_prfxpath to be", qt_prfxpath)
 				quirksModePatchQtPrfxPath = true
