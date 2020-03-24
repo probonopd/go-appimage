@@ -244,6 +244,11 @@ func ensureRunningFromLiveSystem() {
 			return
 		}
 	}
+	
+	// Allow to run if we have been called by systemd with our special environment variable
+	if os.GetEnv("LAUNCHED_BY_SYSTEMD") =! "" {
+		return
+	}
 
 	if found == false && gcEnvIsThere == false {
 		sendDesktopNotification("Not running on one of the supported Live systems", "Grab a Ubuntu, Debian, Deepin, Fedora, openSUSE, elementary OS, KDE neon,... Live ISO and try from there.", -1)
