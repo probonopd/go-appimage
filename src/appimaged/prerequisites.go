@@ -246,7 +246,7 @@ func ensureRunningFromLiveSystem() {
 	}
 	
 	// Allow to run if we have been called by systemd with our special environment variable
-	if os.GetEnv("LAUNCHED_BY_SYSTEMD") =! "" {
+	if os.Getenv("LAUNCHED_BY_SYSTEMD") =! "" {
 		return
 	}
 
