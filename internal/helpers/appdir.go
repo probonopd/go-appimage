@@ -65,7 +65,7 @@ func NewAppDir(desktopFilePath string) (AppDir, error) {
 		return ad, errors.New("No desktop file was found, please place one into " + ad.Path)
 	}
 	if counter > 1 {
-		return ad, errors.New("More than one desktop file was found in" + ad.Path)
+		return ad, errors.New("More than one desktop file was found in " + ad.Path)
 	}
 
 	ini.PrettyFormat = false
