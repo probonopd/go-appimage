@@ -93,13 +93,21 @@ if [ $(go env GOHOSTARCH) != "amd64" ] ; then
   exit 0
 fi
 
+# For some weird reason, no one seems to agree on what architectures
+# should be called... argh
+if [ "$arch" == "arm64" ] ; then
+    export SUFFIX = "aarch64"
+else
+    export SUFFIX = "x86_64"
+fi
+
 # Make appimagetool AppImage
 rm -rf appimagetool.AppDir || true
 mkdir -p appimagetool.AppDir/usr/bin
-( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/desktop-file-validate )
-( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/mksquashfs )
-( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/patchelf )
-( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/AppImage/AppImageKit/releases/download/continuous/runtime-x86_64 )
+( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/desktop-file-validate.$SUFFIX -O desktop-file-validate )
+( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/mksquashfs.$SUFFIX -O mksquashfs )
+( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/patchelf.$SUFFIX -O patchelf )
+( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/AppImage/AppImageKit/releases/download/continuous/runtime-$SUFFIX -O runtime )
 ( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh -O uploadtool )
 chmod +x appimagetool.AppDir/usr/bin/*
 cp appimagetool-amd64 appimagetool.AppDir/usr/bin/appimagetool
@@ -120,8 +128,8 @@ PATH=./appimagetool.AppDir/usr/bin/:$PATH appimagetool ./appimagetool.AppDir
 # Make appimaged AppImage
 rm -rf appimaged.AppDir || true
 mkdir -p appimaged.AppDir/usr/bin
-( cd appimaged.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/bsdtar )
-( cd appimaged.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/unsquashfs )
+( cd appimaged.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/bsdtar.$SUFFIX -O bsdtar )
+( cd appimaged.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/unsquashfs.$SUFFIX -O unsquashfs )
 chmod +x appimaged.AppDir/usr/bin/*
 cp appimaged-amd64 appimaged.AppDir/usr/bin/appimaged
 ( cd appimaged.AppDir/ ; ln -s usr/bin/appimaged AppRun)
