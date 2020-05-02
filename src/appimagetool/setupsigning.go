@@ -101,25 +101,12 @@ func setupSigning() {
 	var travisSettingsURL string
 	if AskForConfirmation() == true {
 		fmt.Println("Assuming your repository is on travis.com")
-		client = travis.NewClient(travis.ApiComUrl, "")
+		client = travis.NewClient(travis.ApiComUrl, token)
 		travisSettingsURL = "https://travis-ci.com/" + repoSlug + "/settings"
 	} else {
 		fmt.Println("Assuming your repository is on travis.org")
-		client = travis.NewClient(travis.ApiOrgUrl, "")
+		client = travis.NewClient(travis.ApiOrgUrl, token)
 		travisSettingsURL = "https://travis-ci.org/" + repoSlug + "/settings"
-	}
-
-	_, response, err := client.Authentication.UsingGithubToken(context.Background(), token)
-	if got, want := response.StatusCode, 200; got != want {
-		fmt.Println("UsingGithubToken fails: invalid http response " + string(response.Status))
-	}
-
-	if err != nil {
-		fmt.Println("client.Authentication.UsingGithubToken:", err)
-		fmt.Println("This can mean that the token is invalid or has not enough rights in its scope")
-		fmt.Println("FIXME: Authentication seems to only work for .org but not for .com right now") // FIXME
-		fmt.Println(response.Body)
-		os.Exit(1)
 	}
 
 	// Read existing environment variables on Travis CI
