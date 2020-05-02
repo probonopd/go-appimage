@@ -95,10 +95,10 @@ fi
 
 # For some weird reason, no one seems to agree on what architectures
 # should be called... argh
-if [ "$arch" == "arm64" ] ; then
-    export SUFFIX = "aarch64"
+if [ "$TRAVIS_ARCH" = "aarch64" ] ; then
+  export ARCHITECTURE=aarch64
 else
-    export SUFFIX = "x86_64"
+  export ARCHITECTURE=x86_64
 fi
 
 # Make appimagetool AppImage
