@@ -495,7 +495,7 @@ After=syslog.target network.target
 Type=simple
 ExecStart=` + thisai.path + `
 
-LimitSTACK=65536
+LimitNOFILE=65536
 
 RestartSec=3
 Restart=always
