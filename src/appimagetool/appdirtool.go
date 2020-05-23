@@ -292,6 +292,7 @@ func AppDirDeploy(path string) {
 }
 
 func deployFontconfig(appdir helpers.AppDir) error {
+	var err error
 	if helpers.Exists(appdir.Path+"/etc/fonts") == false {
 		log.Println("Adding fontconfig symlink... (is this really the right thing to do?)")
 		err = os.MkdirAll(appdir.Path+"/etc/fonts", 0755)
@@ -324,6 +325,7 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 
 	}
 	if *standalonePtr == true {
+		var err error
 		// ld-linux might be a symlink; hence we first need to resolve it
 		src, err := filepath.EvalSymlinks(ldLinux)
 		if err != nil {
@@ -333,10 +335,10 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 
 		log.Println("Deploying", ldLinux+"...")
 
-		err := copy.Copy(src, appdir.Path+ldLinux)
+		err = copy.Copy(src, appdir.Path+ldLinux)
 		if err != nil {
 			helpers.PrintError("Could not copy ld-linux", err)
-			return err
+			return "", err
 		}
 		// Do what we do in the Scribus AppImage script, namely
 		// sed -i -e 's|/usr|/xxx|g' lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
@@ -344,18 +346,18 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 		err = PatchFile(appdir.Path+ldLinux, "/lib", "/XXX")
 		if err != nil {
 			helpers.PrintError("PatchFile", err)
-			return err
+			return "", err
 		}
 		err = PatchFile(appdir.Path+ldLinux, "/usr", "/xxx")
 		if err != nil {
 			helpers.PrintError("PatchFile", err)
-			return err
+			return "", err
 		}
 		// --inhibit-cache is not working, it is still using /etc/ld.so.cache
 		err = PatchFile(appdir.Path+ldLinux, "/etc", "/EEE")
 		if err != nil {
 			helpers.PrintError("PatchFile", err)
-			return err
+			return "", err
 		}
 		log.Println("Determining gconv (for GCONV_PATH)...")
 		// Search in all of the system's library directories for a directory called gconv
