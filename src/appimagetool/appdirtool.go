@@ -379,15 +379,15 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 // deployElf deploys an ELF (executable or shared library) to the AppDir
 // if it is not on the exclude list and it is not yet at the target location
 func deployElf(lib string, appdir helpers.AppDir, err error) {
-	shoudDoIt := true
+	shouldDoIt := true
 	for _, excludePrefix := range ExcludedLibraries {
 		if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true && *standalonePtr == false {
 			log.Println("Skipping", lib, "because it is on the excludelist")
-			shoudDoIt = false
+			shouldDoIt = false
 			break
 		}
 	}
-	if shoudDoIt == true && strings.HasPrefix(lib, appdir.Path) == false && helpers.Exists(appdir.Path+"/"+lib) == false {
+	if shouldDoIt == true && strings.HasPrefix(lib, appdir.Path) == false && helpers.Exists(appdir.Path+"/"+lib) == false {
 		err = helpers.CopyFile(lib, appdir.Path+"/"+lib)
 		if err != nil {
 			log.Println(appdir.Path+"/"+lib, "could not be copied:", err)
@@ -468,16 +468,16 @@ func deployCopyrightFiles(appdir helpers.AppDir) {
 	log.Println("Copying in copyright files...")
 	for _, lib := range allELFs {
 
-		shoudDoIt := true
+		shouldDoIt := true
 		for _, excludePrefix := range ExcludedLibraries {
 			if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true && *standalonePtr == false {
 				log.Println("Skipping copyright file for ", lib, "because it is on the excludelist")
-				shoudDoIt = false
+				shouldDoIt = false
 				break
 			}
 		}
 
-		if shoudDoIt == true && strings.HasPrefix(lib, appdir.Path) == false {
+		if shouldDoIt == true && strings.HasPrefix(lib, appdir.Path) == false {
 			// Copy copyright files into the AppImage
 			copyrightFile, err := getCopyrightFile(lib)
 			// It is perfectly fine for this to error - on non-dpkg systems, or if lib was not in a deb package
