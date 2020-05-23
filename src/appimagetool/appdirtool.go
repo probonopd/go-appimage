@@ -213,15 +213,12 @@ func AppDirDeploy(path string) {
 
 	}
 
-	// ld-linux might be a symlink; hence we first need to resolve it
-	src, err := filepath.EvalSymlinks(ldLinux)
-	if err != nil {
-		helpers.PrintError("Could not get the location of ld-linux", err)
-		src = ldLinux
-	}
-
 	if *standalonePtr == true {
-		err = deployInterpreter(ldLinux, src, appdir)
+		err = deployInterpreter(ldLinux, appdir)
+		if err != nil {
+			helpers.PrintError("Could not deploy the interpreter", err)
+			os.Exit(1)
+		}
 	} else {
 		log.Println("Not deploying", ldLinux, "because it was not requested or it is not needed")
 	}
@@ -461,12 +458,20 @@ func handleGlibSchemas(appdir helpers.AppDir) error {
 	return err
 }
 
-func deployInterpreter(ldLinux string, src string, appdir helpers.AppDir) error {
+func deployInterpreter(ldLinux string, appdir helpers.AppDir) error {
+
+	// ld-linux might be a symlink; hence we first need to resolve it
+	src, err := filepath.EvalSymlinks(ldLinux)
+	if err != nil {
+		helpers.PrintError("Could not get the location of ld-linux", err)
+		src = ldLinux
+	}
+
 	log.Println("Deploying", ldLinux+"...")
 	err := copy.Copy(src, appdir.Path+ldLinux)
 	if err != nil {
 		helpers.PrintError("Could not copy ld-linux", err)
-		os.Exit(1)
+		return err
 	}
 	// Do what we do in the Scribus AppImage script, namely
 	// sed -i -e 's|/usr|/xxx|g' lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
@@ -474,18 +479,18 @@ func deployInterpreter(ldLinux string, src string, appdir helpers.AppDir) error 
 	err = PatchFile(appdir.Path+ldLinux, "/lib", "/XXX")
 	if err != nil {
 		helpers.PrintError("PatchFile", err)
-		os.Exit(1)
+		return err
 	}
 	err = PatchFile(appdir.Path+ldLinux, "/usr", "/xxx")
 	if err != nil {
 		helpers.PrintError("PatchFile", err)
-		os.Exit(1)
+		return err
 	}
 	// --inhibit-cache is not working, it is still using /etc/ld.so.cache
 	err = PatchFile(appdir.Path+ldLinux, "/etc", "/EEE")
 	if err != nil {
 		helpers.PrintError("PatchFile", err)
-		os.Exit(1)
+		return err
 	}
 	log.Println("Determining gconv (for GCONV_PATH)...")
 	// Search in all of the system's library directories for a directory called gconv
