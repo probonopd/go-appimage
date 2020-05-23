@@ -197,55 +197,24 @@ func AppDirDeploy(path string) {
 	// PulseAudio
 	handlePulseAudio(appdir)
 
-	ldLinux, err := appdir.GetElfInterpreter(appdir)
-	if err != nil {
-		helpers.PrintError("Could not determine ELF interpreter", err)
-		os.Exit(1)
-	}
+	// ld-linux interpreter
+	ldLinux, err := deployInterpreter(appdir)
 
-	if helpers.Exists(appdir.Path+"/"+ldLinux) == true {
-		log.Println("Removing pre-existing", ldLinux+"...")
-		err = syscall.Unlink(appdir.Path + "/" + ldLinux)
-		if err != nil {
-			helpers.PrintError("Could not remove pre-existing ld-linux", err)
-			os.Exit(1)
-		}
-
-	}
-
-	if *standalonePtr == true {
-		err = deployInterpreter(ldLinux, appdir)
-		if err != nil {
-			helpers.PrintError("Could not deploy the interpreter", err)
-			os.Exit(1)
-		}
-	} else {
-		log.Println("Not deploying", ldLinux, "because it was not requested or it is not needed")
-	}
-
+	// Glib 2 schemas
 	if helpers.Exists(appdir.Path + "/usr/share/glib-2.0/schemas") {
 		err = handleGlibSchemas(appdir)
 		if err != nil {
 			helpers.PrintError("Could not deploy GLib schemas", err)
 		}
 	}
-
-	if helpers.Exists(appdir.Path+"/etc/fonts") == false {
-		log.Println("Adding fontconfig symlink... (is this really the right thing to do?)")
-		err = os.MkdirAll(appdir.Path+"/etc/fonts", 0755)
-		if err != nil {
-			helpers.PrintError("MkdirAll", err)
-			os.Exit(1)
-		}
-		err = os.Symlink("/etc/fonts/fonts.conf", appdir.Path+"/etc/fonts/fonts.conf")
-		if err != nil {
-			helpers.PrintError("MkdirAll", err)
-			os.Exit(1)
-		}
+	// Fonts
+	err = deployFontconfig(appdir)
+	if err != nil {
+		helpers.PrintError("Could not deploy Fontconfig", err)
 	}
-
 	log.Println("Adding AppRun...")
 
+	// AppRun
 	err = ioutil.WriteFile(appdir.Path+"/AppRun", []byte(AppRunData), 0755)
 	if err != nil {
 		helpers.PrintError("write AppRun", err)
@@ -320,6 +289,91 @@ func AppDirDeploy(path string) {
 	}
 
 	deployCopyrightFiles(appdir)
+}
+
+func deployFontconfig(appdir helpers.AppDir) error {
+	if helpers.Exists(appdir.Path+"/etc/fonts") == false {
+		log.Println("Adding fontconfig symlink... (is this really the right thing to do?)")
+		err = os.MkdirAll(appdir.Path+"/etc/fonts", 0755)
+		if err != nil {
+			helpers.PrintError("MkdirAll", err)
+			os.Exit(1)
+		}
+		err = os.Symlink("/etc/fonts/fonts.conf", appdir.Path+"/etc/fonts/fonts.conf")
+		if err != nil {
+			helpers.PrintError("MkdirAll", err)
+			os.Exit(1)
+		}
+	}
+	return err
+}
+
+func deployInterpreter(appdir helpers.AppDir) (string, error) {
+	var ldLinux, err = appdir.GetElfInterpreter(appdir)
+	if err != nil {
+		helpers.PrintError("Could not determine ELF interpreter", err)
+		os.Exit(1)
+	}
+	if helpers.Exists(appdir.Path+"/"+ldLinux) == true {
+		log.Println("Removing pre-existing", ldLinux+"...")
+		err = syscall.Unlink(appdir.Path + "/" + ldLinux)
+		if err != nil {
+			helpers.PrintError("Could not remove pre-existing ld-linux", err)
+			os.Exit(1)
+		}
+
+	}
+	if *standalonePtr == true {
+		// ld-linux might be a symlink; hence we first need to resolve it
+		src, err := filepath.EvalSymlinks(ldLinux)
+		if err != nil {
+			helpers.PrintError("Could not get the location of ld-linux", err)
+			src = ldLinux
+		}
+
+		log.Println("Deploying", ldLinux+"...")
+
+		err := copy.Copy(src, appdir.Path+ldLinux)
+		if err != nil {
+			helpers.PrintError("Could not copy ld-linux", err)
+			return err
+		}
+		// Do what we do in the Scribus AppImage script, namely
+		// sed -i -e 's|/usr|/xxx|g' lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+		log.Println("Patching ld-linux...")
+		err = PatchFile(appdir.Path+ldLinux, "/lib", "/XXX")
+		if err != nil {
+			helpers.PrintError("PatchFile", err)
+			return err
+		}
+		err = PatchFile(appdir.Path+ldLinux, "/usr", "/xxx")
+		if err != nil {
+			helpers.PrintError("PatchFile", err)
+			return err
+		}
+		// --inhibit-cache is not working, it is still using /etc/ld.so.cache
+		err = PatchFile(appdir.Path+ldLinux, "/etc", "/EEE")
+		if err != nil {
+			helpers.PrintError("PatchFile", err)
+			return err
+		}
+		log.Println("Determining gconv (for GCONV_PATH)...")
+		// Search in all of the system's library directories for a directory called gconv
+		// and put it into the a location which matches the GCONV_PATH we export in AppRun
+		gconvs, err := findWithPrefixInLibraryLocations("gconv")
+		if err == nil {
+			// Target location must match GCONV_PATH exported in AppRun
+			determineELFsInDirTree(appdir, gconvs[0])
+		}
+
+		if err != nil {
+			helpers.PrintError("Could not deploy the interpreter", err)
+			os.Exit(1)
+		}
+	} else {
+		log.Println("Not deploying", ldLinux, "because it was not requested or it is not needed")
+	}
+	return ldLinux, err
 }
 
 // deployElf deploys an ELF (executable or shared library) to the AppDir
@@ -454,51 +508,6 @@ func handleGlibSchemas(appdir helpers.AppDir) error {
 			helpers.PrintError("Run glib-compile-schemas", err)
 			os.Exit(1)
 		}
-	}
-	return err
-}
-
-func deployInterpreter(ldLinux string, appdir helpers.AppDir) error {
-
-	// ld-linux might be a symlink; hence we first need to resolve it
-	src, err := filepath.EvalSymlinks(ldLinux)
-	if err != nil {
-		helpers.PrintError("Could not get the location of ld-linux", err)
-		src = ldLinux
-	}
-
-	log.Println("Deploying", ldLinux+"...")
-	err := copy.Copy(src, appdir.Path+ldLinux)
-	if err != nil {
-		helpers.PrintError("Could not copy ld-linux", err)
-		return err
-	}
-	// Do what we do in the Scribus AppImage script, namely
-	// sed -i -e 's|/usr|/xxx|g' lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
-	log.Println("Patching ld-linux...")
-	err = PatchFile(appdir.Path+ldLinux, "/lib", "/XXX")
-	if err != nil {
-		helpers.PrintError("PatchFile", err)
-		return err
-	}
-	err = PatchFile(appdir.Path+ldLinux, "/usr", "/xxx")
-	if err != nil {
-		helpers.PrintError("PatchFile", err)
-		return err
-	}
-	// --inhibit-cache is not working, it is still using /etc/ld.so.cache
-	err = PatchFile(appdir.Path+ldLinux, "/etc", "/EEE")
-	if err != nil {
-		helpers.PrintError("PatchFile", err)
-		return err
-	}
-	log.Println("Determining gconv (for GCONV_PATH)...")
-	// Search in all of the system's library directories for a directory called gconv
-	// and put it into the a location which matches the GCONV_PATH we export in AppRun
-	gconvs, err := findWithPrefixInLibraryLocations("gconv")
-	if err == nil {
-		// Target location must match GCONV_PATH exported in AppRun
-		determineELFsInDirTree(appdir, gconvs[0])
 	}
 	return err
 }
