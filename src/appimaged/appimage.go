@@ -224,7 +224,13 @@ func (ai AppImage) Validate() error {
 func (ai AppImage) _integrate() {
 
 	// log.Println("integrate called on:", ai.path)
-
+	
+	// Return immediately if the filename extension is not .AppImage
+	if strings.HasSuffix(ai.path, ".AppImage") != true {
+		// log.Println("No .AppImage suffix:", ai.path)
+		return
+	}
+	
 	// Return immediately if this is not an AppImage
 	if ai.imagetype < 0 {
 		// log.Println("Not an AppImage:", ai.path)
