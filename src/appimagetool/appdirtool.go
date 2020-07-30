@@ -1336,7 +1336,7 @@ func getQtPrfxpath(f *os.File, err error, qtVersion int) string {
 	// In this case, we should NOT patch it
 	if helpers.IsDirectory(qt_prfxpath+"/plugins") == false {
 		log.Println("Got qt_prfxpath but it does not contain 'plugins'")
-		results := helpers.FilesWithSuffixInDirectoryRecursive(qt_prfxpath, "plugins")
+		results := helpers.FilesWithSuffixInDirectoryRecursive(qt_prfxpath, "/plugins")
 		log.Println("results", results)
 		for _, result := range results {
 			if helpers.Exists(result + "/platforms") {
