@@ -455,8 +455,10 @@ func patchQtPrfxpath(appdir helpers.AppDir, lib string, libraryLocationsInAppDir
 	// Now that we know where in the file the information is, go write it
 	f.Seek(offset, 0)
 	if quirksModePatchQtPrfxPath == false {
+		log.Println("Patching qt_prfxpath in libQt5Core.so.5 to " + relPathToQt)
 		_, err = f.Write([]byte(relPathToQt + "\x00"))
 	} else {
+		log.Println("Patching qt_prfxpath in libQt5Core.so.5 to " + '.')
 		_, err = f.Write([]byte("." + "\x00"))
 	}
 	if err != nil {
