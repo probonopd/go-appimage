@@ -225,8 +225,8 @@ func (ai AppImage) _integrate() {
 
 	// log.Println("integrate called on:", ai.path)
 	
-	// Return immediately if the filename extension is not .AppImage
-	if strings.HasSuffix(ai.path, ".AppImage") != true {
+	// Return immediately if the filename extension is not .AppImage or .app
+	if (strings.HasSuffix(ai.path, ".AppImage") != true) && (strings.HasSuffix(ai.path, ".app") != true) {
 		// log.Println("No .AppImage suffix:", ai.path)
 		return
 	}
