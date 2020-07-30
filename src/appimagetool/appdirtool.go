@@ -458,7 +458,7 @@ func patchQtPrfxpath(appdir helpers.AppDir, lib string, libraryLocationsInAppDir
 		log.Println("Patching qt_prfxpath in libQt5Core.so.5 to " + relPathToQt)
 		_, err = f.Write([]byte(relPathToQt + "\x00"))
 	} else {
-		log.Println("Patching qt_prfxpath in libQt5Core.so.5 to " + '..')
+		log.Println("Patching qt_prfxpath in libQt5Core.so.5 to ..")
 		_, err = f.Write([]byte(".." + "\x00"))
 	}
 	if err != nil {
