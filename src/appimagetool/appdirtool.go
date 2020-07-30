@@ -1099,7 +1099,7 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 			os.Exit(1)
 		}
 
-		fmt.Println("Looking in", qtPrfxpath+"/plugins")
+		log.Println("Looking in", qtPrfxpath+"/plugins")
 
 		if helpers.Exists(qtPrfxpath+"/plugins/platforms/libqxcb.so") == false {
 			log.Println("Could not find 'plugins/platforms/libqxcb.so' in qtPrfxpath, exiting")
@@ -1324,7 +1324,7 @@ func getQtPrfxpath(f *os.File, err error, qtVersion int) string {
 		os.Exit(1)
 	}
 	qt_prfxpath := strings.TrimSpace(string(buf))
-	fmt.Println("qt_prfxpath:", qt_prfxpath)
+	log.Println("qt_prfxpath:", qt_prfxpath)
 	if qt_prfxpath == "" {
 		log.Println("Could not get qt_prfxpath")
 		return ""
@@ -1336,14 +1336,12 @@ func getQtPrfxpath(f *os.File, err error, qtVersion int) string {
 	// In this case, we should NOT patch it
 	if helpers.IsDirectory(qt_prfxpath+"/plugins") == false {
 		log.Println("Got qt_prfxpath but it does not contain 'plugins'")
-		results := helpers.FilesWithSuffixInDirectoryRecursive(qt_prfxpath, "/plugins")
-		log.Println("results", results)
-		for _, result := range results {
-			if helpers.Exists(result + "/platforms") {
-				qt_prfxpath = filepath.Dir(result)
-				log.Println("Guessed qt_prfxpath to be", qt_prfxpath)
-				quirksModePatchQtPrfxPath = true
-			}
+		results := helpers.FilesWithSuffixInDirectoryRecursive(qt_prfxpath, "libqxcb.so")
+		log.Println("libqxcb.so found:", results)
+		for _, result := range results { // FIXME: Probably we should just pick the first one and go with it
+			qt_prfxpath = filepath.Dir(filepath.Dir(filepath.Dir(result)))
+			log.Println("Guessed qt_prfxpath to be", qt_prfxpath)
+			quirksModePatchQtPrfxPath = true
 		}
 	}
 
