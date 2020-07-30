@@ -420,7 +420,7 @@ func patchQtPrfxpath(appdir helpers.AppDir, lib string, libraryLocationsInAppDir
 
 		So 'qt_prfxpath=.' would be wrong if we load the application through ld-linux.so because that one
 		lives in, e.g., appdir/lib64 which is actually not where the Qt 'plugins' directory is.
-		Hence we do NOT have to patch qt_prfxpath=. but to q't_prfxpath=../opt/qt512/'
+		Hence we do NOT have to patch qt_prfxpath=. but to qt_prfxpath=../opt/qt512/'
 		(the relative path from args[0] to the directory in which the Qt 'plugins' directory is)
 	*/
 	// Note: The following is correct only if we bundle (and run through) ld-linux; in all other cases
@@ -458,8 +458,8 @@ func patchQtPrfxpath(appdir helpers.AppDir, lib string, libraryLocationsInAppDir
 		log.Println("Patching qt_prfxpath in libQt5Core.so.5 to " + relPathToQt)
 		_, err = f.Write([]byte(relPathToQt + "\x00"))
 	} else {
-		log.Println("Patching qt_prfxpath in libQt5Core.so.5 to " + '.')
-		_, err = f.Write([]byte("." + "\x00"))
+		log.Println("Patching qt_prfxpath in libQt5Core.so.5 to " + '..')
+		_, err = f.Write([]byte(".." + "\x00"))
 	}
 	if err != nil {
 		helpers.PrintError("Could not patch qt_prfxpath in "+appdir.Path+"/"+lib, err)
