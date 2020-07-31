@@ -251,7 +251,7 @@ func ensureRunningFromLiveSystem() {
 	}
 
 	if found == false && gcEnvIsThere == false {
-		sendDesktopNotification("Not running on one of the supported Live systems", "Grab a Ubuntu, Debian, Deepin, Fedora, openSUSE, elementary OS, KDE neon,... Live ISO and try from there.", -1)
+		sendDesktopNotification("Not running on one of the supported Live systems", "Grab a Ubuntu, Debian, Fedora, openSUSE,... Live ISO (or a derivative, like Deepin, elementary OS, GeckoLinux, KDE neon, Linux Mint, Pop!_OS...) and try from there.", -1)
 		os.Exit(1)
 	}
 }
