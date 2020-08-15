@@ -165,7 +165,7 @@ mkdir -p appimagetool.AppDir/usr/bin
 ( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh -O uploadtool )
 chmod +x appimagetool.AppDir/usr/bin/*
 
-# 23-bit
+# 32-bit
 if [ $(go env GOHOSTARCH) == "amd64" ] ; then 
   USEARCH=386
 elif [ $(go env GOHOSTARCH) == "arm64" ] ; then
