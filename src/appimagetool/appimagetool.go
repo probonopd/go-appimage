@@ -369,7 +369,7 @@ func GenerateAppImage(appdir string) {
 		iconfile = appdir + "/" + iconname + ".png"
 	} else if helpers.CheckIfFileExists(appdir + "/usr/share/icons/hicolor/256x256/apps/" + iconname + ".png") {
 		// Search in usr/share/icons/hicolor/256x256 and copy from there
-		input, err := ioutil.ReadFile(appdir + "/usr/share/icons/hicolor/256x256/apps/" + iconname + ".png")
+		_, err := ioutil.ReadFile(appdir + "/usr/share/icons/hicolor/256x256/apps/" + iconname + ".png")
 		if err != nil {
 			log.Println(err)
 			return
