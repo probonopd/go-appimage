@@ -89,10 +89,6 @@ fi
 
 unset ARCH # It contains "amd64" which we cannot use since we need "x86_64"
 
-if [ $(go env GOHOSTARCH) != "amd64" ] ; then
-  exit 0
-fi
-
 # For some weird reason, no one seems to agree on what architectures
 # should be called... argh
 if [ "$TRAVIS_ARCH" == "aarch64" ] ; then
