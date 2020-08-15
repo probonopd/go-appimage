@@ -127,7 +127,7 @@ mkdir -p appimaged.AppDir/usr/bin
 ( cd appimaged.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/bsdtar-$ARCHITECTURE -O bsdtar )
 ( cd appimaged.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/unsquashfs-$ARCHITECTURE -O unsquashfs )
 chmod +x appimaged.AppDir/usr/bin/*
-cp appimaged-amd64 appimaged.AppDir/usr/bin/appimaged
+cp appimaged-$(go env GOHOSTARCH) appimaged.AppDir/usr/bin/appimaged
 ( cd appimaged.AppDir/ ; ln -s usr/bin/appimaged AppRun)
 cp $GOPATH/src/github.com/probonopd/go-appimage/data/appimage.png appimaged.AppDir/
 cat > appimaged.AppDir/appimaged.desktop <<\EOF
