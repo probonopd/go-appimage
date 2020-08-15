@@ -2,8 +2,8 @@
 
 An implementation of [AppImage](https://appimage.org) tools written in Go by the inventor of the AppImage format.
 
+* [`appimagetool`](https://github.com/probonopd/go-appimage/blob/master/src/appimagetool/README.md), a tool to deploy dependencies into AppDirs (including things like Qt, Gtk, GStreamer,...) and to convert AppDirs into AppImages
 * [`appimaged`](https://github.com/probonopd/go-appimage/blob/master/src/appimaged/README.md), an optional daemon that integrates AppImages into the system, shows their icons, and makes them executable
-* [`appimagetool`](https://github.com/probonopd/go-appimage/blob/master/src/appimagetool/README.md), a tool to convert AppDirs into AppImages
 
 Download them from https://github.com/probonopd/go-appimage/releases/tag/continuous.
 
