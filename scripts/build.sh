@@ -84,7 +84,6 @@ fi
 ##############################################################
 # Eat our own dogfood, use appimagetool to make 
 # and upload AppImages
-# TODO: Do this for ARM as well
 ##############################################################
 
 unset ARCH # It contains "amd64" which we cannot use since we need "x86_64"
@@ -149,9 +148,9 @@ EOF
 # For some weird reason, no one seems to agree on what architectures
 # should be called... argh
 if [ "$TRAVIS_ARCH" == "aarch64" ] ; then
-  export ARCHITECTURE=armv7
+  export ARCHITECTURE=armhf
 else
-  export ARCHITECTURE=x86
+  export ARCHITECTURE=i686
 fi
 
 ######################## FIXME: instaed of repeating all of what follows, turn it into a fuction that gets called
