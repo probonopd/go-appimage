@@ -175,7 +175,7 @@ elif [ $(go env GOHOSTARCH) == "arm64" ] ; then
   USEARCH=arm
   sudo dpkg --add-architecture armhf
   sudo apt-get update
-  sudo apt-get install libc6:armhf zlib1g:armhf libfuse2:armhf libc6-armel:armhf
+  sudo apt-get install libc6:armhf zlib1g:armhf zlib1g-dev:armhf libfuse2:armhf libc6-armel:armhf
 fi
 
 cp appimagetool-$USEARCH appimagetool.AppDir/usr/bin/appimagetool
