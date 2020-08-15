@@ -22,7 +22,7 @@ I am playing around with Go because
 ## TODO
 
 * Get rid of C code embedded in Go
-* Write tests
+* Get rid of external tools from https://github.com/probonopd/static-tools and replace with native Go
 
 ## Conventions
 
