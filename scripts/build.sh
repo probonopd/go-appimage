@@ -191,6 +191,7 @@ Icon=appimage
 Categories=Development;
 Terminal=true
 EOF
+file ./appimagetool.AppDir/usr/bin/appimagetool # FIXME: Remove this line once it is working
 PATH=./appimagetool.AppDir/usr/bin/:$PATH appimagetool ./appimagetool.AppDir
 
 # Make appimaged AppImage
