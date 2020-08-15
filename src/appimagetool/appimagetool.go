@@ -362,32 +362,29 @@ func GenerateAppImage(appdir string) {
 	var iconfile string
 
 	// Check if we find a png matching the Icon= key in the top-level directory of the AppDir
+	// or at usr/share/icons/hicolor/256x256/apps/ in the AppDir
 	// We insist on a png because otherwise we need to costly convert it to png at integration time
 	// since thumbails need to be in png format
 	if helpers.CheckIfFileExists(appdir+"/"+iconname+".png") == true {
 		iconfile = appdir + "/" + iconname + ".png"
-	} else if helpers.CheckIfFileExists(appdir + "/usr/share/icons/hicolor/256x256/" + iconname + ".png") {
+	} else if helpers.CheckIfFileExists(appdir + "/usr/share/icons/hicolor/256x256/apps/" + iconname + ".png") {
 		// Search in usr/share/icons/hicolor/256x256 and copy from there
-		input, err := ioutil.ReadFile(appdir + "/usr/share/icons/hicolor/256x256/" + iconname + ".png")
+		input, err := ioutil.ReadFile(appdir + "/usr/share/icons/hicolor/256x256/apps/" + iconname + ".png")
 		if err != nil {
 			log.Println(err)
 			return
 		}
-		err = ioutil.WriteFile(appdir+".DirIcon", input, 0644)
-		if err != nil {
-			log.Println("Error copying ticon to", appdir+".DirIcon")
-			log.Println(err)
-			return
-		}
+		iconfile = appdir + "/usr/share/icons/hicolor/256x256/apps/" + iconname + ".png"
 	} else {
-		os.Stderr.WriteString("Could not find icon file at " + appdir + "/" + iconname + ".png" + ", exiting\n")
+		os.Stderr.WriteString("Could not find icon file at " + appdir + "/" + iconname + ".png" + "\n")
+		os.Stderr.WriteString("nor at " + appdir + "/usr/share/icons/hicolor/256x256/apps/" + iconname + ".png" + ", exiting\n")
 		os.Exit(1)
 	}
 	log.Println("Icon file:", iconfile)
 
 	log.Println("TODO: Check validity and size of png")
 
-	// "Deleting pre-existing .DirIcon"
+	// Deleting pre-existing .DirIcon
 	if helpers.CheckIfFileExists(appdir+"/.DirIcon") == true {
 		log.Println("Deleting pre-existing .DirIcon")
 		os.Remove(appdir + "/.DirIcon")
