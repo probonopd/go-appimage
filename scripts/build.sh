@@ -60,7 +60,7 @@ if [ $(go env GOHOSTARCH) == "amd64" ] ; then
   env CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimagetool
   mv ./appimagetool appimagetool-386
 elif [ $(go env GOHOSTARCH) == "arm64" ] ; then 
-  env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=5 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimagetool
+  env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=6 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimagetool
   mv ./appimagetool appimagetool-arm
 fi
 
@@ -77,14 +77,13 @@ if [ $(go env GOHOSTARCH) == "amd64" ] ; then
   env CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimaged
   mv ./appimaged appimaged-386
 elif [ $(go env GOHOSTARCH) == "arm64" ] ; then
-  env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=5 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimaged
+  env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=6 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimaged
   mv ./appimaged appimaged-arm
 fi
 
 ##############################################################
 # Eat our own dogfood, use appimagetool to make 
 # and upload AppImages
-# TODO: Do this for ARM as well
 ##############################################################
 
 unset ARCH # It contains "amd64" which we cannot use since we need "x86_64"
@@ -128,6 +127,79 @@ mkdir -p appimaged.AppDir/usr/bin
 ( cd appimaged.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/unsquashfs-$ARCHITECTURE -O unsquashfs )
 chmod +x appimaged.AppDir/usr/bin/*
 cp appimaged-$(go env GOHOSTARCH) appimaged.AppDir/usr/bin/appimaged
+( cd appimaged.AppDir/ ; ln -s usr/bin/appimaged AppRun)
+cp $GOPATH/src/github.com/probonopd/go-appimage/data/appimage.png appimaged.AppDir/
+cat > appimaged.AppDir/appimaged.desktop <<\EOF
+[Desktop Entry]
+Type=Application
+Name=appimaged
+Exec=appimaged
+Comment=Optional daemon that integrates AppImages into the system
+Icon=appimage
+Categories=Utility;
+Terminal=true
+NoDisplay=true
+EOF
+./appimagetool-*-$ARCHITECTURE.AppImage ./appimaged.AppDir
+
+
+### 32-bit
+
+# For some weird reason, no one seems to agree on what architectures
+# should be called... argh
+if [ "$TRAVIS_ARCH" == "aarch64" ] ; then
+  export ARCHITECTURE=armhf
+else
+  export ARCHITECTURE=i686
+fi
+
+######################## FIXME: instaed of repeating all of what follows, turn it into a fuction that gets called
+
+# Make appimagetool AppImage
+rm -rf appimagetool.AppDir || true
+mkdir -p appimagetool.AppDir/usr/bin
+( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/desktop-file-validate-$ARCHITECTURE -O desktop-file-validate )
+( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/mksquashfs-$ARCHITECTURE -O mksquashfs )
+( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/patchelf-$ARCHITECTURE -O patchelf )
+( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/AppImage/AppImageKit/releases/download/continuous/runtime-$ARCHITECTURE )
+( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh -O uploadtool )
+chmod +x appimagetool.AppDir/usr/bin/*
+
+# 32-bit
+if [ $(go env GOHOSTARCH) == "amd64" ] ; then 
+  USEARCH=386
+  sudo dpkg --add-architecture i386
+  sudo apt-get update
+  sudo apt-get install libc6:i386 zlib1g:i386 libfuse2:i386
+elif [ $(go env GOHOSTARCH) == "arm64" ] ; then
+  USEARCH=arm
+  sudo dpkg --add-architecture armhf
+  sudo apt-get update
+  sudo apt-get install libc6:armhf zlib1g:armhf zlib1g-dev:armhf libfuse2:armhf libc6-armel:armhf
+fi
+
+cp appimagetool-$USEARCH appimagetool.AppDir/usr/bin/appimagetool
+( cd appimagetool.AppDir/ ; ln -s usr/bin/appimagetool AppRun)
+cp $GOPATH/src/github.com/probonopd/go-appimage/data/appimage.png appimagetool.AppDir/
+cat > appimagetool.AppDir/appimagetool.desktop <<\EOF
+[Desktop Entry]
+Type=Application
+Name=appimagetool
+Exec=appimagetool
+Comment=Tool to generate AppImages from AppDirs
+Icon=appimage
+Categories=Development;
+Terminal=true
+EOF
+PATH=./appimagetool.AppDir/usr/bin/:$PATH appimagetool ./appimagetool.AppDir
+
+# Make appimaged AppImage
+rm -rf appimaged.AppDir || true
+mkdir -p appimaged.AppDir/usr/bin
+( cd appimaged.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/bsdtar-$ARCHITECTURE -O bsdtar )
+( cd appimaged.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/unsquashfs-$ARCHITECTURE -O unsquashfs )
+chmod +x appimaged.AppDir/usr/bin/*
+cp appimaged-$USEARCH appimaged.AppDir/usr/bin/appimaged
 ( cd appimaged.AppDir/ ; ln -s usr/bin/appimaged AppRun)
 cp $GOPATH/src/github.com/probonopd/go-appimage/data/appimage.png appimaged.AppDir/
 cat > appimaged.AppDir/appimaged.desktop <<\EOF
