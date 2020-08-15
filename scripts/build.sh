@@ -142,3 +142,62 @@ Terminal=true
 NoDisplay=true
 EOF
 ./appimagetool-*-$ARCHITECTURE.AppImage ./appimaged.AppDir
+
+
+### 32-bit
+
+# For some weird reason, no one seems to agree on what architectures
+# should be called... argh
+if [ "$TRAVIS_ARCH" == "aarch64" ] ; then
+  export ARCHITECTURE=armv7
+else
+  export ARCHITECTURE=x86
+fi
+
+######################## FIXME: instaed of repeating all of what follows, turn it into a fuction that gets called
+
+# Make appimagetool AppImage
+rm -rf appimagetool.AppDir || true
+mkdir -p appimagetool.AppDir/usr/bin
+( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/desktop-file-validate-$ARCHITECTURE -O desktop-file-validate )
+( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/mksquashfs-$ARCHITECTURE -O mksquashfs )
+( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/patchelf-$ARCHITECTURE -O patchelf )
+( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/AppImage/AppImageKit/releases/download/continuous/runtime-$ARCHITECTURE )
+( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh -O uploadtool )
+chmod +x appimagetool.AppDir/usr/bin/*
+cp appimagetool-$(go env GOHOSTARCH) appimagetool.AppDir/usr/bin/appimagetool
+( cd appimagetool.AppDir/ ; ln -s usr/bin/appimagetool AppRun)
+cp $GOPATH/src/github.com/probonopd/go-appimage/data/appimage.png appimagetool.AppDir/
+cat > appimagetool.AppDir/appimagetool.desktop <<\EOF
+[Desktop Entry]
+Type=Application
+Name=appimagetool
+Exec=appimagetool
+Comment=Tool to generate AppImages from AppDirs
+Icon=appimage
+Categories=Development;
+Terminal=true
+EOF
+PATH=./appimagetool.AppDir/usr/bin/:$PATH appimagetool ./appimagetool.AppDir
+
+# Make appimaged AppImage
+rm -rf appimaged.AppDir || true
+mkdir -p appimaged.AppDir/usr/bin
+( cd appimaged.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/bsdtar-$ARCHITECTURE -O bsdtar )
+( cd appimaged.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/unsquashfs-$ARCHITECTURE -O unsquashfs )
+chmod +x appimaged.AppDir/usr/bin/*
+cp appimaged-$(go env GOHOSTARCH) appimaged.AppDir/usr/bin/appimaged
+( cd appimaged.AppDir/ ; ln -s usr/bin/appimaged AppRun)
+cp $GOPATH/src/github.com/probonopd/go-appimage/data/appimage.png appimaged.AppDir/
+cat > appimaged.AppDir/appimaged.desktop <<\EOF
+[Desktop Entry]
+Type=Application
+Name=appimaged
+Exec=appimaged
+Comment=Optional daemon that integrates AppImages into the system
+Icon=appimage
+Categories=Utility;
+Terminal=true
+NoDisplay=true
+EOF
+./appimagetool-*-$ARCHITECTURE.AppImage ./appimaged.AppDir
