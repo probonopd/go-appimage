@@ -60,7 +60,7 @@ if [ $(go env GOHOSTARCH) == "amd64" ] ; then
   env CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimagetool
   mv ./appimagetool appimagetool-386
 elif [ $(go env GOHOSTARCH) == "arm64" ] ; then 
-  env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=5 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimagetool
+  env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=6 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimagetool
   mv ./appimagetool appimagetool-arm
 fi
 
@@ -77,7 +77,7 @@ if [ $(go env GOHOSTARCH) == "amd64" ] ; then
   env CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimaged
   mv ./appimaged appimaged-386
 elif [ $(go env GOHOSTARCH) == "arm64" ] ; then
-  env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=5 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimaged
+  env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=6 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimaged
   mv ./appimaged appimaged-arm
 fi
 
