@@ -170,12 +170,12 @@ if [ $(go env GOHOSTARCH) == "amd64" ] ; then
   USEARCH=386
   sudo dpkg --add-architecture i386
   sudo apt-get update
-  sudo apt-get install libc6:i386 zlib1g:i386
+  sudo apt-get install libc6:i386 zlib1g:i386 libfuse2:i386
 elif [ $(go env GOHOSTARCH) == "arm64" ] ; then
   USEARCH=arm
   sudo dpkg --add-architecture armhf
   sudo apt-get update
-  sudo apt-get install libc6:armhf zlib1g:armhf
+  sudo apt-get install libc6:armhf zlib1g:armhf libfuse2:armhf
 fi
 
 cp appimagetool-$USEARCH appimagetool.AppDir/usr/bin/appimagetool
