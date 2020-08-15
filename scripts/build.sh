@@ -168,8 +168,14 @@ chmod +x appimagetool.AppDir/usr/bin/*
 # 32-bit
 if [ $(go env GOHOSTARCH) == "amd64" ] ; then 
   USEARCH=386
+  sudo dpkg --add-architecture i386
+  sudo apt-get update
+  sudo apt-get install libc6:i386 zlib1g:i386
 elif [ $(go env GOHOSTARCH) == "arm64" ] ; then
   USEARCH=arm
+  sudo dpkg --add-architecture armhf
+  sudo apt-get update
+  sudo apt-get install libc6:armhf zlib1g:armhf
 fi
 
 cp appimagetool-$USEARCH appimagetool.AppDir/usr/bin/appimagetool
