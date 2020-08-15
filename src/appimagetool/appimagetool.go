@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/agriardyan/go-zsyncmake/zsync"
+	"github.com/probonopd/go-zsyncmake/zsync"
 	"gopkg.in/ini.v1"
 
 	"github.com/probonopd/go-appimage/internal/helpers"

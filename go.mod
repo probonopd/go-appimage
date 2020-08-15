@@ -6,7 +6,7 @@ require (
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/acobaugh/osrelease v0.0.0-20181218015638-a93a0a55a249
 	github.com/adrg/xdg v0.2.1
-	github.com/agriardyan/go-zsyncmake v0.0.0-20181008012426-5db478ac2be7
+	github.com/probonopd/go-zsyncmake v0.0.0-20181008012426-5db478ac2be7
 	github.com/alokmenghrajani/gpgeez v0.0.0-20161206084504-1a06f1c582f9
 	github.com/coreos/go-systemd/v22 v22.0.0
 	github.com/eclipse/paho.mqtt.golang v1.2.0
