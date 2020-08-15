@@ -164,7 +164,15 @@ mkdir -p appimagetool.AppDir/usr/bin
 ( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/AppImage/AppImageKit/releases/download/continuous/runtime-$ARCHITECTURE )
 ( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh -O uploadtool )
 chmod +x appimagetool.AppDir/usr/bin/*
-cp appimagetool-$(go env GOHOSTARCH) appimagetool.AppDir/usr/bin/appimagetool
+
+# 23-bit
+if [ $(go env GOHOSTARCH) == "amd64" ] ; then 
+  USEARCH=386
+elif [ $(go env GOHOSTARCH) == "arm64" ] ; then
+  USEARCH=arm
+fi
+
+cp appimagetool-$USEARCH appimagetool.AppDir/usr/bin/appimagetool
 ( cd appimagetool.AppDir/ ; ln -s usr/bin/appimagetool AppRun)
 cp $GOPATH/src/github.com/probonopd/go-appimage/data/appimage.png appimagetool.AppDir/
 cat > appimagetool.AppDir/appimagetool.desktop <<\EOF
@@ -185,7 +193,7 @@ mkdir -p appimaged.AppDir/usr/bin
 ( cd appimaged.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/bsdtar-$ARCHITECTURE -O bsdtar )
 ( cd appimaged.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/unsquashfs-$ARCHITECTURE -O unsquashfs )
 chmod +x appimaged.AppDir/usr/bin/*
-cp appimaged-$(go env GOHOSTARCH) appimaged.AppDir/usr/bin/appimaged
+cp appimaged-$USEARCH appimaged.AppDir/usr/bin/appimaged
 ( cd appimaged.AppDir/ ; ln -s usr/bin/appimaged AppRun)
 cp $GOPATH/src/github.com/probonopd/go-appimage/data/appimage.png appimaged.AppDir/
 cat > appimaged.AppDir/appimaged.desktop <<\EOF
