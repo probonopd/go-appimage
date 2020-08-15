@@ -106,7 +106,7 @@ mkdir -p appimagetool.AppDir/usr/bin
 ( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/AppImage/AppImageKit/releases/download/continuous/runtime-$ARCHITECTURE )
 ( cd appimagetool.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh -O uploadtool )
 chmod +x appimagetool.AppDir/usr/bin/*
-cp appimagetool-amd64 appimagetool.AppDir/usr/bin/appimagetool
+cp appimagetool-* appimagetool.AppDir/usr/bin/appimagetool
 ( cd appimagetool.AppDir/ ; ln -s usr/bin/appimagetool AppRun)
 cp $GOPATH/src/github.com/probonopd/go-appimage/data/appimage.png appimagetool.AppDir/
 cat > appimagetool.AppDir/appimagetool.desktop <<\EOF
@@ -141,4 +141,4 @@ Categories=Utility;
 Terminal=true
 NoDisplay=true
 EOF
-./appimagetool-*-x86_64.AppImage ./appimaged.AppDir
+./appimagetool-*-*.AppImage ./appimaged.AppDir
