@@ -212,13 +212,18 @@ func AppDirDeploy(path string) {
 	if err != nil {
 		helpers.PrintError("Could not deploy Fontconfig", err)
 	}
-	log.Println("Adding AppRun...")
 
 	// AppRun
-	err = ioutil.WriteFile(appdir.Path+"/AppRun", []byte(AppRunData), 0755)
-	if err != nil {
-		helpers.PrintError("write AppRun", err)
-		os.Exit(1)
+	if *libapprun_hooksPtr == false {
+		// If libapprun_hooks is not used
+		log.Println("Adding AppRun...")
+		err = ioutil.WriteFile(appdir.Path+"/AppRun", []byte(AppRunData), 0755)
+		if err != nil {
+			helpers.PrintError("write AppRun", err)
+			os.Exit(1)
+		}
+	} else {
+		log.Println("TODO: Add AppRun suitable for libapprun_hooks...")
 	}
 
 	log.Println("Find out whether Qt is a dependency of the application to be bundled...")
@@ -519,6 +524,12 @@ func deployCopyrightFiles(appdir helpers.AppDir) {
 		log.Println("To check whether it is really self-contained, run:")
 		fmt.Println("LD_LIBRARY_PATH='' find " + appdir.Path + " -type f -exec ldd {} 2>&1 \\; | grep '=>' | grep -v " + appdir.Path)
 	}
+
+	if *libapprun_hooksPtr == true {
+		log.Println("The option '-m' was used. Hence, you need to manually add AppRun, .env, and libapprun_hooks.so")
+		log.Println("from https://github.com/AppImageCrafters/AppRun/releases/tag/continuous. TODO: Automate this")
+	}
+
 }
 
 // handleGlibSchemas compiles GLib schemas if the subdirectory is present in the AppImage.
