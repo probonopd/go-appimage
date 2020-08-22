@@ -1380,7 +1380,6 @@ func ScanFile(f io.ReadSeeker, search []byte) int64 {
 // Rather than using the system's package manager, this is using a hardcoded list of filenames
 // and paths which may need to be adjusted over time. This is to be distribution-independent.
 func determineWhetherPartOfLibc(thisfile string) bool {
-	fmt.Println("Hello, playground")
 
 	prefixes := []string{"ld", "libBrokenLocale", "libSegFault", "libanl", "libc", "libdl", "libm", "libmemusage", "libmvec", "libnsl",
 		"libnss", "libpcprofile", "libpthread", "libresolv", "librt", "libthread_db", "libutil", "sotruss-lib", "libz", "libstdc++"}
