@@ -335,7 +335,17 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 
 		log.Println("Deploying", ldLinux+"...")
 
-		err = copy.Copy(src, appdir.Path+ldLinux)
+		ldTargetPath := appdir.Path + ldLinux
+		if *libapprun_hooksPtr == true {
+			// This file is part of the libc family of libraries and we want to use libapprun_hooks,
+			// hence copy to a separate directory unlike the rest of the libraries. The reason is
+			// that this familiy of libraries will only be used by libapprun_hooks if the
+			// bundled version is newer than what is already on the target system; this allows
+			// us to also load libraries from the system such as proprietary GPU drivers
+			log.Println(ldLinux, "is part of libc; copy to", libc_dir, "subdirectory")
+			ldTargetPath = appdir.Path + "/" + libc_dir + "/" + ldLinux // If libapprun_hooks is used
+		}
+		err = copy.Copy(src, ldTargetPath)
 		if err != nil {
 			helpers.PrintError("Could not copy ld-linux", err)
 			return "", err
@@ -343,18 +353,18 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 		// Do what we do in the Scribus AppImage script, namely
 		// sed -i -e 's|/usr|/xxx|g' lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
 		log.Println("Patching ld-linux...")
-		err = PatchFile(appdir.Path+ldLinux, "/lib", "/XXX")
+		err = PatchFile(ldTargetPath, "/lib", "/XXX")
 		if err != nil {
 			helpers.PrintError("PatchFile", err)
 			return "", err
 		}
-		err = PatchFile(appdir.Path+ldLinux, "/usr", "/xxx")
+		err = PatchFile(ldTargetPath, "/usr", "/xxx")
 		if err != nil {
 			helpers.PrintError("PatchFile", err)
 			return "", err
 		}
 		// --inhibit-cache is not working, it is still using /etc/ld.so.cache
-		err = PatchFile(appdir.Path+ldLinux, "/etc", "/EEE")
+		err = PatchFile(ldTargetPath, "/etc", "/EEE")
 		if err != nil {
 			helpers.PrintError("PatchFile", err)
 			return "", err
@@ -390,10 +400,19 @@ func deployElf(lib string, appdir helpers.AppDir, err error) {
 		}
 	}
 	if shouldDoIt == true && strings.HasPrefix(lib, appdir.Path) == false && helpers.Exists(appdir.Path+"/"+lib) == false {
-		if checkWhetherPartOfLibc(lib) {
-			log.Println(lib, "is part of glibc; TODO: Copy to different path if needed")
+		// For libapprun_hooks
+		err = nil
+		if *libapprun_hooksPtr == true && checkWhetherPartOfLibc(lib) == true {
+			// This file is part of the libc family of libraries and we want to use libapprun_hooks,
+			// hence copy to a separate directory unlike the rest of the libraries. The reason is
+			// that this familiy of libraries will only be used by libapprun_hooks if the
+			// bundled version is newer than what is already on the target system; this allows
+			// us to also load libraries from the system such as proprietary GPU drivers
+			log.Println(lib, "is part of libc; copy to", libc_dir, "subdirectory")
+			err = helpers.CopyFile(lib, appdir.Path+"/"+libc_dir+"/"+lib) // If libapprun_hooks is used
+		} else {
+			err = helpers.CopyFile(lib, appdir.Path+"/"+lib) // If libapprun_hooks is not used
 		}
-		err = helpers.CopyFile(lib, appdir.Path+"/"+lib)
 		if err != nil {
 			log.Println(appdir.Path+"/"+lib, "could not be copied:", err)
 			os.Exit(1)
@@ -661,7 +680,6 @@ func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, 
 	var newRpathStringForElf string
 	var newRpathStrings []string
 	for _, libloc := range libraryLocationsInAppDir {
-
 		relpath, err := filepath.Rel(filepath.Dir(path), libloc)
 		if err != nil {
 			helpers.PrintError("Could not compute relative path", err)
@@ -670,6 +688,11 @@ func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, 
 	}
 	newRpathStringForElf = strings.Join(newRpathStrings, ":")
 	// fmt.Println("Computed newRpathStringForElf:", appdir.Path+"/"+lib, newRpathStringForElf)
+
+	if *libapprun_hooksPtr == true && checkWhetherPartOfLibc(path) {
+		log.Println("Not writing rpath because files is part of the libc family of libraries")
+		return
+	}
 
 	if strings.HasPrefix(filepath.Base(path), "ld-") == true {
 		log.Println("Not writing rpath in", path, "because its name starts with ld-...")

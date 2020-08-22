@@ -29,6 +29,8 @@ import (
 var commit string
 
 var standalonePtr = flag.Bool("s", false, "Make standalone (self-contained) bundle")
+var libapprun_hooksPtr = flag.Bool("l", false, "Use libapprun_hooks")
+var libc_dir = "libc"
 
 func main() {
 
