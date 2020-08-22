@@ -4,8 +4,6 @@ github.com/acobaugh/osrelease v0.0.0-20181218015638-a93a0a55a249 h1:fMi9ZZ/it4or
 github.com/acobaugh/osrelease v0.0.0-20181218015638-a93a0a55a249/go.mod h1:iU1PxQMQwoHZZWmMKrMkrNlY+3+p9vxIjpZOVyxWa0g=
 github.com/adrg/xdg v0.2.1 h1:VSVdnH7cQ7V+B33qSJHTCRlNgra1607Q8PzEmnvb2Ic=
 github.com/adrg/xdg v0.2.1/go.mod h1:ZuOshBmzV4Ta+s23hdfFZnBsdzmoR3US0d7ErpqSbTQ=
-github.com/probonopd/go-zsyncmake v0.0.0-20181008012426-5db478ac2be7 h1:S8o0s/8ZbFaTrLNVgUDw/iKcmxJTm1h/I2R42IL1xys=
-github.com/probonopd/go-zsyncmake v0.0.0-20181008012426-5db478ac2be7/go.mod h1:ebHK/Ok3xYAKjcxFi53iyGhLZYKvcH40BD/4hjKqoLc=
 github.com/alcortesm/tgz v0.0.0-20161220082320-9c5fe88206d7 h1:uSoVVbwJiQipAclBbw+8quDsfcvFjOpI5iCf4p/cqCs=
 github.com/alcortesm/tgz v0.0.0-20161220082320-9c5fe88206d7/go.mod h1:6zEj6s6u/ghQa61ZWa/C2Aw3RkjiTBOix7dkqa1VLIs=
 github.com/alokmenghrajani/gpgeez v0.0.0-20161206084504-1a06f1c582f9 h1:Zio/mdDEpJDG1yeH9y2Kcb9ATWXkE7WIBkO+IMqRbbM=
@@ -83,6 +81,8 @@ github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
+github.com/probonopd/go-zsyncmake v0.0.0-20181008012426-5db478ac2be7 h1:m55h8x868XCJE/gt885caYVx8HfaMv8S5ow9eW+D+tg=
+github.com/probonopd/go-zsyncmake v0.0.0-20181008012426-5db478ac2be7/go.mod h1:euJYoVMkwvAORq0XTRM2kj2B+NDbWmoEJbXIIR3M7sI=
 github.com/prometheus/procfs v0.0.10 h1:QJQN3jYQhkamO4mhfUWqdDH2asK7ONOI9MTWjyAxNKM=
 github.com/prometheus/procfs v0.0.10/go.mod h1:7Qr8sr6344vo1JqZ6HhLceV9o3AJ1Ff+GxbHq6oeK9A=
 github.com/rjeczalik/notify v0.9.2 h1:MiTWrPj55mNDHEiIX5YUSKefw/+lCQVoAFmD6oQm5w8=

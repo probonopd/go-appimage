@@ -1372,3 +1372,31 @@ func ScanFile(f io.ReadSeeker, search []byte) int64 {
 	f.Seek(offset-int64(len(search)), 0) // Seeks to the beginning of the searched []byte
 	return offset - int64(len(search))
 }
+
+// determineWhetherPartOfLibc returns true if the file passed in belongs to one of the libc6,
+// zlib1g, libstdc++6 packages, otherwise returns false. This is needed because libapprun_hooks
+// uses those only if the libc on the system is older than the libc in the AppDir, so that
+// system libraries like those needed for Nvidia GPU acceleration can still be loaded.
+// Rather than using the system's package manager, this is using a hardcoded list of filenames
+// and paths which may need to be adjusted over time. This is to be distribution-independent.
+func determineWhetherPartOfLibc(thisfile string) bool {
+	fmt.Println("Hello, playground")
+
+	prefixes := []string{"ld", "libBrokenLocale", "libSegFault", "libanl", "libc", "libdl", "libm", "libmemusage", "libmvec", "libnsl",
+		"libnss", "libpcprofile", "libpthread", "libresolv", "librt", "libthread_db", "libutil", "sotruss-lib", "libz", "libstdc++"}
+
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(filepath.Base(thisfile), prefix+"-") || strings.HasPrefix(filepath.Base(thisfile), prefix+".") || strings.HasPrefix(filepath.Base(thisfile), prefix+"_") {
+		}
+	}
+
+	pathparts := []string{"/ld.so.conf.d/", "/libstdcxx/", "/gconv/"}
+
+	for _, pathpart := range pathparts {
+		if strings.Contains(thisfile, pathpart) {
+			return true
+		}
+	}
+
+	return false
+}
