@@ -390,6 +390,9 @@ func deployElf(lib string, appdir helpers.AppDir, err error) {
 		}
 	}
 	if shouldDoIt == true && strings.HasPrefix(lib, appdir.Path) == false && helpers.Exists(appdir.Path+"/"+lib) == false {
+		if checkWhetherPartOfLibc(lib) {
+			log.Println(lib, "is part of glibc; TODO: Copy to different path if needed")
+		}
 		err = helpers.CopyFile(lib, appdir.Path+"/"+lib)
 		if err != nil {
 			log.Println(appdir.Path+"/"+lib, "could not be copied:", err)
@@ -1373,13 +1376,13 @@ func ScanFile(f io.ReadSeeker, search []byte) int64 {
 	return offset - int64(len(search))
 }
 
-// determineWhetherPartOfLibc returns true if the file passed in belongs to one of the libc6,
+// checkWhetherPartOfLibc returns true if the file passed in belongs to one of the libc6,
 // zlib1g, libstdc++6 packages, otherwise returns false. This is needed because libapprun_hooks
 // uses those only if the libc on the system is older than the libc in the AppDir, so that
 // system libraries like those needed for Nvidia GPU acceleration can still be loaded.
 // Rather than using the system's package manager, this is using a hardcoded list of filenames
 // and paths which may need to be adjusted over time. This is to be distribution-independent.
-func determineWhetherPartOfLibc(thisfile string) bool {
+func checkWhetherPartOfLibc(thisfile string) bool {
 
 	prefixes := []string{"ld", "libBrokenLocale", "libSegFault", "libanl", "libc", "libdl", "libm", "libmemusage", "libmvec", "libnsl",
 		"libnss", "libpcprofile", "libpthread", "libresolv", "librt", "libthread_db", "libutil", "sotruss-lib", "libz", "libstdc++"}

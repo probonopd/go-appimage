@@ -2,8 +2,9 @@
   <configuration default="false" name="appimagetool" type="GoApplicationRunConfiguration" factoryName="Go Application">
     <module name="appimage" />
     <working_directory value="$PROJECT_DIR$/" />
-    <kind value="PACKAGE" />
-    <package value="github.com/probonopd/go-appimage/src/appimaged" />
+    <kind value="DIRECTORY" />
+    <package value="$PROJECT_DIR$/src/appimaged" />
+    <directory value="$PROJECT_DIR$/src/appimagetool" />
     <method v="2" />
   </configuration>
 </component>
