@@ -406,7 +406,7 @@ func deployElf(lib string, appdir helpers.AppDir, err error) {
 	}
 	
 	libTargetPath := appdir.Path + "/" + lib
-	if *libapprun_hooksPtr == true && checkWhetherPartOfLibc(lib) == true {
+	if shouldDoIt == true && *libapprun_hooksPtr == true && checkWhetherPartOfLibc(lib) == true {
 		// This file is part of the libc family of libraries and we want to use libapprun_hooks,
 		// hence copy to a separate directory unlike the rest of the libraries. The reason is
 		// that this familiy of libraries will only be used by libapprun_hooks if the
