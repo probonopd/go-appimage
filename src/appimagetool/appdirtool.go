@@ -403,24 +403,26 @@ func deployElf(lib string, appdir helpers.AppDir, err error) {
 		}
 	}
 	
-	log.Println("Working on", lib, "... (TODO: Remove this message)")
-	libTargetPath := appdir.Path + "/" + lib
-	if *libapprun_hooksPtr == true && checkWhetherPartOfLibc(lib) == true {
-		// This file is part of the libc family of libraries and we want to use libapprun_hooks,
-		// hence copy to a separate directory unlike the rest of the libraries. The reason is
-		// that this familiy of libraries will only be used by libapprun_hooks if the
-		// bundled version is newer than what is already on the target system; this allows
-		// us to also load libraries from the system such as proprietary GPU drivers
-		log.Println(lib, "is part of libc; copy to", libc_dir, "subdirectory")
-		libTargetPath = appdir.Path + "/" + libc_dir + "/" + lib // If libapprun_hooks is used
-	}
-	log.Println("libTargetPath:", libTargetPath, "(TODO: Remove this message)")
-		
-	err = helpers.CopyFile(lib, libTargetPath) // If libapprun_hooks is not used
-	
-	if err != nil {
-		log.Println(libTargetPath, "could not be copied:", err)
-		os.Exit(1)
+	log.Println("Working on", lib, "(TODO: Remove this message)")
+	if strings.HasPrefix(lib, appdir.Path) == false { // Do not copy if it is already in the AppDir
+		libTargetPath := appdir.Path + "/" + lib
+		if *libapprun_hooksPtr == true && checkWhetherPartOfLibc(lib) == true {
+			// This file is part of the libc family of libraries and we want to use libapprun_hooks,
+			// hence copy to a separate directory unlike the rest of the libraries. The reason is
+			// that this familiy of libraries will only be used by libapprun_hooks if the
+			// bundled version is newer than what is already on the target system; this allows
+			// us to also load libraries from the system such as proprietary GPU drivers
+			log.Println(lib, "is part of libc; copy to", libc_dir, "subdirectory")
+			libTargetPath = appdir.Path + "/" + libc_dir + "/" + lib // If libapprun_hooks is used
+		}
+		log.Println("Copying to libTargetPath:", libTargetPath, "(TODO: Remove this message)")
+
+		err = helpers.CopyFile(lib, libTargetPath) // If libapprun_hooks is not used
+
+		if err != nil {
+			log.Println(libTargetPath, "could not be copied:", err)
+			os.Exit(1)
+		}
 	}
 }
 
@@ -1423,6 +1425,7 @@ func checkWhetherPartOfLibc(thisfile string) bool {
 
 	for _, prefix := range prefixes {
 		if strings.HasPrefix(filepath.Base(thisfile), prefix+"-") || strings.HasPrefix(filepath.Base(thisfile), prefix+".") || strings.HasPrefix(filepath.Base(thisfile), prefix+"_") {
+		return true
 		}
 	}
 
