@@ -701,7 +701,7 @@ func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, 
 	// fmt.Println("Computed newRpathStringForElf:", appdir.Path+"/"+lib, newRpathStringForElf)
 
 	if *libapprun_hooksPtr == true && checkWhetherPartOfLibc(path) {
-		log.Println("Not writing rpath because files is part of the libc family of libraries")
+		log.Println("Not writing rpath because file is part of the libc family of libraries")
 		return
 	}
 
