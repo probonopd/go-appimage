@@ -416,7 +416,7 @@ func deployElf(lib string, appdir helpers.AppDir, err error) {
 		libTargetPath = appdir.Path + "/" + libc_dir + "/" + lib // If libapprun_hooks is used
 	}
 		
-	err = helpers.CopyFile(libTargetPath) // If libapprun_hooks is not used
+	err = helpers.CopyFile(lib, libTargetPath) // If libapprun_hooks is not used
 	
 	if err != nil {
 		log.Println(libTargetPath, "could not be copied:", err)
