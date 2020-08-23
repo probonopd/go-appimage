@@ -852,7 +852,8 @@ func readRpaths(path string) ([]string, error) {
 	if err != nil {
 		fmt.Println(cmd.String())
 		helpers.PrintError("patchelf --print-rpath "+path+": "+string(out), err)
-		os.Exit(1)
+		log.Println("Perhaps it is not dynamically linked, or perhaps it is a script. Continuing...")
+		// os.Exit(1)
 	}
 	rpathStringInELF := strings.TrimSpace(string(out))
 	if rpathStringInELF == "" {
