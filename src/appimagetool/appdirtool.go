@@ -396,17 +396,16 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 // deployElf deploys an ELF (executable or shared library) to the AppDir
 // if it is not on the exclude list and it is not yet at the target location
 func deployElf(lib string, appdir helpers.AppDir, err error) {
-	shouldDoIt := true
 	for _, excludePrefix := range ExcludedLibraries {
 		if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true && *standalonePtr == false {
 			log.Println("Skipping", lib, "because it is on the excludelist")
-			shouldDoIt = false
-			break
+			return
 		}
 	}
 	
+	log.Println("Working on", lib, "... (TODO: Remove this message)")
 	libTargetPath := appdir.Path + "/" + lib
-	if shouldDoIt == true && *libapprun_hooksPtr == true && checkWhetherPartOfLibc(lib) == true {
+	*libapprun_hooksPtr == true && checkWhetherPartOfLibc(lib) == true {
 		// This file is part of the libc family of libraries and we want to use libapprun_hooks,
 		// hence copy to a separate directory unlike the rest of the libraries. The reason is
 		// that this familiy of libraries will only be used by libapprun_hooks if the
@@ -415,6 +414,7 @@ func deployElf(lib string, appdir helpers.AppDir, err error) {
 		log.Println(lib, "is part of libc; copy to", libc_dir, "subdirectory")
 		libTargetPath = appdir.Path + "/" + libc_dir + "/" + lib // If libapprun_hooks is used
 	}
+	log.Println("libTargetPath:", libTargetPath, "(TODO: Remove this message)")
 		
 	err = helpers.CopyFile(lib, libTargetPath) // If libapprun_hooks is not used
 	
