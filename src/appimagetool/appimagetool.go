@@ -229,6 +229,8 @@ func GenerateAppImage(appdir string) {
 		os.Stderr.WriteString("AppRun is missing \n")
 		os.Exit(1)
 	}
+	
+	// TODO: Append 7-digit commit sha after the build number
 
 	var version string
 	version = os.Getenv("VERSION")
@@ -239,6 +241,14 @@ func GenerateAppImage(appdir string) {
 		log.Println("      Please set the $VERSION environment variable if this is not intended")
 		version = travisBuildNumber
 	}
+
+	githubRunNumber := os.Getenv("GITHUB_RUN_NUMBER")
+	// On GitHub Actions use $GITHUB_RUN_NUMBER
+	if version == "" && githubRunNumber != "" {
+		log.Println("NOTE: Using", githubRunNumber, "from $GITHUB_RUN_NUMBER as the version")
+		log.Println("      Please set the $VERSION environment variable if this is not intended")
+		version = githubRunNumber
+	}	
 
 	gitRoot := ""
 	gitRepo, err := helpers.GetGitRepository()
