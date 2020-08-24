@@ -544,6 +544,28 @@ func GenerateAppImage(appdir string) {
 		}
 	}
 
+	// If we know this is a GitHub Actions workflow,
+	// then fill in update information based on GITHUB_REPOSITORY
+	//     https://docs.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables#default-environment-variables
+	//     GITHUB_REPOSITORY: The slug (in form: owner_name/repo_name) of the repository currently being built.
+	//     GITHUB_REF: e.g., "refs/pull/421/merge"
+	if os.Getenv("GITHUB_REPOSITORY") != "" {
+		fmt.Println("Running on GitHub Actions")
+		if strings.Contains(os.Getenv("GITHUB_REF"), "/pull/") {
+			fmt.Println("Will not calculate update information for GitHub because this is a pull request")
+		} else {
+			parts := strings.Split(os.Getenv("GITHUB_REPOSITORY"), "/")
+			var channel string
+			if os.Getenv("GITHUB_REF") != "" && strings.Contains(os.Getenv("GITHUB_REF"), "/continuous/") == false {
+				channel = "latest"
+			} else {
+				channel = "continuous"
+			}
+			updateinformation = "gh-releases-zsync|" + parts[0] + "|" + parts[1] + "|" + channel + "|" + nameWithUnderscores + "-" + "*-" + arch + ".AppImage.zsync"
+			fmt.Println("Calculated updateinformation:", updateinformation)
+		}
+	}
+	
 	if updateinformation != "" {
 
 		err = helpers.ValidateUpdateInformation(updateinformation)
