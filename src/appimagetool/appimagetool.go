@@ -260,7 +260,7 @@ func GenerateAppImage(appdir string) {
 			gitRoot = gitWt.Filesystem.Root()
 			log.Println("git root:", gitRoot)
 			if version == "" {
-				gitHead, _ := gitRepo.Head()
+				gitHead, err := gitRepo.Head()
 				version = gitHead.Hash().String()[:7] // This equals 'git rev-parse --short HEAD'
 				if err != nil {
 					os.Stderr.WriteString("Could not determine version automatically, please supply the application version as $VERSION " + filepath.Base(os.Args[0]) + " ... \n")
