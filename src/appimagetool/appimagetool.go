@@ -44,15 +44,14 @@ func main() {
 	// Detect if we are running inside Docker; https://github.com/AppImage/AppImageKit/issues/912
 	// If the file /.dockerenv exists, and/or if /proc/1/cgroup begins with /lxc/ or /docker/
 	res, err := ioutil.ReadFile("/proc/1/cgroup")
-	if err != nil {
-		helpers.PrintError("ReadFile /proc/1/cgroup", err)
-		os.Exit(1)
-	}
-	if strings.HasPrefix(string(res), "/lxc") || strings.HasPrefix(string(res), "/docker") || helpers.Exists("/.dockerenv") == true {
-		log.Println("Running inside Docker. Please make sure that the environment variables from Travis CI")
-		log.Println("available inside Docker if you are running on Travis CI.")
-		log.Println("This can be achieved by using something along the lines of 'docker run --env-file <(env)'.")
-		log.Println("Please see https://github.com/docker/cli/issues/2210.")
+	if err == nil {
+		// Do not exit if ioutil.ReadFile("/proc/1/cgroup") fails. This happens, e.g., on FreeBSD
+		if strings.HasPrefix(string(res), "/lxc") || strings.HasPrefix(string(res), "/docker") || helpers.Exists("/.dockerenv") == true {
+			log.Println("Running inside Docker. Please make sure that the environment variables from Travis CI")
+			log.Println("available inside Docker if you are running on Travis CI.")
+			log.Println("This can be achieved by using something along the lines of 'docker run --env-file <(env)'.")
+			log.Println("Please see https://github.com/docker/cli/issues/2210.")
+		}
 	}
 
 	if os.Getenv("TRAVIS_TEST_RESULT") == "1" {
@@ -229,7 +228,7 @@ func GenerateAppImage(appdir string) {
 		os.Stderr.WriteString("AppRun is missing \n")
 		os.Exit(1)
 	}
-	
+
 	// TODO: Append 7-digit commit sha after the build number
 
 	var version string
@@ -248,7 +247,7 @@ func GenerateAppImage(appdir string) {
 		log.Println("NOTE: Using", githubRunNumber, "from $GITHUB_RUN_NUMBER as the version")
 		log.Println("      Please set the $VERSION environment variable if this is not intended")
 		version = githubRunNumber
-	}	
+	}
 
 	gitRoot := ""
 	gitRepo, err := helpers.GetGitRepository()
@@ -565,7 +564,7 @@ func GenerateAppImage(appdir string) {
 			fmt.Println("Calculated updateinformation:", updateinformation)
 		}
 	}
-	
+
 	if updateinformation != "" {
 
 		err = helpers.ValidateUpdateInformation(updateinformation)
