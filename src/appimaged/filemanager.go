@@ -6,6 +6,7 @@ package main
 // TODO: Remove the context menus when appimaged exits
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 
@@ -78,7 +79,7 @@ Name=Make executable
 	// https://github.com/Sadi58/nemo-actions
 	// http://www.bernaerts-nicolas.fr/linux/76-gnome/344-nautilus-new-document-creation-menu
 	// ~/.local/share/file-manager/actions/newfile-bash.desktop
-	err := os.MkdirAll(xdg.DataHome+"/file-manager/actions/", 0755)
+	err = os.MkdirAll(xdg.DataHome+"/file-manager/actions/", 0755)
 	if err != nil {
 		helpers.PrintError("filemanager", err)
 	}
