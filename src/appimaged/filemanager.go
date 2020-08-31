@@ -16,15 +16,14 @@ import (
 	"github.com/adrg/xdg"
 )
 
-arg0abs, err := filepath.Abs(os.Args[0])
-if err != nil {
-	log.Println(err)
-}
 
 // Context menus for the file manager in GNOME and KDE
 // https://github.com/AppImage/AppImageKit/issues/169
 func installFilemanagerContextMenus() {
-
+	arg0abs, err := filepath.Abs(os.Args[0])
+	if err != nil {
+		log.Println(err)
+	}
 	GNOMEFileManagerActionEntry := `[Desktop Entry]
 Type=Action
 Name=Update
