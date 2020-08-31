@@ -7,6 +7,7 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 
 	"github.com/probonopd/go-appimage/internal/helpers"
 
@@ -14,6 +15,11 @@ import (
 
 	"github.com/adrg/xdg"
 )
+
+arg0abs, err := filepath.Abs(os.Args[0])
+if err != nil {
+	log.Println(err)
+}
 
 // Context menus for the file manager in GNOME and KDE
 // https://github.com/AppImage/AppImageKit/issues/169
@@ -26,18 +32,18 @@ Icon=terminal
 TargetLocation=true
 TargetToolbar=true
 TargetContext=true
-MimeType=application/x-executable;
+MimeType=application/vnd.appimage;
 Capabilities=Writable
 Profiles=directory;
 
 [X-Action-Profile directory]
-Exec=` + os.Args[0] + ` update %f
+Exec=` + arg0abs + ` update %f
 `
 
 	KDEServiceMenuEntry := `[Desktop Entry]
 Type=Service
 X-KDE-ServiceTypes=KonqPopupMenu/Plugin
-MimeType=application/x-executable;
+MimeType=application/vnd.appimage;
 Actions=AppImageExecutable;AppImageUpdate;
 
 [Desktop Action AppImageUpdate]
@@ -48,7 +54,7 @@ Name=Update
 Comment=Update the AppImage
 
 [Desktop Action AppImageExecutable]
-Exec=` + os.Args[0] + ` update %f
+Exec=` + arg0abs + ` update %f
 Icon=utilities-terminal
 Name=Make executable
 `
@@ -59,7 +65,7 @@ Name=Make executable
     <icon>terminal</icon>
     <name>Update</name>
     <unique-id>1573903056061608-1</unique-id>
-    <command>` + os.Args[0] + ` %f</command>
+    <command>` + arg0abs + ` %f</command>
     <description>Update the AppImage</description>
     <patterns>*AppImage,*.appimage</patterns>
     <other-files/>
