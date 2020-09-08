@@ -1,6 +1,6 @@
 # appimagetool
 
-This is an experimental implementation of the AppImage command line tool, `appimagetool`, in Go, mainly to see what is possible. It can also do what [linuxdeployqt]() does using the `deploy` verb.
+This is an experimental implementation of the AppImage command line tool, `appimagetool`, in Go, mainly to see what is possible. It can also do, using the `deploy` verb, what [linuxdeployqt](https://github.com/probonopd/linuxdeployqt) does.
 
 ## Installation and usage
 
