@@ -260,11 +260,11 @@ func GenerateAppImage(appdir string) {
 			log.Println("git root:", gitRoot)
 			if version == "" {
 				gitHead, err := gitRepo.Head()
-				version = gitHead.Hash().String()[:7] // This equals 'git rev-parse --short HEAD'
 				if err != nil {
 					os.Stderr.WriteString("Could not determine version automatically, please supply the application version as $VERSION " + filepath.Base(os.Args[0]) + " ... \n")
 					os.Exit(1)
 				} else {
+					version = gitHead.Hash().String()[:7] // This equals 'git rev-parse --short HEAD'
 					log.Println("NOTE: Using", version, "from 'git rev-parse --short HEAD' as the version")
 					log.Println("      Please set the $VERSION environment variable if this is not intended")
 				}
