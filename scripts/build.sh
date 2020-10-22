@@ -28,8 +28,8 @@ if [ ! -z "$TRAVIS_BUILD_NUMBER" ] ; then
   export COMMIT="${TRAVIS_BUILD_NUMBER}" # "${TRAVIS_JOB_WEB_URL} on $(date +'%Y-%m-%d_%T')"
   export VERSION=$TRAVIS_BUILD_NUMBER
 else
-  export COMMIT=$(date '+%Y-%m-%d_%T')
-  export VERSION=$(date '+%Y-%m-%d_%T')
+  export COMMIT=$(date '+%Y-%m-%d_%H%M%S')
+  export VERSION=$(date '+%Y-%m-%d_%H%M%S')
 fi
 
 # Get pinned version of Go directly from upstream
