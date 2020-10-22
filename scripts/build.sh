@@ -214,3 +214,4 @@ Terminal=true
 NoDisplay=true
 EOF
 ./appimagetool-*-$ARCHITECTURE.AppImage ./appimaged.AppDir
+realpath ./appimagetool-*-$ARCHITECTURE.AppImage
