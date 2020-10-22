@@ -555,7 +555,9 @@ func GenerateAppImage(appdir string) {
 		} else {
 			parts := strings.Split(os.Getenv("GITHUB_REPOSITORY"), "/")
 			var channel string
-			if os.Getenv("GITHUB_REF") != "" && os.Getenv("GITHUB_REF") != "refs/heads/master" {
+			if os.Getenv("APPIMAGETOOL_GH_BRANCH_DEPLOY") != "" {
+				channel = os.Getenv("APPIMAGETOOL_GH_BRANCH_DEPLOY")
+			} else if os.Getenv("GITHUB_REF") != "" && os.Getenv("GITHUB_REF") != "refs/heads/master" {
 				channel = "latest"
 			} else {
 				channel = "continuous"
