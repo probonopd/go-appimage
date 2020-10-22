@@ -26,31 +26,27 @@ jobs:
       - name: Upload Appimage
         uses: actions/upload-artifact@v1.0.0
         with:
-          name: AppImageTool.zip
+          name: AppImageTool-build
           path: 'dist-ss'
 
   Release:
     needs: [centos]
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        version: [3.8]
 
     steps:
     - uses: actions/download-artifact@v1
       with:
-        name: AppImageTool.zip
-
+        name: AppImageTool-build
 
     - name: Release
       uses: marvinpinto/action-automatic-releases@latest
-      if: github.ref == 'refs/heads/master'
+      if: github.ref == 'refs/heads/dev'
       with:
         automatic_release_tag: continuous
         title: Beta AppImage Release
         prerelease: true
         files: |
-          AppImageTool.zip
+          AppImageTool-build
 
         repo_token: ${{ secrets.GITHUB_TOKEN }}
  
