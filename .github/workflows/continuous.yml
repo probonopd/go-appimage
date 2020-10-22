@@ -1,0 +1,55 @@
+# (c) Srevin Saju 2020. All rights reserved 
+# Licensed under MIT License
+# Continuous Integration to release configured AppImages for Element (Riot) desktop client
+
+name: Continuous
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev]
+
+
+jobs:
+  centos:
+    runs-on: ubuntu-16.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Configure Go-AppImagetool
+        run: |
+          bash -ex ./scripts/build.sh
+          ls
+          mkdir dist-ss
+          mv ./appimagetool-*.AppImage dist/
+      - name: Upload Appimage
+        uses: actions/upload-artifact@v1.0.0
+        with:
+          name: AppImageTool.zip
+          path: 'dist'
+
+  Release:
+    needs: [centos]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        version: [3.8]
+
+    steps:
+    - uses: actions/download-artifact@v1
+      with:
+        name: AppImageTool.zip
+
+
+    - name: Release
+      uses: marvinpinto/action-automatic-releases@latest
+      if: github.ref == 'refs/heads/master'
+      with:
+        automatic_release_tag: continuous
+        title: Beta AppImage Release
+        prerelease: true
+        files: |
+          AppImageTool.zip
+
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+ 

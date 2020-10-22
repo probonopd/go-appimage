@@ -7,6 +7,10 @@
 # But don't ignore entities ending with slash = directories
 !*/
 
+# Don't ignore our github folder :)
+!.github/
+!*.yml
+
 # And don't ignore files ending with whitelisted endings
 !*.go
 !*.png
