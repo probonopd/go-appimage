@@ -6,8 +6,11 @@ package main
 import (
 	// "crypto/md5"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
+	"github.com/probonopd/go-zsyncmake/zsync"
+	"gopkg.in/ini.v1"
 	"io/ioutil"
 	"log"
 	"os"
@@ -16,9 +19,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/probonopd/go-zsyncmake/zsync"
-	"gopkg.in/ini.v1"
 
 	"github.com/probonopd/go-appimage/internal/helpers"
 )
