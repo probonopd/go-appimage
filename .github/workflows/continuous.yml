@@ -19,10 +19,10 @@ jobs:
       - name: Configure Go-AppImagetool
         run: |
           export ARCH=amd64
-          bash -ex ./scripts/build.sh
+          bash -ex ./scripts/build.sh || true
           ls
           mkdir dist-ss
-          mv /tmp/go/src/appimagetool-*.AppImage dist-ss/
+          mv appimagetool-*.AppImage dist-ss/
       - name: Upload Appimage
         uses: actions/upload-artifact@v1.0.0
         with:

@@ -21,7 +21,6 @@ set -x
 # Disregard any other Go environment that may be on the system (e.g., on Travis CI)
 unset GOARCH GOBIN GOEXE GOHOSTARCH GOHOSTOS GOOS GORACE GOROOT GOPATH GOTOOLDIR CC GOGCCFLAGS CGO_ENABLED GO111MODULE
 export GOPATH=/tmp/go
-mkdir -p $GOPATH/src
 
 # Export version and build number
 if [ ! -z "$TRAVIS_BUILD_NUMBER" ] ; then
@@ -105,7 +104,7 @@ mkdir -p appimagetool.AppDir/usr/bin
 chmod +x appimagetool.AppDir/usr/bin/*
 cp appimagetool-$(go env GOHOSTARCH) appimagetool.AppDir/usr/bin/appimagetool
 ( cd appimagetool.AppDir/ ; ln -s usr/bin/appimagetool AppRun)
-cp $GOPATH/src/github.com/probonopd/go-appimage/data/appimage.png appimagetool.AppDir/
+cp data/appimage.png appimagetool.AppDir/
 cat > appimagetool.AppDir/appimagetool.desktop <<\EOF
 [Desktop Entry]
 Type=Application
@@ -126,7 +125,7 @@ mkdir -p appimaged.AppDir/usr/bin
 chmod +x appimaged.AppDir/usr/bin/*
 cp appimaged-$(go env GOHOSTARCH) appimaged.AppDir/usr/bin/appimaged
 ( cd appimaged.AppDir/ ; ln -s usr/bin/appimaged AppRun)
-cp $GOPATH/src/github.com/probonopd/go-appimage/data/appimage.png appimaged.AppDir/
+cp data/appimage.png appimaged.AppDir/
 cat > appimaged.AppDir/appimaged.desktop <<\EOF
 [Desktop Entry]
 Type=Application
@@ -178,7 +177,7 @@ fi
 
 cp appimagetool-$USEARCH appimagetool.AppDir/usr/bin/appimagetool
 ( cd appimagetool.AppDir/ ; ln -s usr/bin/appimagetool AppRun)
-cp $GOPATH/src/github.com/probonopd/go-appimage/data/appimage.png appimagetool.AppDir/
+cp data/appimage.png appimagetool.AppDir/
 cat > appimagetool.AppDir/appimagetool.desktop <<\EOF
 [Desktop Entry]
 Type=Application
@@ -199,7 +198,7 @@ mkdir -p appimaged.AppDir/usr/bin
 chmod +x appimaged.AppDir/usr/bin/*
 cp appimaged-$USEARCH appimaged.AppDir/usr/bin/appimaged
 ( cd appimaged.AppDir/ ; ln -s usr/bin/appimaged AppRun)
-cp $GOPATH/src/github.com/probonopd/go-appimage/data/appimage.png appimaged.AppDir/
+cp data/appimage.png appimaged.AppDir/
 cat > appimaged.AppDir/appimaged.desktop <<\EOF
 [Desktop Entry]
 Type=Application
