@@ -48,19 +48,17 @@ if [ $(go env GOHOSTARCH) == "arm64" ] ; then sudo apt-get -y install gcc-arm-li
 # Build appimagetool
 ##############################################################
 
-cd $GOPATH/src
-go get -d -v github.com/probonopd/go-appimage/...
 
 # 64-bit
-go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimagetool
+go build -v -trimpath -ldflags="-s -w" src/appimagetool
 mv ./appimagetool appimagetool-$(go env GOHOSTARCH)
 
 # 32-bit
 if [ $(go env GOHOSTARCH) == "amd64" ] ; then 
-  env CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimagetool
+  env CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -v -trimpath -ldflags="-s -w" src/appimagetool
   mv ./appimagetool appimagetool-386
 elif [ $(go env GOHOSTARCH) == "arm64" ] ; then 
-  env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=6 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimagetool
+  env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=6 go build -v -trimpath -ldflags="-s -w" src/appimagetool
   mv ./appimagetool appimagetool-arm
 fi
 
@@ -69,15 +67,15 @@ fi
 ##############################################################
 
 # 64-bit
-go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimaged
+go build -v -trimpath -ldflags="-s -w" src/appimaged
 mv ./appimaged appimaged-$(go env GOHOSTARCH)
 
 # 23-bit
 if [ $(go env GOHOSTARCH) == "amd64" ] ; then 
-  env CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimaged
+  env CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" src/appimaged
   mv ./appimaged appimaged-386
 elif [ $(go env GOHOSTARCH) == "arm64" ] ; then
-  env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=6 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimaged
+  env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=6 go build -v -trimpath -ldflags="-s -w" src/appimaged
   mv ./appimaged appimaged-arm
 fi
 
