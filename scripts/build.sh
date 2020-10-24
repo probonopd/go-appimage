@@ -65,14 +65,14 @@ elif [ $(go env GOHOSTARCH) == "arm64" ] ; then
 fi
 
 ##############################################################
-# Bild appimaged
+# Build appimaged
 ##############################################################
 
 # 64-bit
 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimaged
 mv ./appimaged appimaged-$(go env GOHOSTARCH)
 
-# 23-bit
+# 32-bit
 if [ $(go env GOHOSTARCH) == "amd64" ] ; then 
   env CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimaged
   mv ./appimaged appimaged-386
