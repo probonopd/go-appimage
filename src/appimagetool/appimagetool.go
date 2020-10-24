@@ -574,8 +574,14 @@ func GenerateAppImage(appdir string) {
 		}
 	}
 
-	if updateinformation != "" {
+	// declare an empty digest
+	// we will replace this digest with a sha256 signature if the appimage
+	// does not contain update information.
+	// if it does contain update information, we should first try to sign it
+	// with the PGP signature
+	digest := ""
 
+	if updateinformation != "" {
 		err = helpers.ValidateUpdateInformation(updateinformation)
 		if err != nil {
 			helpers.PrintError("VerifyUpdateInformation", err)
@@ -594,7 +600,7 @@ func GenerateAppImage(appdir string) {
 		// This is not part of the AppImageSpec yet, but in the future we will want to put this into the AppImageSpec:
 		// If an AppImage is not signed, it should have the SHA256 digest in the '.sha256_sig' section; this might
 		// eventually remove the need for an extra '.digest_md5' section and hence simplify the format
-		digest := helpers.CalculateSHA256Digest(target)
+		digest = helpers.CalculateSHA256Digest(target)
 		err = helpers.EmbedStringInSegment(target, ".sha256_sig", digest)
 		if err != nil {
 			helpers.PrintError("EmbedStringInSegment", err)
