@@ -6,8 +6,11 @@ package main
 import (
 	// "crypto/md5"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
+	"github.com/probonopd/go-zsyncmake/zsync"
+	"gopkg.in/ini.v1"
 	"io/ioutil"
 	"log"
 	"os"
@@ -16,9 +19,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/probonopd/go-zsyncmake/zsync"
-	"gopkg.in/ini.v1"
 
 	"github.com/probonopd/go-appimage/internal/helpers"
 )
@@ -334,13 +334,22 @@ func GenerateAppImage(appdir string) {
 			err := filepath.Walk(appdir, func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					helpers.PrintError("Determine architecture", err)
+					return err
 				} else if info.IsDir() == false && strings.Contains(info.Name(), ".so.") {
 					arch, err := helpers.GetElfArchitecture(path)
-					helpers.PrintError("Determine architecture", err)
-					if helpers.SliceContains(archs, arch) == false {
+					if err != nil {
+						// we received an error when analyzing the arch
+						helpers.PrintError("Determine architecture", err)
+						return err
+					} else if helpers.SliceContains(archs, arch) == false {
 						log.Println("Architecture of", info.Name()+":", arch)
+						archs = helpers.AppendIfMissing(archs, arch)
+					} else {
+						// FIXME: we found some data, but still it was not a part of the
+						// known architectures
+						errArchNotKnown := errors.New("Could not detect a valid architecture")
+						return errArchNotKnown
 					}
-					archs = helpers.AppendIfMissing(archs, arch)
 				}
 				return nil
 			})
