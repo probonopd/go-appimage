@@ -111,12 +111,15 @@ func EmbedStringInSegment(path string, section string, s string) error {
 		return (err)
 	}
 	fmt.Println("")
-	fmt.Println("Section " + section + " before embedding:")
-	fmt.Println(uidata)
+	// fmt.Println("Section " + section + " before embedding:")
+	// fmt.Println(uidata)
 	fmt.Println("")
 	uioffset, uilength, err := GetSectionOffsetAndLength(path, section)
 	PrintError("GetSectionData for '"+section+"'", err)
 	if err != nil {
+		// only show the before embedding part as its too verbose in case of errors
+		fmt.Println("Section " + section + " before embedding:")
+		fmt.Println(uidata)
 		os.Stderr.WriteString("Could not determine Offset and Length of " + section + " in runtime, exiting\n")
 		return (err)
 	}
