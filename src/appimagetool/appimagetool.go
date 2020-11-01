@@ -42,6 +42,12 @@ var LibcDir = "libc"
 // * MD5 digest
 var Sections = []string{".upd_info", ".sha256_sig", ".sig_key", ".digest_md5"}
 
+
+
+
+// checks if the tool is running within a Docker container
+// and warn the user of passing Environment variables to the container
+func checkRunningWithinDocker() bool {
 	// Detect if we are running inside Docker; https://github.com/AppImage/AppImageKit/issues/912
 	// If the file /.dockerenv exists, and/or if /proc/1/cgroup begins with /lxc/ or /docker/
 	res, err := ioutil.ReadFile("/proc/1/cgroup")
@@ -52,58 +58,142 @@ var Sections = []string{".upd_info", ".sha256_sig", ".sig_key", ".digest_md5"}
 			log.Println("available inside Docker if you are running on Travis CI.")
 			log.Println("This can be achieved by using something along the lines of 'docker run --env-file <(env)'.")
 			log.Println("Please see https://github.com/docker/cli/issues/2210.")
+			return true
 		}
 	}
+	return false
 
-	if os.Getenv("TRAVIS_TEST_RESULT") == "1" {
-		log.Println("$TRAVIS_TEST_RESULT is 1, exiting...")
-		os.Exit(1)
+}
+
+
+// wrapper function to deploy an AppImage from Desktop file
+// Args: c: cli.Context
+func bootstrapAppImageDeploy(c *cli.Context) error {
+	// make sure the user provided one and one only desktop
+	if c.NArg() != 1 {
+		log.Println("Please supply the path to a desktop file in an FHS-like AppDir")
+		log.Println("a FHS-like structure, e.g.:")
+		log.Println(os.Args[0], "appdir/usr/share/applications/myapp.desktop")
+		log.Fatal("Terminated.")
+	}
+	AppDirDeploy(c.Args().Get(0), DeployOptions{
+		standalone:     c.Bool("standalone"),
+		libAppRunHooks: c.Bool("libapprun_hooks"),
+	})
+	return nil
+}
+
+// wrapper function to validate a AppImage
+// Args: c: cli.Context
+func bootstrapValidateAppImage(c *cli.Context) error {
+
+	// make sure that we received only 1 file path
+	if c.NArg() != 1 {
+		log.Fatal("Please specify the file path to an AppImage to validate")
 	}
 
-	sections := []string{".upd_info", ".sha256_sig", ".sig_key", ".digest_md5"}
+	// get the first argument, which is file path to the AppImage
+	filePathToValidate := c.Args().Get(0)
 
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "\n")
-		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" "+version+"\n")
-		fmt.Fprintf(os.Stderr, "\n")
+	// does the file exist? if not early-exit
+	if ! helpers.CheckIfFileExists(filePathToValidate) {
+		log.Fatal("The specified file could not be found")
+	}
 
-		fmt.Fprintf(os.Stderr, "Tool to convert an AppDir into an AppImage.\n")
-		fmt.Fprintf(os.Stderr, "If it is running on Travis CI, it also uploads the AppImage\nto GitHub Releases, creates update and publishes the information needed\nfor updating the AppImage.\n")
-		fmt.Fprintf(os.Stderr, "\n")
+	// Calculate the SHA256 signature
+	d := helpers.CalculateSHA256Digest(filePathToValidate)
+	log.Println("Calculated sha256 digest:", d)
+	ent, err := helpers.CheckSignature(filePathToValidate)
 
-		fmt.Fprintf(os.Stderr, "Usage:\n")
+	if err != nil {
+		// we encountered an error :(
+		log.Fatal("Could not validate the signature of", filePathToValidate)
+	}
 
-		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" deploy <path to PREFIX directory>\n")
-		fmt.Fprintf(os.Stderr, "\tTurns PREFIX directory into AppDir by deploying dependencies and AppRun file\n")
+	log.Println(filePathToValidate, "has a valid signature")
 
-		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" <path to AppDir>\n")
-		fmt.Fprintf(os.Stderr, "\tConvert the supplied AppDir into an AppImage and \n\t(if running on Travis CI) sign, upload, and publish it\n")
+	// TODO: Do something useful with this information
+	log.Println("Identities:", ent.Identities)
+	log.Println("KeyIdShortString:", ent.PrimaryKey.KeyIdShortString())
+	log.Println("CreationTime:", ent.PrimaryKey.CreationTime)
+	log.Println("KeyId:", ent.PrimaryKey.KeyId)
+	log.Println("Fingerprint:", ent.PrimaryKey.Fingerprint)
 
-		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" validate <path to AppImage>\n")
-		fmt.Fprintf(os.Stderr, "\tCalculate the sha256 digest and check whether the signature is valid\n")
+	// happily ever after! no errors occured
+	return nil
+}
 
-		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" setupsigning\n")
-		fmt.Fprintf(os.Stderr, "\tPrepare a git repository that is used with Travis CI \n\tfor signing AppImages\n")
 
-		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" sections <path to AppImage>\n")
-		fmt.Fprintf(os.Stderr, "\tPrint the AppImage specific ELF sections (for debugging), namely\n\t")
-		for _, section := range sections {
-			fmt.Print(section, " ")
+// wrapper function to setup signing in the current Git repository
+// Args: c: cli.Context
+func bootstrapSetupSigning(c *cli.Context) error {
+	return setupSigning(c.Bool("overwrite"))
+}
+
+
+// wrapper function to show the sections of the AppImage
+// Args: c: cli.Context
+func bootstrapAppImageSections(c *cli.Context) error {
+	// check if the number of arguments are stictly 1, if not
+	// return
+	if c.NArg() != 1 {
+		log.Fatal("Please specify the file path to an AppImage to validate")
+
+	}
+	fileToAppImage := c.Args().Get(0)
+
+	// does the file exist? if not early-exit
+	if ! helpers.CheckIfFileExists(fileToAppImage) {
+		log.Fatal("The specified file could not be found")
+	}
+
+	fmt.Println("")
+	for _, section := range Sections {
+		offset, length, err := helpers.GetSectionOffsetAndLength(fileToAppImage, section)
+		if err != nil {
+			log.Println("Error getting ELF section", section, err)
+		} else {
+			uidata, err := helpers.GetSectionData(fileToAppImage, section)
+			fmt.Println("")
+			if err != nil {
+				os.Stderr.WriteString("Could not find  ELF section " + section + ", exiting\n")
+				log.Println("Error getting ELF section", section, err)
+			} else {
+				log.Println("ELF section", section, "offset", offset, "length", length)
+				fmt.Println("")
+				fmt.Println(uidata)
+				fmt.Println("")
+				fmt.Println("Which is as a string:")
+				fmt.Println("")
+				fmt.Println(string(uidata))
+				fmt.Println("")
+				fmt.Println("===========================================================")
+				fmt.Println("")
+			}
 		}
-		fmt.Fprintf(os.Stderr, "\n")
-
-		flag.PrintDefaults()
 	}
+	return nil
+}
 
-	flag.Parse()
 
-	// Always show version
-	fmt.Fprintf(os.Stderr, "\n")
-	fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" "+version+"\n")
-	fmt.Fprintf(os.Stderr, "\n")
+func bootstrapAppImageBuild(c *cli.Context) error {
+
+	// check if the number of arguments are stictly 1, if not
+	// return
+	if c.NArg() != 1 {
+		log.Fatal("Please specify the path to the AppDir which you would like to aid.")
+
+	}
+	fileToAppDir := c.Args().Get(0)
+
+	// does the file exist? if not early-exit
+	if ! helpers.CheckIfFileOrFolderExists(fileToAppDir) {
+		log.Fatal("The specified directory does not exist")
+	}
 
 	// Add the location of the executable to the $PATH
 	helpers.AddHereToPath()
+
 
 	// Check for needed files on $PATH
 	tools := []string{"file", "mksquashfs", "desktop-file-validate", "uploadtool", "patchelf", "desktop-file-validate", "patchelf"} // "sh", "strings", "grep" no longer needed?; "curl" is needed for uploading only, "glib-compile-schemas" is needed in some cases only
@@ -122,111 +212,54 @@ var Sections = []string{".upd_info", ".sha256_sig", ".sig_key", ".digest_md5"}
 		os.Exit(1)
 	}
 
-	if len(flag.Args()) > 0 {
-		switch flag.Args()[0] {
-		case "deploy":
-			if len(flag.Args()) < 2 {
-				log.Println("Please supply the path to a desktop file in an FHS-like AppDir")
-				log.Println("a FHS-like structure, e.g.:")
-				log.Println(os.Args[0], "appdir/usr/share/applications/myapp.desktop")
-				os.Exit(1)
-			}
-			AppDirDeploy(flag.Args()[1])
-			os.Exit(0)
-		case "validate":
-			if len(flag.Args()) > 1 {
-				if helpers.CheckIfFileExists(os.Args[2]) {
-					d := helpers.CalculateSHA256Digest(os.Args[2])
-					log.Println("Calculated sha256 digest:", d)
-					ent, err := helpers.CheckSignature(os.Args[2])
-					if err == nil {
-						log.Println(flag.Args()[1], "has a valid signature")
-						// TODO: Do something useful with this information
-						log.Println("Identities:", ent.Identities)
-						log.Println("KeyIdShortString:", ent.PrimaryKey.KeyIdShortString())
-						log.Println("CreationTime:", ent.PrimaryKey.CreationTime)
-						log.Println("KeyId:", ent.PrimaryKey.KeyId)
-						log.Println("Fingerprint:", ent.PrimaryKey.Fingerprint)
-					} else {
-						log.Println("Could not validate signature of", os.Args[2]+":", err)
-						os.Exit(1)
-					}
-				} else {
-					log.Println(flag.Args()[1], "does not exist")
-					os.Exit(1)
-				}
-			} else {
-				fmt.Println("Please specify an AppImage to validate")
-				os.Exit(1)
-			}
-			os.Exit(0)
-		case "setupsigning":
-			setupSigning()
-			os.Exit(0)
-		case "sections":
-			if len(flag.Args()) > 1 {
-				if helpers.CheckIfFileExists(flag.Args()[1]) {
-
-					fmt.Println("")
-					for _, section := range sections {
-						offset, length, err := helpers.GetSectionOffsetAndLength(flag.Args()[1], section)
-						if err != nil {
-							log.Println("Error getting ELF section", section, err)
-						} else {
-							uidata, err := helpers.GetSectionData(flag.Args()[1], section)
-							fmt.Println("")
-							if err != nil {
-								os.Stderr.WriteString("Could not find  ELF section " + section + ", exiting\n")
-								log.Println("Error getting ELF section", section, err)
-							} else {
-								log.Println("ELF section", section, "offset", offset, "length", length)
-								fmt.Println("")
-								fmt.Println(uidata)
-								fmt.Println("")
-								fmt.Println("Which is as a string:")
-								fmt.Println("")
-								fmt.Println(string(uidata))
-								fmt.Println("")
-								fmt.Println("===========================================================")
-								fmt.Println("")
-							}
-						}
-					}
-				} else {
-					log.Println(flag.Args()[1], "does not exist")
-					os.Exit(1)
-				}
-			} else {
-				log.Println("Please specify an AppImage to print the sections")
-				os.Exit(1)
-			}
-			os.Exit(0)
-
-		}
-	}
-
-	// Check if first argument is present, exit otherwise
-	if len(flag.Args()) < 1 {
-		os.Stderr.WriteString("Please specify an AppDir to be converted to an AppImage \n")
-		os.Exit(1)
-	}
-
 	// Check if is directory, then assume we want to convert an AppDir into an AppImage
-	firstArg, _ := filepath.EvalSymlinks(flag.Args()[0])
-	if info, err := os.Stat(firstArg); err == nil && info.IsDir() {
-		GenerateAppImage(firstArg)
+	fileToAppDir, _ = filepath.EvalSymlinks(fileToAppDir)
+	if info, err := os.Stat(fileToAppDir); err == nil && info.IsDir() {
+		GenerateAppImage(fileToAppDir)
 	} else {
 		// TODO: If it is a file, then check if it is an AppImage and if yes, extract it
 		os.Stderr.WriteString("Supplied argument is not a directory \n")
 		os.Stderr.WriteString("To extract an AppImage, run it with --appimage-extract \n")
 		os.Exit(1)
 	}
+	return nil
 }
+
+
+func constructMQTTPayload(name string, version string, FSTime time.Time) (string, error) {
+
+	psd := helpers.PubSubData{
+		Name:    name,
+		Version: version,
+		FSTime:  FSTime,
+		// Size:    size,
+		// Fruit:   []string{"Apple", "Banana", "Orange"},
+		// Id:      999,
+		// private: "Unexported field",
+		// Created: time.Now(),
+	}
+
+	var jsonData []byte
+	jsonData, err := json.Marshal(psd)
+	if err != nil {
+		return "", err
+	}
+	// Print it in a nice readable form, unlike the one that actually gets returned
+	var jsonDataReadable []byte
+	jsonDataReadable, err = json.MarshalIndent(psd, "", "    ")
+	if err != nil {
+		return "", err
+	}
+	fmt.Println(string(jsonDataReadable))
+
+	return string(jsonData), nil
+}
+
 
 // GenerateAppImage converts an AppDir into an AppImage
 func GenerateAppImage(appdir string) {
 	if _, err := os.Stat(appdir + "/AppRun"); os.IsNotExist(err) {
-		os.Stderr.WriteString("AppRun is missing \n")
+		_, _ = os.Stderr.WriteString("AppRun is missing \n")
 		os.Exit(1)
 	}
 
@@ -735,31 +768,94 @@ func GenerateAppImage(appdir string) {
 	fmt.Println("at https://github.com/AppImage/appimage.github.io")
 }
 
-func constructMQTTPayload(name string, version string, FSTime time.Time) (string, error) {
 
-	psd := helpers.PubSubData{
-		Name:    name,
-		Version: version,
-		FSTime:  FSTime,
-		// Size:    size,
-		// Fruit:   []string{"Apple", "Banana", "Orange"},
-		// Id:      999,
-		// private: "Unexported field",
-		// Created: time.Now(),
+func main() {
+
+	var version string
+
+	// Derive the commit message from -X main.commit=$YOUR_VALUE_HERE
+	// if the build does not have the commit variable set externally,
+	// fall back to unsupported custom build
+	if commit != "" {
+		version = commit
+	} else {
+		version = "unsupported custom build"
 	}
 
-	var jsonData []byte
-	jsonData, err := json.Marshal(psd)
-	if err != nil {
-		return "", err
-	}
-	// Print it in a nice readable form, unlike the one that actually gets returned
-	var jsonDataReadable []byte
-	jsonDataReadable, err = json.MarshalIndent(psd, "", "    ")
-	if err != nil {
-		return "", err
-	}
-	fmt.Println(string(jsonDataReadable))
+	// let the user know that we are running within a docker container
+	checkRunningWithinDocker()
 
-	return string(jsonData), nil
+	// build the Command Line interface
+	// https://github.com/urfave/cli/blob/master/docs/v2/manual.md
+
+	// basic information
+	app := &cli.App{
+		Name:                   "AppImageTool",
+		Authors: 				[]*cli.Author{{Name: "AppImage Project"}},
+		Version:                version,
+		Usage:            		"An automatic tool to create AppImages",
+		EnableBashCompletion:   false,
+		HideHelp:               false,
+		HideVersion:            false,
+		Compiled:               time.Time{},
+		Copyright:              "MIT License",
+		Action: 				bootstrapAppImageBuild,
+
+	}
+
+	// define subcommands
+	app.Commands = []*cli.Command{
+		{
+			Name:   "deploy",
+			Usage:  "Turns PREFIX directory into AppDir by deploying dependencies and AppRun file",
+			Action: bootstrapAppImageDeploy,
+		},
+		{
+			Name:   "validate",
+			Usage:  "Calculate the sha256 digest and check whether the signature is valid",
+			Action: bootstrapValidateAppImage,
+		},
+		{
+			Name:   "setupsigning",
+			Usage:  "Prepare a git repository that is used with Travis CI for signing AppImages",
+			Action: bootstrapSetupSigning,
+		},
+		{
+			Name: 	"sections",
+			Usage: 	"",
+			Action:	bootstrapAppImageSections,
+		},
+	}
+
+	// define flags, such as --libapprun_hooks here
+	app.Flags = []cli.Flag{
+		&cli.BoolFlag{
+			Name: "libapprun_hooks",
+			Aliases: []string{"l"},
+			Usage: "Use libapprun_hooks",
+		},
+		&cli.BoolFlag{
+			Name: "overwrite",
+			Aliases: []string{"o"},
+			Usage: "Overwrite existing files",
+		},
+		&cli.BoolFlag{
+			Name: "standalone",
+			Aliases: []string{"s"},
+			Usage: "Make standalone self-contained bundle",
+		},
+	}
+
+	errRuntime := app.Run(os.Args)
+	if errRuntime != nil {
+		log.Fatal(errRuntime)
+	}
+
+	// TODO: move travis based Sections to travis.go in future
+	if os.Getenv("TRAVIS_TEST_RESULT") == "1" {
+		log.Println("$TRAVIS_TEST_RESULT is 1, exiting...")
+		os.Exit(1)
+	}
+
+
 }
