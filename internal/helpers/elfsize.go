@@ -140,14 +140,15 @@ func EmbedStringInSegment(path string, section string, s string) error {
 		return (err)
 	}
 	uidata, err = GetSectionData(path, section)
-	PrintError("GetSectionData for '"+section+"'", err)
+	PrintError("GetSectionData for '" + section + "'", err)
 	if err != nil {
 		os.Stderr.WriteString("Could not find section " + section + " in runtime, exiting\n")
 		return err
 	}
 	fmt.Println("")
-	fmt.Println("Embedded " + section + " section after embedding:")
-	fmt.Println(uidata)
+	// FIXME: Might be too verbose? I am removing it
+	// fmt.Println("Embedded " + section + " section after embedding:")
+	// fmt.Println(uidata)
 	fmt.Println("")
 	fmt.Println("Embedded " + section + " section now contains:")
 	fmt.Println(string(uidata))
