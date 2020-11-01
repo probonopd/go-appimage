@@ -7,9 +7,10 @@ import (
 	// "crypto/md5"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
+	"github.com/probonopd/go-appimage/internal/helpers"
 	"github.com/probonopd/go-zsyncmake/zsync"
+	"github.com/urfave/cli/v2"
 	"gopkg.in/ini.v1"
 	"io/ioutil"
 	"log"
@@ -19,8 +20,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/probonopd/go-appimage/internal/helpers"
 )
 
 // https://blog.kowalczyk.info/article/vEja/embedding-build-number-in-go-executable.html
