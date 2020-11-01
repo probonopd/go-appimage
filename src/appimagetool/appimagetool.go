@@ -22,23 +22,25 @@ import (
 	"time"
 )
 
+// ============================
+// CONSTANTS
+// ============================
+
 // https://blog.kowalczyk.info/article/vEja/embedding-build-number-in-go-executable.html
 // The build script needs to set, e.g.,
 // go build -ldflags "-X main.commit=$TRAVIS_BUILD_NUMBER"
 var commit string
 
-var standalonePtr = flag.Bool("s", false, "Make standalone (self-contained) bundle")
-var libapprun_hooksPtr = flag.Bool("l", false, "Use libapprun_hooks")
-var libc_dir = "libc"
+// path to libc
+var LibcDir = "libc"
 
-func main() {
 
-	var version string
-	if commit != "" {
-		version = commit
-	} else {
-		version = "unsupported custom build"
-	}
+// array of string, Sections contains
+// * update information
+// * sha256 signature of the appimage
+// * signature key
+// * MD5 digest
+var Sections = []string{".upd_info", ".sha256_sig", ".sig_key", ".digest_md5"}
 
 	// Detect if we are running inside Docker; https://github.com/AppImage/AppImageKit/issues/912
 	// If the file /.dockerenv exists, and/or if /proc/1/cgroup begins with /lxc/ or /docker/
