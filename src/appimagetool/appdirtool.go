@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"path"
 	"strconv"
 	"syscall"
 
@@ -165,7 +166,13 @@ var packagesContainingFiles = make(map[string]string) // Need to use 'make', oth
       /usr/lib64.)  If the binary was linked with the -z nodeflib linker option, this step is skipped.
 */
 
-func AppDirDeploy(path string) {
+type DeployOptions struct {
+	standalone bool
+	libAppRunHooks bool
+}
+
+
+func AppDirDeploy(path string, options DeployOptions) {
 
 	appdir, err := helpers.NewAppDir(path)
 	if err != nil {
@@ -174,31 +181,31 @@ func AppDirDeploy(path string) {
 	}
 
 	log.Println("Gathering all required libraries for the AppDir...")
-	determineELFsInDirTree(appdir, appdir.Path)
+	determineELFsInDirTree(appdir, options, appdir.Path)
 
 	// Gdk
-	handleGdk(appdir)
+	handleGdk(appdir, options)
 
 	// GStreamer
-	handleGStreamer(appdir)
+	handleGStreamer(appdir, options)
 
 	// Gtk 3 modules/plugins
 	// If there is a .so with the name libgtk-3 inside the AppDir, then we need to
 	// bundle Gdk modules/plugins
-	deployGtkDirectory(appdir, 3)
+	deployGtkDirectory(appdir, options, 3)
 
 	// Gtk 2 modules/plugins
 	// Same as above, but for Gtk 2
-	deployGtkDirectory(appdir, 2)
+	deployGtkDirectory(appdir, options, 2)
 
 	// ALSA
-	handleAlsa(appdir)
+	handleAlsa(appdir, options)
 
 	// PulseAudio
-	handlePulseAudio(appdir)
+	handlePulseAudio(appdir, options)
 
 	// ld-linux interpreter
-	ldLinux, err := deployInterpreter(appdir)
+	ldLinux, err := deployInterpreter(appdir, options)
 
 	// Glib 2 schemas
 	if helpers.Exists(appdir.Path + "/usr/share/glib-2.0/schemas") {
@@ -214,7 +221,7 @@ func AppDirDeploy(path string) {
 	}
 
 	// AppRun
-	if *libapprun_hooksPtr == false {
+	if options.libAppRunHooks == false {
 		// If libapprun_hooks is not used
 		log.Println("Adding AppRun...")
 		err = ioutil.WriteFile(appdir.Path+"/AppRun", []byte(AppRunData), 0755)
@@ -241,7 +248,7 @@ func AppDirDeploy(path string) {
 	}
 
 	if qtVersionDetected > 0 {
-		handleQt(appdir, qtVersionDetected)
+		handleQt(appdir, options, qtVersionDetected)
 	}
 
 	fmt.Println("")
@@ -284,16 +291,15 @@ func AppDirDeploy(path string) {
 
 	for _, lib := range allELFs {
 
-		deployElf(lib, appdir, err)
-
-		patchRpathsInElf(appdir, libraryLocationsInAppDir, lib)
+		deployElf(lib, appdir, options, err)
+		patchRpathsInElf(appdir, libraryLocationsInAppDir, lib, options)
 
 		if strings.Contains(lib, "libQt5Core.so.5") {
 			patchQtPrfxpath(appdir, lib, libraryLocationsInAppDir, ldLinux)
 		}
 	}
 
-	deployCopyrightFiles(appdir)
+	deployCopyrightFiles(appdir, options)
 }
 
 func deployFontconfig(appdir helpers.AppDir) error {
@@ -314,7 +320,7 @@ func deployFontconfig(appdir helpers.AppDir) error {
 	return err
 }
 
-func deployInterpreter(appdir helpers.AppDir) (string, error) {
+func deployInterpreter(appdir helpers.AppDir, options DeployOptions) (string, error) {
 	var ldLinux, err = appdir.GetElfInterpreter(appdir)
 	if err != nil {
 		helpers.PrintError("Could not determine ELF interpreter", err)
@@ -329,7 +335,7 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 		}
 
 	}
-	if *standalonePtr == true {
+	if options.libAppRunHooks {
 		var err error
 		// ld-linux might be a symlink; hence we first need to resolve it
 		src, err := filepath.EvalSymlinks(ldLinux)
@@ -341,14 +347,14 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 		log.Println("Deploying", ldLinux+"...")
 
 		ldTargetPath := appdir.Path + ldLinux
-		if *libapprun_hooksPtr == true {
+		if options.libAppRunHooks {
 			// This file is part of the libc family of libraries and we want to use libapprun_hooks,
 			// hence copy to a separate directory unlike the rest of the libraries. The reason is
 			// that this familiy of libraries will only be used by libapprun_hooks if the
 			// bundled version is newer than what is already on the target system; this allows
 			// us to also load libraries from the system such as proprietary GPU drivers
-			log.Println(ldLinux, "is part of libc; copy to", libc_dir, "subdirectory")
-			ldTargetPath = appdir.Path + "/" + libc_dir + "/" + ldLinux // If libapprun_hooks is used
+			log.Println(ldLinux, "is part of libc; copy to", LibcDir, "subdirectory")
+			ldTargetPath = appdir.Path + "/" + LibcDir + "/" + ldLinux // If libapprun_hooks is used
 		}
 		err = copy.Copy(src, ldTargetPath)
 		if err != nil {
@@ -380,7 +386,7 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 		gconvs, err := findWithPrefixInLibraryLocations("gconv")
 		if err == nil {
 			// Target location must match GCONV_PATH exported in AppRun
-			determineELFsInDirTree(appdir, gconvs[0])
+			determineELFsInDirTree(appdir, options, gconvs[0])
 		}
 
 		if err != nil {
@@ -395,9 +401,9 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 
 // deployElf deploys an ELF (executable or shared library) to the AppDir
 // if it is not on the exclude list and it is not yet at the target location
-func deployElf(lib string, appdir helpers.AppDir, err error) {
+func deployElf(lib string, appdir helpers.AppDir, options DeployOptions, err error) {
 	for _, excludePrefix := range ExcludedLibraries {
-		if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true && *standalonePtr == false {
+		if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true && ! options.standalone {
 			log.Println("Skipping", lib, "because it is on the excludelist")
 			return
 		}
@@ -406,14 +412,14 @@ func deployElf(lib string, appdir helpers.AppDir, err error) {
 	log.Println("Working on", lib, "(TODO: Remove this message)")
 	if strings.HasPrefix(lib, appdir.Path) == false { // Do not copy if it is already in the AppDir
 		libTargetPath := appdir.Path + "/" + lib
-		if *libapprun_hooksPtr == true && checkWhetherPartOfLibc(lib) == true {
+		if options.libAppRunHooks && checkWhetherPartOfLibc(lib) == true {
 			// This file is part of the libc family of libraries and we want to use libapprun_hooks,
 			// hence copy to a separate directory unlike the rest of the libraries. The reason is
 			// that this familiy of libraries will only be used by libapprun_hooks if the
 			// bundled version is newer than what is already on the target system; this allows
 			// us to also load libraries from the system such as proprietary GPU drivers
-			log.Println(lib, "is part of libc; copy to", libc_dir, "subdirectory")
-			libTargetPath = appdir.Path + "/" + libc_dir + "/" + lib // If libapprun_hooks is used
+			log.Println(lib, "is part of libc; copy to", LibcDir, "subdirectory")
+			libTargetPath = appdir.Path + "/" + LibcDir + "/" + lib // If libapprun_hooks is used
 		}
 		log.Println("Copying to libTargetPath:", libTargetPath, "(TODO: Remove this message)")
 
@@ -496,13 +502,13 @@ func patchQtPrfxpath(appdir helpers.AppDir, lib string, libraryLocationsInAppDir
 
 // deployCopyrightFiles deploys copyright files into the AppDir
 // for each ELF in allELFs that are inside the AppDir and have matching equivalents outside of the AppDir
-func deployCopyrightFiles(appdir helpers.AppDir) {
+func deployCopyrightFiles(appdir helpers.AppDir, options DeployOptions) {
 	log.Println("Copying in copyright files...")
 	for _, lib := range allELFs {
 
 		shouldDoIt := true
 		for _, excludePrefix := range ExcludedLibraries {
-			if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true && *standalonePtr == false {
+			if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true && options.standalone == false {
 				log.Println("Skipping copyright file for ", lib, "because it is on the excludelist")
 				shouldDoIt = false
 				break
@@ -521,12 +527,12 @@ func deployCopyrightFiles(appdir helpers.AppDir) {
 		}
 	}
 	log.Println("Done")
-	if *standalonePtr == true {
+	if options.standalone == true {
 		log.Println("To check whether it is really self-contained, run:")
 		fmt.Println("LD_LIBRARY_PATH='' find " + appdir.Path + " -type f -exec ldd {} 2>&1 \\; | grep '=>' | grep -v " + appdir.Path)
 	}
 
-	if *libapprun_hooksPtr == true {
+	if options.libAppRunHooks == true {
 		log.Println("The option '-m' was used. Hence, you need to manually add AppRun, .env, and libapprun_hooks.so")
 		log.Println("from https://github.com/AppImageCrafters/AppRun/releases/tag/continuous. TODO: Automate this")
 	}
@@ -550,7 +556,7 @@ func handleGlibSchemas(appdir helpers.AppDir) error {
 	return err
 }
 
-func handleGdk(appdir helpers.AppDir) {
+func handleGdk(appdir helpers.AppDir, options DeployOptions) {
 	// If there is a .so with the name libgdk_pixbuf inside the AppDir, then we need to
 	// bundle Gdk pixbuf loaders without which the bundled Gtk does not work
 	// cp /usr/lib/x86_64-linux-gnu/gdk-pixbuf-*/*/loaders/* usr/lib/x86_64-linux-gnu/gdk-pixbuf-*/*/loaders/
@@ -565,7 +571,7 @@ func handleGdk(appdir helpers.AppDir) {
 				os.Exit(1)
 			} else {
 				for _, loc := range locs {
-					determineELFsInDirTree(appdir, loc)
+					determineELFsInDirTree(appdir, options, loc)
 
 					// We need to patch away the path to libpixbufloader-png.so from the file loaders.cache, similar to:
 					// sed -i -e 's|/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders/||g' usr/lib/x86_64-linux-gnu/gdk-pixbuf-*/*/loaders.cache
@@ -602,7 +608,7 @@ func handleGdk(appdir helpers.AppDir) {
 	}
 }
 
-func handlePulseAudio(appdir helpers.AppDir) {
+func handlePulseAudio(appdir helpers.AppDir, options DeployOptions) {
 	// TODO: What about the `/usr/lib/pulse-*` directory?
 	for _, lib := range allELFs {
 		if strings.HasPrefix(filepath.Base(lib), "libpulse.so") {
@@ -613,7 +619,7 @@ func handlePulseAudio(appdir helpers.AppDir) {
 				os.Exit(1)
 			} else {
 				log.Println("Bundling dependencies of pulseaudio directory...")
-				determineELFsInDirTree(appdir, locs[0])
+				determineELFsInDirTree(appdir, options, locs[0])
 			}
 
 			break
@@ -632,7 +638,7 @@ func handleNvidia() {
 	}
 }
 
-func handleAlsa(appdir helpers.AppDir) {
+func handleAlsa(appdir helpers.AppDir, options DeployOptions) {
 	// FIXME: Doesn't seem to get loaded. Is ALSA_PLUGIN_DIR needed and working in ALSA?
 	// Is something like https://github.com/flatpak/freedesktop-sdk-images/blob/1.6/alsa-lib-plugin-path.patch needed in the bundled ALSA?
 	// TODO: What about the `share/alsa` subdirectory? libasound.so.* refers to it as well
@@ -646,7 +652,7 @@ func handleAlsa(appdir helpers.AppDir) {
 				os.Exit(1)
 			} else {
 				log.Println("Bundling dependencies of alsa-lib directory...")
-				determineELFsInDirTree(appdir, locs[0])
+				determineELFsInDirTree(appdir, options, locs[0])
 			}
 
 			break
@@ -654,7 +660,7 @@ func handleAlsa(appdir helpers.AppDir) {
 	}
 }
 
-func handleGStreamer(appdir helpers.AppDir) {
+func handleGStreamer(appdir helpers.AppDir, options DeployOptions) {
 	for _, lib := range allELFs {
 		if strings.HasPrefix(filepath.Base(lib), "libgstreamer-1.0") {
 			log.Println("Bundling GStreamer 1.0 directory (for GST_PLUGIN_PATH)...")
@@ -664,7 +670,7 @@ func handleGStreamer(appdir helpers.AppDir) {
 				os.Exit(1)
 			} else {
 				log.Println("Bundling dependencies of GStreamer 1.0 directory...")
-				determineELFsInDirTree(appdir, locs[0])
+				determineELFsInDirTree(appdir, options, locs[0])
 			}
 
 			// FIXME: This is not going to scale, every distribution is cooking their own soup,
@@ -674,7 +680,7 @@ func handleGStreamer(appdir helpers.AppDir) {
 			for _, cand := range gstPluginScannerCandidates {
 				if helpers.Exists(cand) {
 					log.Println("Determining gst-plugin-scanner...")
-					determineELFsInDirTree(appdir, cand)
+					determineELFsInDirTree(appdir, options, cand)
 					break
 				}
 			}
@@ -684,7 +690,8 @@ func handleGStreamer(appdir helpers.AppDir) {
 	}
 }
 
-func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, path string) {
+func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, path string,
+	options DeployOptions) {
 
 	if strings.HasPrefix(path, appdir.Path) == false {
 		path = filepath.Clean(appdir.Path + "/" + path)
@@ -701,7 +708,7 @@ func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, 
 	newRpathStringForElf = strings.Join(newRpathStrings, ":")
 	// fmt.Println("Computed newRpathStringForElf:", appdir.Path+"/"+lib, newRpathStringForElf)
 
-	if *libapprun_hooksPtr == true && checkWhetherPartOfLibc(path) {
+	if options.libAppRunHooks && checkWhetherPartOfLibc(path) {
 		log.Println("Not writing rpath because file is part of the libc family of libraries")
 		return
 	}
@@ -731,7 +738,7 @@ func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, 
 	}
 }
 
-func deployGtkDirectory(appdir helpers.AppDir, gtkVersion int) {
+func deployGtkDirectory(appdir helpers.AppDir, options DeployOptions, gtkVersion int) {
 	for _, lib := range allELFs {
 		if strings.HasPrefix(filepath.Base(lib), "libgtk-"+strconv.Itoa(gtkVersion)) {
 			log.Println("Bundling Gtk", strconv.Itoa(gtkVersion), "directory (for GTK_EXE_PREFIX)...")
@@ -742,7 +749,7 @@ func deployGtkDirectory(appdir helpers.AppDir, gtkVersion int) {
 			} else {
 				for _, loc := range locs {
 					log.Println("Bundling dependencies of Gtk", strconv.Itoa(gtkVersion), "directory...")
-					determineELFsInDirTree(appdir, loc)
+					determineELFsInDirTree(appdir, options, loc)
 					log.Println("Bundling Default theme for Gtk", strconv.Itoa(gtkVersion), "(for GTK_THEME=Default)...")
 					err = copy.Copy("/usr/share/themes/Default/gtk-"+strconv.Itoa(gtkVersion)+".0", appdir.Path+"/usr/share/themes/Default/gtk-"+strconv.Itoa(gtkVersion)+".0")
 					if err != nil {
@@ -783,10 +790,10 @@ func deployGtkDirectory(appdir helpers.AppDir, gtkVersion int) {
 }
 
 // appendLib appends library in path to allELFs and adds its location as well as any pre-existing rpaths to libraryLocations
-func appendLib(path string) {
+func appendLib(path string, options DeployOptions) {
 
 	for _, excludedlib := range ExcludedLibraries {
-		if filepath.Base(path) == excludedlib && *standalonePtr == false {
+		if filepath.Base(path) == excludedlib && ! options.standalone {
 			// log.Println("Skipping", excludedlib, "because it is on the excludelist")
 			return
 		}
@@ -815,7 +822,7 @@ func appendLib(path string) {
 	allELFs = helpers.AppendIfMissing(allELFs, path)
 }
 
-func determineELFsInDirTree(appdir helpers.AppDir, pathToDirTreeToBeDeployed string) {
+func determineELFsInDirTree(appdir helpers.AppDir, options DeployOptions, pathToDirTreeToBeDeployed string) {
 	allelfs, err := findAllExecutablesAndLibraries(pathToDirTreeToBeDeployed)
 	if err != nil {
 		helpers.PrintError("findAllExecutablesAndLibraries", err)
@@ -824,7 +831,7 @@ func determineELFsInDirTree(appdir helpers.AppDir, pathToDirTreeToBeDeployed str
 	// Find the libraries determined by our ldd replacement and add them to
 	// allELFsUnderPath if they are not there yet
 	for _, lib := range allelfs {
-		appendLib(lib)
+		appendLib(lib, options)
 	}
 
 	var allELFsUnderPath []ELF
@@ -832,7 +839,7 @@ func determineELFsInDirTree(appdir helpers.AppDir, pathToDirTreeToBeDeployed str
 		elfobj := ELF{}
 		elfobj.path = elfpath
 		allELFsUnderPath = append(allELFsUnderPath, elfobj)
-		err = getDeps(elfpath)
+		err = getDeps(elfpath, options)
 		if err != nil {
 			helpers.PrintError("getDeps", err)
 			os.Exit(1)
@@ -900,7 +907,7 @@ func findAllExecutablesAndLibraries(path string) ([]string, error) {
 	return allExecutablesAndLibraries, nil
 }
 
-func getDeps(binaryOrLib string) error {
+func getDeps(binaryOrLib string, options DeployOptions) error {
 	var libs []string
 
 	if helpers.Exists(binaryOrLib) == false {
@@ -927,8 +934,8 @@ func getDeps(binaryOrLib string) error {
 		} else {
 			libPath, err := findLibrary(lib)
 			helpers.PrintError("findLibrary", err)
-			appendLib(libPath)
-			err = getDeps(libPath)
+			appendLib(libPath, options)
+			err = getDeps(libPath, options)
 			helpers.PrintError("findLibrary", err)
 		}
 	}
@@ -1115,7 +1122,7 @@ func getCopyrightFile(path string) (string, error) {
 }
 
 // Let's see in how many lines of code we can re-implement the guts of linuxdeployqt
-func handleQt(appdir helpers.AppDir, qtVersion int) {
+func handleQt(appdir helpers.AppDir, options DeployOptions, qtVersion int) {
 
 	if qtVersion >= 5 {
 
@@ -1148,7 +1155,7 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 			os.Exit(1)
 		}
 
-		determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/platforms/libqxcb.so")
+		determineELFsInDirTree(appdir, options, qtPrfxpath+"/plugins/platforms/libqxcb.so")
 
 		// From here on, mark for deployment certain Qt components if certain conditions are true
 		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1250
@@ -1160,7 +1167,7 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		for _, want := range wants {
 			found := helpers.FilesWithSuffixInDirectoryRecursive(qtPrfxpath, want)
 			if len(found) > 0 {
-				determineELFsInDirTree(appdir, found[0])
+				determineELFsInDirTree(appdir, options, found[0])
 			}
 		}
 
@@ -1169,12 +1176,12 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		for _, lib := range allELFs {
 			if strings.HasSuffix(lib, "libQt5Gui.so.5") == true {
 				if helpers.Exists(qtPrfxpath + "/plugins/iconengines/") {
-					determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/iconengines/")
+					determineELFsInDirTree(appdir, options, qtPrfxpath+"/plugins/iconengines/")
 				} else {
 					fmt.Println("Skipping", appdir, qtPrfxpath+"/plugins/iconengines/", "because it does not exist")
 				}
 				if helpers.Exists(qtPrfxpath + "/plugins/imageformats/") {
-					determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/imageformats/")
+					determineELFsInDirTree(appdir, options, qtPrfxpath+"/plugins/imageformats/")
 				} else {
 					fmt.Println("Skipping", appdir, qtPrfxpath+"/plugins/imageformats/", "because it does not exist")
 				}
@@ -1190,7 +1197,7 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 				strings.HasSuffix(lib, "libQt5XcbQpa.so.5") == true ||
 				strings.HasSuffix(lib, "libxcb-glx.so") == true {
 				{
-					determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/xcbglintegrations/")
+					determineELFsInDirTree(appdir, options, qtPrfxpath+"/plugins/xcbglintegrations/")
 					break
 				}
 			}
@@ -1200,7 +1207,7 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1299
 		for _, lib := range allELFs {
 			if strings.HasSuffix(lib, "libQt5PrintSupport.so.5") == true {
-				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/printsupport/libcupsprintersupport.so")
+				determineELFsInDirTree(appdir, options, qtPrfxpath+"/plugins/printsupport/libcupsprintersupport.so")
 				break
 			}
 		}
@@ -1209,7 +1216,7 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1304
 		for _, lib := range allELFs {
 			if strings.HasSuffix(lib, "libQt5Network.so.5") == true {
-				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/bearer/")
+				determineELFsInDirTree(appdir, options, qtPrfxpath+"/plugins/bearer/")
 				break
 			}
 		}
@@ -1218,7 +1225,7 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1312
 		for _, lib := range allELFs {
 			if strings.HasSuffix(lib, "libQt5Sql.so.5") == true {
-				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/sqldrivers/")
+				determineELFsInDirTree(appdir, options, qtPrfxpath+"/plugins/sqldrivers/")
 				break
 			}
 		}
@@ -1227,7 +1234,7 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1320
 		for _, lib := range allELFs {
 			if strings.HasSuffix(lib, "libQt5Positioning.so.5") == true {
-				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/position/")
+				determineELFsInDirTree(appdir, options, qtPrfxpath+"/plugins/position/")
 				break
 			}
 		}
@@ -1236,8 +1243,8 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1328
 		for _, lib := range allELFs {
 			if strings.HasSuffix(lib, "libQt5Multimedia.so.5") == true {
-				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/mediaservice/")
-				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/audio/")
+				determineELFsInDirTree(appdir, options, qtPrfxpath+"/plugins/mediaservice/")
+				determineELFsInDirTree(appdir, options, qtPrfxpath+"/plugins/audio/")
 				break
 			}
 		}
@@ -1335,13 +1342,12 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 				log.Println("qmlImport.Name:", qmlImport.Name)
 				log.Println("qmlImport.Path:", qmlImport.Path)
 				log.Println("qmlImport.RelativePath:", qmlImport.RelativePath)
-				os.MkdirAll(filepath.Dir(appdir.Path+"/"+qmlImport.Path), 0755)
-				copy.Copy(qmlImport.Path, appdir.Path+"/"+qmlImport.Path) // FIXME: Ideally we would not copy here but only after the point where we start copying everything
-				determineELFsInDirTree(appdir, appdir.Path+"/"+qmlImport.Path)
+				os.MkdirAll(filepath.Dir(path.Join(appdir.Path, qmlImport.Path)), 0755)
+				copy.Copy(qmlImport.Path, path.Join(appdir.Path, qmlImport.Path)) // FIXME: Ideally we would not copy here but only after the point where we start copying everything
+				path.Join("sss", "sss")
+				determineELFsInDirTree(appdir, options, path.Join(appdir.Path, qmlImport.Path))
 			}
 		}
-
-		// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 	}
 }
 
