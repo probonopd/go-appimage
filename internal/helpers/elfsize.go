@@ -143,7 +143,7 @@ func EmbedStringInSegment(path string, section string, s string) error {
 	PrintError("GetSectionData for '"+section+"'", err)
 	if err != nil {
 		os.Stderr.WriteString("Could not find section " + section + " in runtime, exiting\n")
-		return (err)
+		return err
 	}
 	fmt.Println("")
 	fmt.Println("Embedded " + section + " section after embedding:")
@@ -152,5 +152,5 @@ func EmbedStringInSegment(path string, section string, s string) error {
 	fmt.Println("Embedded " + section + " section now contains:")
 	fmt.Println(string(uidata))
 	fmt.Println("")
-	return (nil)
+	return nil
 }
