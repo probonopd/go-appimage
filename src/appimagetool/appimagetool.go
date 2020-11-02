@@ -76,10 +76,11 @@ func bootstrapAppImageDeploy(c *cli.Context) error {
 		log.Println(os.Args[0], "appdir/usr/share/applications/myapp.desktop")
 		log.Fatal("Terminated.")
 	}
-	AppDirDeploy(c.Args().Get(0), DeployOptions{
+	options = DeployOptions{
 		standalone:     c.Bool("standalone"),
 		libAppRunHooks: c.Bool("libapprun_hooks"),
-	})
+	}
+	AppDirDeploy(c.Args().Get(0))
 	return nil
 }
 
