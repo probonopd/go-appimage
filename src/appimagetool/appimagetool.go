@@ -629,7 +629,7 @@ func GenerateAppImage(appdir string) {
 			os.Exit(1)
 		}
 
-		helpers.EmbedStringInSegment(target, ".upd_info", updateinformation)
+		err = helpers.EmbedStringInSegment(target, ".upd_info", updateinformation)
 		if err != nil {
 			helpers.PrintError("EmbedStringInSegment", err)
 			os.Exit(1)
