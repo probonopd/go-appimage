@@ -730,7 +730,7 @@ func GenerateAppImage(appdir string) {
 
 	// If updateinformation was provided, then we also generate the zsync file (after having signed the AppImage)
 	if updateinformation != "" {
-		opts := zsync.Options{0, "", filepath.Base(target)}
+		opts := zsync.Options{Url: filepath.Base(target)}
 		zsync.ZsyncMake(target, opts)
 
 		// Check if the zsync file is really there
