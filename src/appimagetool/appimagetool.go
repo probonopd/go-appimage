@@ -442,7 +442,7 @@ func GenerateAppImage(appdir string) {
 	// Deleting pre-existing .DirIcon
 	if helpers.CheckIfFileExists(appdir+"/.DirIcon") == true {
 		log.Println("Deleting pre-existing .DirIcon")
-		os.Remove(appdir + "/.DirIcon")
+		_ = os.Remove(appdir + "/.DirIcon")
 	}
 
 	// "Copying .DirIcon in place based on information from desktop file"
@@ -541,7 +541,7 @@ func GenerateAppImage(appdir string) {
 	}
 
 	fmt.Println("Marking the AppImage as executable...")
-	os.Chmod(target, 0755)
+	_ = os.Chmod(target, 0755)
 
 	// Get the filesize in bytes of the resulting AppImage
 	fi, err = os.Stat(target)
@@ -697,10 +697,10 @@ func GenerateAppImage(appdir string) {
 		err = helpers.SignAppImage(target, digest)
 		if err != nil {
 			helpers.PrintError("SignAppImage", err)
-			os.Remove(helpers.PrivkeyFileName)
+			_ = os.Remove(helpers.PrivkeyFileName)
 			os.Exit(1)
 		}
-		os.Remove(helpers.PrivkeyFileName)
+		_ = os.Remove(helpers.PrivkeyFileName)
 	}
 
 	// Embed public key into '.sig_key' section if it exists
