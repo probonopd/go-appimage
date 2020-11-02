@@ -43,9 +43,7 @@ var LibcDir = "libc"
 var Sections = []string{".upd_info", ".sha256_sig", ".sig_key", ".digest_md5"}
 
 
-
-
-// checks if the tool is running within a Docker container
+// checkRunningWithinDocker  checks if the tool is running within a Docker container
 // and warn the user of passing Environment variables to the container
 func checkRunningWithinDocker() bool {
 	// Detect if we are running inside Docker; https://github.com/AppImage/AppImageKit/issues/912
@@ -66,8 +64,9 @@ func checkRunningWithinDocker() bool {
 }
 
 
-// wrapper function to deploy an AppImage from Desktop file
-// Args: c: cli.Context
+// bootstrapAppImageDeploy wrapper function to deploy an AppImage
+// from Desktop file
+// 		Args: c: cli.Context
 func bootstrapAppImageDeploy(c *cli.Context) error {
 	// make sure the user provided one and one only desktop
 	if c.NArg() != 1 {
@@ -84,8 +83,9 @@ func bootstrapAppImageDeploy(c *cli.Context) error {
 	return nil
 }
 
-// wrapper function to validate a AppImage
-// Args: c: cli.Context
+
+// bootstrapValidateAppImage wrapper function to validate a AppImage
+// 		Args: c: cli.Context
 func bootstrapValidateAppImage(c *cli.Context) error {
 
 	// make sure that we received only 1 file path
@@ -125,15 +125,17 @@ func bootstrapValidateAppImage(c *cli.Context) error {
 }
 
 
-// wrapper function to setup signing in the current Git repository
-// Args: c: cli.Context
+// bootstrapSetupSigning wrapper function to setup signing in
+// the current Git repository
+// 		Args: c: cli.Context
 func bootstrapSetupSigning(c *cli.Context) error {
 	return setupSigning(c.Bool("overwrite"))
 }
 
 
-// wrapper function to show the sections of the AppImage
-// Args: c: cli.Context
+// bootstrapAppImageSections is a function which converts cli.Context to
+// string based arguments. Wrapper function to show the sections of the AppImage
+// 		Args: c: cli.Context
 func bootstrapAppImageSections(c *cli.Context) error {
 	// check if the number of arguments are stictly 1, if not
 	// return
@@ -177,6 +179,13 @@ func bootstrapAppImageSections(c *cli.Context) error {
 }
 
 
+// bootstrapAppImageBuild is a function which converts cli.Context to
+// string based arguments, checks if all the files
+// provided as arguments exists. If yes add the current path to PATH,
+// check if all the necessary dependencies exist,
+// finally check if the provided argument, AppDir is a directly.
+// Call GenerateAppImage with the converted arguments
+// 		Args: c: cli.Context
 func bootstrapAppImageBuild(c *cli.Context) error {
 
 	// check if the number of arguments are stictly 1, if not
@@ -227,6 +236,7 @@ func bootstrapAppImageBuild(c *cli.Context) error {
 }
 
 
+// constructMQTTPayload TODO: Add documentation
 func constructMQTTPayload(name string, version string, FSTime time.Time) (string, error) {
 
 	psd := helpers.PubSubData{
@@ -685,6 +695,7 @@ func GenerateAppImage(appdir string) {
 		}
 	}
 
+	// Sign the AppImage
 	if helpers.CheckIfFileExists(helpers.PrivkeyFileName) == true {
 		fmt.Println("Attempting to sign the AppImage...")
 		err = helpers.SignAppImage(target, digest)
@@ -708,9 +719,9 @@ func GenerateAppImage(appdir string) {
 		}
 	}
 
+	// No updateinformation was provided nor calculated, so the following steps make no sense.
+	// Hence we print an information message and exit.
 	if updateinformation == "" {
-		// No updateinformation was provided nor calculated, so the following steps make no sense.
-		// Hence we print an information message and exit.
 		fmt.Println("Almost a success")
 		fmt.Println("")
 		fmt.Println("The AppImage was created, but is lacking update information.")
@@ -746,6 +757,7 @@ func GenerateAppImage(appdir string) {
 	body, err := helpers.GetCommitMessageForThisCommitOnTravis()
 	fmt.Println("Commit message for this commit:", body)
 
+	// If its a TRAVIS CI, then upload the release assets and zsync file
 	if os.Getenv("TRAVIS_REPO_SLUG") != "" {
 		cmd := exec.Command("uploadtool", target, target+".zsync")
 		fmt.Println(cmd.String())
@@ -762,6 +774,7 @@ func GenerateAppImage(appdir string) {
 		helpers.PublishMQTTMessage(updateinformation, pl)
 	}
 
+	// everything went well.
 	fmt.Println("Success")
 	fmt.Println("")
 	fmt.Println("Please consider submitting your AppImage to AppImageHub, the crowd-sourced")
@@ -770,6 +783,9 @@ func GenerateAppImage(appdir string) {
 }
 
 
+// main Command Line Entrypoint. Defines the command line structure
+// and assign each subcommand and option to the appropriate function
+// which should be triggered when the subcommand is used
 func main() {
 
 	var version string
@@ -804,7 +820,7 @@ func main() {
 
 	}
 
-	// define subcommands
+	// define subcommands, like 'deploy', 'validate', ...
 	app.Commands = []*cli.Command{
 		{
 			Name:   "deploy",
@@ -828,7 +844,7 @@ func main() {
 		},
 	}
 
-	// define flags, such as --libapprun_hooks here
+	// define flags, such as --libapprun_hooks, --standalone here ...
 	app.Flags = []cli.Flag{
 		&cli.BoolFlag{
 			Name: "libapprun_hooks",
@@ -847,16 +863,14 @@ func main() {
 		},
 	}
 
+	// TODO: move travis based Sections to travis.go in future
+	if os.Getenv("TRAVIS_TEST_RESULT") == "1" {
+		log.Fatal("$TRAVIS_TEST_RESULT is 1, exiting...")
+	}
+
 	errRuntime := app.Run(os.Args)
 	if errRuntime != nil {
 		log.Fatal(errRuntime)
 	}
-
-	// TODO: move travis based Sections to travis.go in future
-	if os.Getenv("TRAVIS_TEST_RESULT") == "1" {
-		log.Println("$TRAVIS_TEST_RESULT is 1, exiting...")
-		os.Exit(1)
-	}
-
 
 }
