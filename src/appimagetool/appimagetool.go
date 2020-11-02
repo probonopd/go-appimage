@@ -159,7 +159,7 @@ func bootstrapAppImageSections(c *cli.Context) error {
 			uidata, err := helpers.GetSectionData(fileToAppImage, section)
 			fmt.Println("")
 			if err != nil {
-				os.Stderr.WriteString("Could not find  ELF section " + section + ", exiting\n")
+				_, _ = os.Stderr.WriteString("Could not find  ELF section " + section + ", exiting\n")
 				log.Println("Error getting ELF section", section, err)
 			} else {
 				log.Println("ELF section", section, "offset", offset, "length", length)
@@ -228,9 +228,9 @@ func bootstrapAppImageBuild(c *cli.Context) error {
 		GenerateAppImage(fileToAppDir)
 	} else {
 		// TODO: If it is a file, then check if it is an AppImage and if yes, extract it
-		os.Stderr.WriteString("Supplied argument is not a directory \n")
-		os.Stderr.WriteString("To extract an AppImage, run it with --appimage-extract \n")
-		os.Exit(1)
+		log.Fatal("Supplied argument is not a directory \n" +
+			"To extract an AppImage, run it with --appimage-extract \n")
+
 	}
 	return nil
 }
@@ -306,8 +306,9 @@ func GenerateAppImage(appdir string) {
 			if version == "" {
 				gitHead, err := gitRepo.Head()
 				if err != nil {
-					os.Stderr.WriteString("Could not determine version automatically, please supply the application version as $VERSION " + filepath.Base(os.Args[0]) + " ... \n")
-					os.Exit(1)
+					log.Fatal("Could not determine version automatically, " +
+						"please supply the application version as $VERSION " +
+						filepath.Base(os.Args[0]) + " ... \n")
 				} else {
 					version = gitHead.Hash().String()[:7] // This equals 'git rev-parse --short HEAD'
 					log.Println("NOTE: Using", version, "from 'git rev-parse --short HEAD' as the version")
@@ -321,21 +322,18 @@ func GenerateAppImage(appdir string) {
 
 	// If no version found, exit
 	if version == "" {
-		os.Stderr.WriteString("Version not found, aborting. Set it with VERSION=... " + os.Args[0] + "\n")
-		os.Exit(1)
+		log.Fatal("Version not found, aborting. Set it with VERSION=... " + os.Args[0] + "\n")
 	}
 
 	// If no desktop file found, exit
 	n := len(helpers.FilesWithSuffixInDirectory(appdir, ".desktop"))
 	if n < 1 {
-		os.Stderr.WriteString("No top-level desktop file found in " + appdir + ", aborting\n")
-		os.Exit(1)
+		log.Fatal("No top-level desktop file found in " + appdir + ", aborting\n")
 	}
 
 	// If more than one desktop files found, exit
 	if n > 1 {
-		os.Stderr.WriteString("Multiple top-level desktop files found in" + appdir + ", aborting\n")
-		os.Exit(1)
+		log.Fatal("Multiple top-level desktop files found in" + appdir + ", aborting\n")
 	}
 
 	desktopfile := helpers.FilesWithSuffixInDirectory(appdir, ".desktop")[0]
@@ -406,8 +404,7 @@ func GenerateAppImage(appdir string) {
 	}
 
 	if len(archs) != 1 {
-		os.Stderr.WriteString("Could not determine architecture automatically, please supply it as $ARCH " + filepath.Base(os.Args[0]) + " ... \n")
-		os.Exit(1)
+		log.Fatal("Could not determine architecture automatically, please supply it as $ARCH " + filepath.Base(os.Args[0]) + " ... \n")
 	}
 	arch := archs[0]
 
@@ -435,9 +432,8 @@ func GenerateAppImage(appdir string) {
 	} else if helpers.CheckIfFileExists(appdir + "/usr/share/icons/hicolor/256x256/apps/" + iconname + ".png") {
 		iconfile = appdir + "/usr/share/icons/hicolor/256x256/apps/" + iconname + ".png"
 	} else {
-		os.Stderr.WriteString("Could not find icon file at " + appdir + "/" + iconname + ".png" + "\n")
-		os.Stderr.WriteString("nor at " + appdir + "/usr/share/icons/hicolor/256x256/apps/" + iconname + ".png" + ", exiting\n")
-		os.Exit(1)
+		log.Fatal("Could not find icon file at " + appdir + "/" + iconname + ".png" + "\n" +
+			"nor at " + appdir + "/usr/share/icons/hicolor/256x256/apps/" + iconname + ".png" + ", exiting\n")
 	}
 	log.Println("Icon file:", iconfile)
 
