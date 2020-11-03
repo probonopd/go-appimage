@@ -92,7 +92,7 @@ fi
 
 if [ ! -z $(find "${HERE}" -name "libgstcoreelements.so" -type f) ] ; then
   export GST_PLUGIN_PATH=$(dirname $(readlink -f $(find "${HERE}" -name "libgstcoreelements.so" -type f | head -n 1)))
-  export GST_PLUGIN_SCANNER=$(find "${HERE}" -name "gst-plugin-scanner" -type f | head -n 1)
+  export GST_PLUGIN_SCANNER=$(find "${HERE}" -type f \( -name "gst-plugin-scanner" -o -name "gst-plugin-scanner-x86_64" \) | head -n 1)
   export GST_PLUGIN_SYSTEM_PATH=$GST_PLUGIN_PATH
   env | grep GST
 fi
@@ -669,8 +669,11 @@ func handleGStreamer(appdir helpers.AppDir) {
 
 			// FIXME: This is not going to scale, every distribution is cooking their own soup,
 			// we need to determine the location of gst-plugin-scanner dynamically by parsing it out of libgstreamer-1.0
-			gstPluginScannerCandidates := []string{"/usr/libexec/gstreamer-1.0/gst-plugin-scanner", // Clear Linux* OS
-				"/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-plugin-scanner"} // sic! Ubuntu 18.04
+			gstPluginScannerCandidates := []string{
+				"/usr/libexec/gstreamer-1.0/gst-plugin-scanner", // Clear Linux* OS
+				"/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-plugin-scanner", // sic! Ubuntu 18.04
+				"/usr/libexec/gstreamer-1.0/gst-plugin-scanner-x86_64", // openSUSE
+                        }
 			for _, cand := range gstPluginScannerCandidates {
 				if helpers.Exists(cand) {
 					log.Println("Determining gst-plugin-scanner...")
