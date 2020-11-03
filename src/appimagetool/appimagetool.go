@@ -803,7 +803,7 @@ func main() {
 
 	// basic information
 	app := &cli.App{
-		Name:                   "AppImageTool",
+		Name:                   "appimagetool",
 		Authors: 				[]*cli.Author{{Name: "AppImage Project"}},
 		Version:                version,
 		Usage:            		"An automatic tool to create AppImages",
