@@ -94,7 +94,8 @@ if [ ! -z $(find "${HERE}" -name "libgstcoreelements.so" -type f) ] ; then
   export GST_PLUGIN_PATH=$(dirname $(readlink -f $(find "${HERE}" -name "libgstcoreelements.so" -type f | head -n 1)))
   export GST_PLUGIN_SCANNER=$(find "${HERE}" -name "gst-plugin-scanner" -type f | head -n 1)
   export GST_PLUGIN_SYSTEM_PATH=$GST_PLUGIN_PATH
-  env | grep GST
+  export GIO_EXTRA_MODULES=$(dirname $(readlink -f $(find "${HERE}" -name "libgiognutls.so" -type f | head -n 1)))
+  env | grep "GST_\|GIO_"
 fi
 
 ############################################################################################
@@ -665,6 +666,7 @@ func handleGStreamer(appdir helpers.AppDir) {
 			} else {
 				log.Println("Bundling dependencies of GStreamer 1.0 directory...")
 				determineELFsInDirTree(appdir, locs[0])
+				determineELFsInDirTree(appdir, "/usr/lib64/gio/modules/libgiognutls.so")
 			}
 
 			// FIXME: This is not going to scale, every distribution is cooking their own soup,
