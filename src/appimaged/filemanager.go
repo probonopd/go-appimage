@@ -6,9 +6,12 @@ package main
 // TODO: Remove the context menus when appimaged exits
 
 import (
+	"bufio"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/probonopd/go-appimage/internal/helpers"
 
@@ -59,9 +62,7 @@ Icon=utilities-terminal
 Name=Make executable
 `
 
-	XFCEThunarAction := `<?xml encoding="UTF-8" version="1.0"?>
-<actions>
-<action>
+	XFCEThunarAction := `<action>
     <icon>terminal</icon>
     <name>Update</name>
     <unique-id>1573903056061608-1</unique-id>
@@ -71,7 +72,12 @@ Name=Make executable
     <other-files/>
     <directories/>
 </action>
-</actions>
+`
+
+	XFCEThunarUCABody := `<?xml version="1.0" encoding="UTF-8"?>
+<actions>
+%s
+</actions>	
 `
 	// TODO: Nautilus (also) has $HOME/.local/share/nautilus/scripts
 
@@ -100,13 +106,54 @@ Name=Make executable
 	// XFCE
 	// Thunar allows users to add custom actions to the file and folder context menus
 	// (by the use of the thunar-uca plugin, part of the Thunar distribution, in the plugins/ subdirectory).
-	// FIXME: Do not overwrite pre-existing uca.xml file but insert the new action into it
-	// This is more complicated than needed. Can't Thunar handle one file per action?s
 	err = os.MkdirAll(xdg.ConfigHome+"/Thunar/", 0755)
 	if err != nil {
 		helpers.PrintError("filemanager", err)
 	}
-	d3 := []byte(XFCEThunarAction)
+	
+	XFCEThunarUCABuffer := ""
+	d3 := []byte(nil)
+
+	if _, err := os.Stat(xdg.ConfigHome+"/Thunar/uca.xml"); os.IsNotExist(err) {
+		// uca.xml doesn't exist so we write our default one
+		d3 = []byte(fmt.Sprintf(XFCEThunarAction, XFCEThunarUCABody))
+	} else {
+		// uca.xml exists so we open it to:
+		// A. Check if our action exists
+		// B. If not, add it
+		ucaFile, err := os.Open(xdg.ConfigHome+"/Thunar/uca.xml")
+		if err != nil {
+			helpers.PrintError("filemanager", err)
+		}
+		defer ucaFile.Close()
+
+		ucaFileReader := bufio.NewScanner(ucaFile)
+
+		for ucaFileReader.Scan() { // We read the file line by line checking for our unique-id
+			curLine := ucaFileReader.Text()
+			if strings.Contains(curLine, "1573903056061608-1") { // If we find our action, there's nothing to be done so we return
+				return
+			}
+		}
+
+		// If we don't find our action, we reset the file to the beginning and reinstantiate the scanner
+		ucaFile.Seek(0, 0)
+		ucaFileReader = bufio.NewScanner(ucaFile)
+
+		// Then we add our action
+		curLine := ucaFileReader.Text() // Read the XML header into curLine
+		for curLine != "<actions>" { // Read everything up to the actions section into the buffer
+			ucaFileReader.Scan()
+			curLine = ucaFileReader.Text()
+			XFCEThunarUCABuffer += curLine + "\n"
+		}
+		XFCEThunarUCABuffer += XFCEThunarAction + "\n" // Add the update action
+		for ucaFileReader.Scan() { // Read the rest of the file into our buffer
+			XFCEThunarUCABuffer += ucaFileReader.Text() + "\n"
+		}
+
+		d3 = []byte(XFCEThunarUCABuffer)
+	}
 	err = ioutil.WriteFile(xdg.ConfigHome+"/Thunar/uca.xml", d3, 0644)
 	helpers.PrintError("filemanager", err)
 
