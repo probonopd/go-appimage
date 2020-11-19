@@ -73,8 +73,7 @@ Name=Make executable
     <patterns>*.AppImage;*.appimage</patterns>
     <other-files/>
     <directories/>
-</action>
-`
+</action>`
 
 	XFCEThunarUCABody := `<?xml version="1.0" encoding="UTF-8"?>
 <actions>
