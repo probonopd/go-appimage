@@ -70,7 +70,7 @@ Name=Make executable
     <unique-id>` + XFCEThunarActionUniqueID + `</unique-id>
     <command>` + arg0abs + ` %f</command>
     <description>Update the AppImage</description>
-    <patterns>*AppImage,*.appimage</patterns>
+    <patterns>*.AppImage;*.appimage</patterns>
     <other-files/>
     <directories/>
 </action>
