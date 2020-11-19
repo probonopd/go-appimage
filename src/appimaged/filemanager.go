@@ -62,10 +62,12 @@ Icon=utilities-terminal
 Name=Make executable
 `
 
+	XFCEThunarActionUniqueID := `1573903056061608-1`
+
 	XFCEThunarAction := `<action>
     <icon>terminal</icon>
     <name>Update</name>
-    <unique-id>1573903056061608-1</unique-id>
+    <unique-id>` + XFCEThunarActionUniqueID + `</unique-id>
     <command>` + arg0abs + ` %f</command>
     <description>Update the AppImage</description>
     <patterns>*AppImage,*.appimage</patterns>
@@ -131,7 +133,7 @@ Name=Make executable
 
 		for ucaFileReader.Scan() { // We read the file line by line checking for our unique-id
 			curLine := ucaFileReader.Text()
-			if strings.Contains(curLine, "1573903056061608-1") { // If we find our action, there's nothing to be done so we return
+			if strings.Contains(curLine, XFCEThunarActionUniqueID) { // If we find our action, there's nothing to be done so we return
 				return
 			}
 		}
