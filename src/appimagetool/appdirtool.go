@@ -412,7 +412,12 @@ func deployElf(lib string, appdir helpers.AppDir, err error) {
 			return
 		}
 	}
-	
+
+	if strings.HasPrefix(filepath.Base(lib), "ld-") == true {
+		log.Println("deployElf: Ignore", lib, "because it is already deployed...")
+		return
+	}
+
 	log.Println("Working on", lib, "(TODO: Remove this message)")
 	if strings.HasPrefix(lib, appdir.Path) == false { // Do not copy if it is already in the AppDir
 		libTargetPath := appdir.Path + "/" + lib
