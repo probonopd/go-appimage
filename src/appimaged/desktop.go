@@ -123,6 +123,9 @@ func writeDesktopFile(ai AppImage) {
 		} else if helpers.IsCommandAvailable("kioclient") {
 			// Of course KDE has its own facility for doing the exact same thing
 			cfg.Section("Desktop Action Trash").Key("Exec").SetValue("kioclient move \"" + ai.path + "\" trash:/")
+		} else {
+			// Provide a fallback shell command to prevent parser errors on other desktops
+			cfg.Section("Desktop Action Trash").Key("Exec").SetValue("mv \"" + ai.path + "\" ~/.local/share/Trash/")
 		}
 
 		// Add OpenPortableHome action
