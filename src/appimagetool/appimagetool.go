@@ -262,7 +262,12 @@ func constructMQTTPayload(name string, version string, FSTime time.Time) (string
 
 
 // GenerateAppImage converts an AppDir into an AppImage
-func GenerateAppImage(appdir string, generateUpdateInformation bool, squashfsCompressionType string) {
+func GenerateAppImage(
+	appdir string,
+	generateUpdateInformation bool,
+	squashfsCompressionType string,
+	checkAppStreamMetadata bool,
+) {
 	if _, err := os.Stat(appdir + "/AppRun"); os.IsNotExist(err) {
 		_, _ = os.Stderr.WriteString("AppRun is missing \n")
 		os.Exit(1)
@@ -449,7 +454,9 @@ func GenerateAppImage(appdir string, generateUpdateInformation bool, squashfsCom
 	// Check if AppStream upstream metadata is present in source AppDir
 	// If yes, use ximion's appstreamcli to make sure that desktop file and appdata match together and are valid
 	appstreamfile := appdir + "/usr/share/metainfo/" + strings.Replace(filepath.Base(desktopfile), ".desktop", ".appdata.xml", -1)
-	if helpers.CheckIfFileExists(appstreamfile) == false {
+	if ! checkAppStreamMetadata {
+		log.Println("WARNING: Skipping AppStream metadata check...")
+	} else if helpers.CheckIfFileExists(appstreamfile) == false {
 		log.Println("WARNING: AppStream upstream metadata is missing, please consider creating it in")
 		fmt.Println("         " + appdir + "/usr/share/metainfo/" + filepath.Base(desktopfile) + ".appdata.xml")
 		fmt.Println("         Please see https://www.freedesktop.org/software/appstream/docs/chap-Quickstart.html#sect-Quickstart-DesktopApps")
