@@ -219,7 +219,7 @@ func bootstrapAppImageBuild(c *cli.Context) error {
 	// Check if is directory, then assume we want to convert an AppDir into an AppImage
 	fileToAppDir, _ = filepath.EvalSymlinks(fileToAppDir)
 	if info, err := os.Stat(fileToAppDir); err == nil && info.IsDir() {
-		GenerateAppImage(fileToAppDir, true)
+		GenerateAppImage(fileToAppDir, true, "gzip")
 	} else {
 		// TODO: If it is a file, then check if it is an AppImage and if yes, extract it
 		log.Fatal("Supplied argument is not a directory \n" +
@@ -262,7 +262,7 @@ func constructMQTTPayload(name string, version string, FSTime time.Time) (string
 
 
 // GenerateAppImage converts an AppDir into an AppImage
-func GenerateAppImage(appdir string, generateUpdateInformation bool) {
+func GenerateAppImage(appdir string, generateUpdateInformation bool, squashfsCompressionType string) {
 	if _, err := os.Stat(appdir + "/AppRun"); os.IsNotExist(err) {
 		_, _ = os.Stderr.WriteString("AppRun is missing \n")
 		os.Exit(1)
@@ -515,7 +515,7 @@ func GenerateAppImage(appdir string, generateUpdateInformation bool) {
 	}
 
 	// "mksquashfs", source, destination, "-offset", offset, "-comp", "gzip", "-root-owned", "-noappend"
-	cmd := exec.Command("mksquashfs", appdir, target, "-offset", strconv.FormatInt(offset, 10), "-fstime", fstime, "-comp", "gzip", "-root-owned", "-noappend")
+	cmd := exec.Command("mksquashfs", appdir, target, "-offset", strconv.FormatInt(offset, 10), "-fstime", fstime, "-comp", squashfsCompressionType, "-root-owned", "-noappend")
 	fmt.Println(cmd.String())
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
