@@ -87,7 +87,21 @@ func bootstrapMkAppImage(c *cli.Context) error {
 		if c.Bool("guess") {
 			shouldGuessUpdateInformation = true
 		}
-		GenerateAppImage(fileToAppDir, shouldGuessUpdateInformation)
+
+		// is manual compressor provided? if yes use that, else default
+		compressionType := "gzip"
+		if c.String("comp") != "" {
+			compressionType = c.String("comp")
+		}
+
+		// should we validate the appstream files?
+		shouldValidateAppstream := true
+		if c.Bool("no-appstream") {
+			shouldValidateAppstream = false
+		}
+
+		// now generate the appimage
+		GenerateAppImage(fileToAppDir, shouldGuessUpdateInformation, compressionType, shouldValidateAppstream)
 
 
 	} else {
@@ -170,6 +184,11 @@ func main() {
 			Name: "standalone",
 			Aliases: []string{"s"},
 			Usage: "Make standalone self-contained bundle",
+		},
+		&cli.BoolFlag{
+			Name: "no-appstream",
+			Aliases: []string{"n"},
+			Usage: "Do not check AppStream metadata",
 		},
 		&cli.StringFlag{
 			Name: "comp",
