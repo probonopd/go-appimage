@@ -8,12 +8,12 @@ on:
 
 jobs:
 
-  build:
+  build-appimagetool:
     name: Build ${{ matrix.app }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        app: [appimagetool, appimaged]
+        app: [appimagetool]
     steps:
 
     - name: Set up Go 1.x
@@ -34,7 +34,7 @@ jobs:
 
         
     - name: Download a prebuilt appimagetool 
-      if: ${{ matrix.app }} == appimagetool
+      if: ${{ matrix.app }} != appimagetool
       needs: build-appimagetool
       uses: actions/download-artifact@v1
       with:
@@ -87,5 +87,90 @@ jobs:
       id: build-${{ matrix.app }}
       uses: actions/upload-artifact@v1.0.0
       with:
+        name: ${{ matrix.app }}-deploy.AppImage
+        path: dist
+
+
+  build-others:
+    name: Build ${{ matrix.app }}
+    needs: build-appimagetool
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [appimagetool, appimaged]
+    steps:
+
+    - name: Set up Go 1.x
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.13
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: Get dependencies
+      run: |
+        go get -v -t -d ./...
+        if [ -f Gopkg.toml ]; then
+            curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+            dep ensure
+        fi
+
+        
+    - name: Download a prebuilt appimagetool 
+      if: ${{ matrix.app }} != appimagetool
+      uses: actions/download-artifact@v1
+      with:
+        name: appimagetool-deploy.AppImage
+
+    - name: Build
+      run: |
+        go build -v -trimpath -ldflags="-s -w" ./src/${{ matrix.app }}
+        mv ./${{ matrix.app }} ./$${{ matrix.app}}-$(go env GOHOSTARCH)
+        # export the ARCHITECTURE
+        export ARCHITECTURE=x86_64
+        mkdir -p ${{ matrix.app }}.AppDir/usr/bin
+        
+        if [[ "${{ matrix.app }}" != "appimaged" ]]; then
+            ( cd ${{ matrix.app }}.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/desktop-file-validate-$ARCHITECTURE -O desktop-file-validate )
+            ( cd ${{ matrix.app }}.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/mksquashfs-$ARCHITECTURE -O mksquashfs )
+            ( cd ${{ matrix.app }}.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/patchelf-$ARCHITECTURE -O patchelf )
+            ( cd ${{ matrix.app }}.AppDir/usr/bin/ ; wget -c https://github.com/AppImage/AppImageKit/releases/download/continuous/runtime-$ARCHITECTURE )
+            ( cd ${{ matrix.app }}.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh -O uploadtool )
+        fi
+        if [[ "${{ matrix.app }}" != "appimagetool" ]]; then
+            ( cd ${{ matrix.app }}.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/bsdtar-$ARCHITECTURE -O bsdtar )
+            ( cd ${{ matrix.app }}.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/unsquashfs-$ARCHITECTURE -O unsquashfs )
+        fi
+        chmod +x ${{ matrix.app }}.AppDir/usr/bin/*
+        cp ${{ matrix.app }}-$(go env GOHOSTARCH) ${{ matrix.app }}.AppDir/usr/bin/
+        ( cd ${{ matrix.app }}.AppDir/ ; ln -s usr/bin/${{ matrix.app }} AppRun)
+        cp data/appimage.png ${{ matrix.app }}.AppDir/
+        cat > appimagetool.AppDir/appimagetool.desktop <<\EOF
+        [Desktop Entry]
+        Type=Application
+        Name=${{ matrix.app }}
+        Exec=${{ matrix.app }}
+        Comment=${{ matrix.app }} - tool to generate AppImages from AppDirs
+        Icon=appimage
+        Categories=Development;
+        Terminal=true
+        EOF
+        if [[ "${{ matrix.app }}" == "appimagetool" ]]; then
+          PATH=./${{ matrix.app }}.AppDir/usr/bin/:$PATH appimagetool ./${{ matrix.app}}.AppDir
+        else;
+          chmod +x ./appimage.AppImage
+          ./appimage.AppImage ./${{ matrix.app}}.AppDir
+        fi
+        rm -rf ./appimage.AppImage
+        mkdir dist
+        mv *.AppImage dist
+
+    - name: Upload Artifact
+      id: build-${{ matrix.app }}
+      uses: actions/upload-artifact@v1.0.0
+      with:
         name: ${{ matrix.app }}-continuous.AppImage
         path: dist
+        
+    
