@@ -11,6 +11,9 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [appimagetool, appimaged]
     steps:
 
     - name: Set up Go 1.x
@@ -31,7 +34,8 @@ jobs:
         
 
     - name: Build
-      run: go build -v .
+      run: |
+        cd src/${{ matrix.app }}
+        go build -v .
+        
 
-    - name: Test
-      run: go test -v .
