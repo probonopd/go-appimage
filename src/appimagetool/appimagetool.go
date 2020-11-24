@@ -95,6 +95,7 @@ func GenerateAppImage(
 	generateUpdateInformation bool,
 	squashfsCompressionType string,
 	checkAppStreamMetadata bool,
+	updateInformation string,
 ) {
 	if _, err := os.Stat(appdir + "/AppRun"); os.IsNotExist(err) {
 		_, _ = os.Stderr.WriteString("AppRun is missing \n")
@@ -380,7 +381,12 @@ func GenerateAppImage(
 	}
 
 	// Construct update information
-	var updateinformation string
+	// check if we have received the updateInformation param
+	// in mkappimage, we have a -u --updateinformation flag which
+	// allows to provide a string as update information
+	// however, appimagetool calls this function with updateinformation=""
+	// which will be overwritten in the following lines of code
+	updateinformation := updateInformation
 
 	// If we know this is a GitLab CI build
 	// do nothing at the moment but print some nice message

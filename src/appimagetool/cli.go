@@ -173,7 +173,23 @@ func bootstrapAppImageBuild(c *cli.Context) error {
 	// Check if is directory, then assume we want to convert an AppDir into an AppImage
 	fileToAppDir, _ = filepath.EvalSymlinks(fileToAppDir)
 	if info, err := os.Stat(fileToAppDir); err == nil && info.IsDir() {
-		GenerateAppImage(fileToAppDir, true, "gzip", true)
+		// Generate the AppImage
+		// for optimum performance, the following default parameters are passed
+		// fileToAppDir: 				fileToAppDir
+		// generateUpdateInformation: 	true (always guess based on environment variables)
+		// squashfsCompressionType: 	gzip
+		// checkAppStreamMetadata: 		true (always verify the appstream metadata if files exists
+		// 								using appstreamcli
+		// updateinformation: 			"" 	(empty string, we want to guess the update information from
+		//								scratch, and if we fail to guess it, then no update metadata for
+		// 								the appimage)
+		GenerateAppImage(
+			fileToAppDir,
+			true,
+			"gzip",
+			true,
+			"",
+		)
 	} else {
 		// TODO: If it is a file, then check if it is an AppImage and if yes, extract it
 		log.Fatal("Supplied argument is not a directory \n" +

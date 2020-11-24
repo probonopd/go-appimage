@@ -100,8 +100,17 @@ func bootstrapMkAppImage(c *cli.Context) error {
 			shouldValidateAppstream = false
 		}
 
+		// get the update information from the --updateinformation flag on CLI
+		// by default, we assume its empty string
+		receivedUpdateInformation := ""
+		if c.String("updateinformation") != "" {
+			// NOTE: if you provide both --updateinformation and --guess parameter together,
+			// then the guess has precedence over the provided updateinformation
+			receivedUpdateInformation = c.String("updateinformation")
+		}
+
 		// now generate the appimage
-		GenerateAppImage(fileToAppDir, shouldGuessUpdateInformation, compressionType, shouldValidateAppstream)
+		GenerateAppImage(fileToAppDir, shouldGuessUpdateInformation, compressionType, shouldValidateAppstream, receivedUpdateInformation)
 
 
 	} else {
@@ -193,6 +202,11 @@ func main() {
 		&cli.StringFlag{
 			Name: "comp",
 			Usage: "Squashfs compression",
+		},
+		&cli.StringFlag{
+			Name: "updateinformation",
+			Aliases: []string{"u", "updateinfo"},
+			Usage: "Embed update information STRING; if zsyncmake is installed, generate zsync file",
 		},
 		&cli.BoolFlag{
 			Name: "list",
