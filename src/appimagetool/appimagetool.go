@@ -32,7 +32,7 @@ import (
 var commit string
 
 // path to libc
-var LibcDir = "libc"
+LibcDir = "libc"
 
 
 // array of string, Sections contains
