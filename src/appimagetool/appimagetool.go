@@ -225,7 +225,7 @@ func bootstrapAppImageBuild(c *cli.Context) error {
 	// Check if is directory, then assume we want to convert an AppDir into an AppImage
 	fileToAppDir, _ = filepath.EvalSymlinks(fileToAppDir)
 	if info, err := os.Stat(fileToAppDir); err == nil && info.IsDir() {
-		GenerateAppImage(fileToAppDir)
+		GenerateAppImage(fileToAppDir, true)
 	} else {
 		// TODO: If it is a file, then check if it is an AppImage and if yes, extract it
 		log.Fatal("Supplied argument is not a directory \n" +
@@ -268,7 +268,7 @@ func constructMQTTPayload(name string, version string, FSTime time.Time) (string
 
 
 // GenerateAppImage converts an AppDir into an AppImage
-func GenerateAppImage(appdir string) {
+func GenerateAppImage(appdir string, generateUpdateInformation bool) {
 	if _, err := os.Stat(appdir + "/AppRun"); os.IsNotExist(err) {
 		_, _ = os.Stderr.WriteString("AppRun is missing \n")
 		os.Exit(1)
@@ -523,10 +523,11 @@ func GenerateAppImage(appdir string) {
 	// "mksquashfs", source, destination, "-offset", offset, "-comp", "gzip", "-root-owned", "-noappend"
 	cmd := exec.Command("mksquashfs", appdir, target, "-offset", strconv.FormatInt(offset, 10), "-fstime", fstime, "-comp", "gzip", "-root-owned", "-noappend")
 	fmt.Println(cmd.String())
-	out, err := cmd.CombinedOutput()
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	err = cmd.Run()
 	if err != nil {
 		helpers.PrintError("mksquashfs", err)
-		fmt.Printf("%s", string(out))
 		os.Exit(1)
 	}
 
@@ -536,7 +537,6 @@ func GenerateAppImage(appdir string) {
 	err = helpers.WriteFileIntoOtherFileAtOffset(runtimefilepath, target, 0)
 	if err != nil {
 		helpers.PrintError("Embedding runtime", err)
-		fmt.Printf("%s", string(out))
 		os.Exit(1)
 	}
 
@@ -572,7 +572,7 @@ func GenerateAppImage(appdir string) {
 	//     TRAVIS_TAG: If the current build is for a git tag, this variable is set to the tag’s name.
 	//     TRAVIS_PULL_REQUEST
 	ghToken, ghTokenFound := os.LookupEnv("GITHUB_TOKEN")
-	if os.Getenv("TRAVIS_REPO_SLUG") != "" {
+	if os.Getenv("TRAVIS_REPO_SLUG") != "" && generateUpdateInformation {
 		fmt.Println("Running on Travis CI")
 		if os.Getenv("TRAVIS_PULL_REQUEST") != "false" {
 			fmt.Println("Will not calculate update information for GitHub because this is a pull request")
@@ -598,7 +598,7 @@ func GenerateAppImage(appdir string) {
 	//     https://docs.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables#default-environment-variables
 	//     GITHUB_REPOSITORY: The slug (in form: owner_name/repo_name) of the repository currently being built.
 	//     GITHUB_REF: e.g., "refs/pull/421/merge", "refs/heads/master"
-	if os.Getenv("GITHUB_REPOSITORY") != "" {
+	if os.Getenv("GITHUB_REPOSITORY") != "" && generateUpdateInformation {
 		fmt.Println("Running on GitHub Actions")
 		if strings.Contains(os.Getenv("GITHUB_REF"), "/pull/") {
 			fmt.Println("Will not calculate update information for GitHub because this is a pull request")
@@ -778,95 +778,3 @@ func GenerateAppImage(appdir string) {
 	fmt.Println("at https://github.com/AppImage/appimage.github.io")
 }
 
-
-// main Command Line Entrypoint. Defines the command line structure
-// and assign each subcommand and option to the appropriate function
-// which should be triggered when the subcommand is used
-func main() {
-
-	var version string
-
-	// Derive the commit message from -X main.commit=$YOUR_VALUE_HERE
-	// if the build does not have the commit variable set externally,
-	// fall back to unsupported custom build
-	if commit != "" {
-		version = commit
-	} else {
-		version = "unsupported custom build"
-	}
-
-	// let the user know that we are running within a docker container
-	checkRunningWithinDocker()
-
-	// build the Command Line interface
-	// https://github.com/urfave/cli/blob/master/docs/v2/manual.md
-
-	// basic information
-	app := &cli.App{
-		Name:                   "appimagetool",
-		Authors: 				[]*cli.Author{{Name: "AppImage Project"}},
-		Version:                version,
-		Usage:            		"An automatic tool to create AppImages",
-		EnableBashCompletion:   false,
-		HideHelp:               false,
-		HideVersion:            false,
-		Compiled:               time.Time{},
-		Copyright:              "MIT License",
-		Action: 				bootstrapAppImageBuild,
-
-	}
-
-	// define subcommands, like 'deploy', 'validate', ...
-	app.Commands = []*cli.Command{
-		{
-			Name:   "deploy",
-			Usage:  "Turns PREFIX directory into AppDir by deploying dependencies and AppRun file",
-			Action: bootstrapAppImageDeploy,
-		},
-		{
-			Name:   "validate",
-			Usage:  "Calculate the sha256 digest and check whether the signature is valid",
-			Action: bootstrapValidateAppImage,
-		},
-		{
-			Name:   "setupsigning",
-			Usage:  "Prepare a git repository that is used with Travis CI for signing AppImages",
-			Action: bootstrapSetupSigning,
-		},
-		{
-			Name: 	"sections",
-			Usage: 	"",
-			Action:	bootstrapAppImageSections,
-		},
-	}
-
-	// define flags, such as --libapprun_hooks, --standalone here ...
-	app.Flags = []cli.Flag{
-		&cli.BoolFlag{
-			Name: "libapprun_hooks",
-			Aliases: []string{"l"},
-			Usage: "Use libapprun_hooks",
-		},
-		&cli.BoolFlag{
-			Name: "overwrite",
-			Aliases: []string{"o"},
-			Usage: "Overwrite existing files",
-		},
-		&cli.BoolFlag{
-			Name: "standalone",
-			Aliases: []string{"s"},
-			Usage: "Make standalone self-contained bundle",
-		},
-	}
-
-	// TODO: move travis based Sections to travis.go in future
-	if os.Getenv("TRAVIS_TEST_RESULT") == "1" {
-		log.Fatal("$TRAVIS_TEST_RESULT is 1, exiting...")
-	}
-
-	errRuntime := app.Run(os.Args)
-	if errRuntime != nil {
-		log.Fatal(errRuntime)
-	}
-
-}
