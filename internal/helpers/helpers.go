@@ -333,6 +333,18 @@ func CheckIfSquashfsVersionSufficient(toolname string) bool {
 	return true
 }
 
+// CheckIfAllToolsArePresent checks if all the required tools, for example. mksquashfs, unsquashfs
+// are present using exec.LookPath. Function exits with exit code 1, if any tool is missing
+// and reports that particular missing tool to the user
+func CheckIfAllToolsArePresent(tools []string) {
+	for _, t := range tools {
+		_, err := exec.LookPath(t)
+		if err != nil {
+			log.Fatal("Required helper tool", t, "missing")
+		}
+	}
+}
+
 // WriteFileIntoOtherFileAtOffset writes the content of inputfile into outputfile at Offset, without truncating
 // Returns error in case of errors, otherwise returns nil
 func WriteFileIntoOtherFileAtOffset(inputfilepath string, outputfilepath string, offset uint64) error {

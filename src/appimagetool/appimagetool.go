@@ -209,13 +209,7 @@ func bootstrapAppImageBuild(c *cli.Context) error {
 	tools := []string{"file", "mksquashfs", "desktop-file-validate", "uploadtool", "patchelf", "desktop-file-validate", "patchelf"} // "sh", "strings", "grep" no longer needed?; "curl" is needed for uploading only, "glib-compile-schemas" is needed in some cases only
 	// curl is needed by uploadtool; TODO: Replace uploadtool with native Go code
 	// "sh", "strings", "grep" are needed by appdirtool to parse qt_prfxpath; TODO: Replace with native Go code
-	for _, t := range tools {
-		_, err := exec.LookPath(t)
-		if err != nil {
-			log.Println("Required helper tool", t, "missing")
-			os.Exit(1)
-		}
-	}
+	helpers.CheckIfAllToolsArePresent(tools)
 
 	// Check whether we have a sufficient version of mksquashfs for -offset
 	if helpers.CheckIfSquashfsVersionSufficient("mksquashfs") == false {
