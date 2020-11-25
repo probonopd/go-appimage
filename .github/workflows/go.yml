@@ -68,10 +68,10 @@ jobs:
         EOF
         if [[ "${{ matrix.app }}" == "appimagetool" ]]; then
           ln -s ${{ matrix.app }}.AppDir/usr/bin/* .
-          PATH="${{ matrix.app }}.AppDir/usr/bin/:$PATH" ./appimagetool-* ./${{ matrix.app}}.AppDir
+          PATH="${{ matrix.app }}.AppDir/usr/bin/:$PATH" ./appimagetool-* ./${{ matrix.app}}.AppDir  || true
         else
           chmod +x ./appimage.AppImage
-          ./appimage.AppImage ./${{ matrix.app}}.AppDir
+          ./appimage.AppImage ./${{ matrix.app}}.AppDir || true
         fi
         rm -rf ./appimage.AppImage
         mkdir dist
@@ -152,10 +152,10 @@ jobs:
         EOF
         if [[ "${{ matrix.app }}" == "appimagetool" ]]; then
           ln -s ${{ matrix.app }}.AppDir/usr/bin/* .
-          PATH="${{ matrix.app }}.AppDir/usr/bin/:$PATH" ./appimagetool-* ./${{ matrix.app}}.AppDir
+          PATH="${{ matrix.app }}.AppDir/usr/bin/:$PATH" ./appimagetool-* ./${{ matrix.app}}.AppDir || true  # FIXME: remove this true
         else
           chmod +x ./appimage-deploy.AppImage
-          ./appimage-deploy.AppImage ./${{ matrix.app}}.AppDir
+          ./appimage-deploy.AppImage ./${{ matrix.app}}.AppDir || true
         fi
         rm -rf ./appimage.AppImage
         mkdir dist
