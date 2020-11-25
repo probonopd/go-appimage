@@ -33,9 +33,10 @@ jobs:
         fi
 
     - name: Build
+      shell: bash
       run: |
         go build -v -trimpath -ldflags="-s -w" ./src/${{ matrix.app }}
-        mv ./${{ matrix.app }} ./$${{ matrix.app}}-$(go env GOHOSTARCH)
+        mv ./${{ matrix.app }} ./${{ matrix.app }}-$(go env GOHOSTARCH)
         # export the ARCHITECTURE
         export ARCHITECTURE=x86_64
         mkdir -p ${{ matrix.app }}.AppDir/usr/bin
@@ -115,9 +116,10 @@ jobs:
         name: appimagetool-deploy.AppImage
 
     - name: Build
+      shell: bash
       run: |
         go build -v -trimpath -ldflags="-s -w" ./src/${{ matrix.app }}
-        mv ./${{ matrix.app }} ./${{ matrix.app}}-$(go env GOHOSTARCH)
+        mv ./${{ matrix.app }} ./${{ matrix.app }}-$(go env GOHOSTARCH)
         # export the ARCHITECTURE
         export ARCHITECTURE=x86_64
         mkdir -p ${{ matrix.app }}.AppDir/usr/bin
