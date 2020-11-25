@@ -53,7 +53,7 @@ jobs:
             ( cd ${{ matrix.app }}.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/unsquashfs-$ARCHITECTURE -O unsquashfs )
         fi
         chmod +x ${{ matrix.app }}.AppDir/usr/bin/*
-        cp ${{ matrix.app }}-$(go env GOHOSTARCH) ${{ matrix.app }}.AppDir/usr/bin/
+        cp ${{ matrix.app }}-$(go env GOHOSTARCH) ${{ matrix.app }}.AppDir/usr/bin/${{ matrix.app }}
         ( cd ${{ matrix.app }}.AppDir/ ; ln -s usr/bin/${{ matrix.app }} AppRun)
         cp data/appimage.png ${{ matrix.app }}.AppDir/
         cat > appimagetool.AppDir/appimagetool.desktop <<\EOF
@@ -67,7 +67,8 @@ jobs:
         Terminal=true
         EOF
         if [[ "${{ matrix.app }}" == "appimagetool" ]]; then
-          PATH=./${{ matrix.app }}.AppDir/usr/bin/:$PATH appimagetool ./${{ matrix.app}}.AppDir
+          ln -s ${{ matrix.app }}.AppDir/usr/bin/* .
+          PATH="${{ matrix.app }}.AppDir/usr/bin/:$PATH" ./appimagetool-* ./${{ matrix.app}}.AppDir
         else
           chmod +x ./appimage.AppImage
           ./appimage.AppImage ./${{ matrix.app}}.AppDir
@@ -136,7 +137,7 @@ jobs:
             ( cd ${{ matrix.app }}.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/unsquashfs-$ARCHITECTURE -O unsquashfs )
         fi
         chmod +x ${{ matrix.app }}.AppDir/usr/bin/*
-        cp ${{ matrix.app }}-$(go env GOHOSTARCH) ${{ matrix.app }}.AppDir/usr/bin/
+        cp ${{ matrix.app }}-$(go env GOHOSTARCH) ${{ matrix.app }}.AppDir/usr/bin/${{ matrix.app }}
         ( cd ${{ matrix.app }}.AppDir/ ; ln -s usr/bin/${{ matrix.app }} AppRun)
         cp data/appimage.png ${{ matrix.app }}.AppDir/
         cat > appimagetool.AppDir/appimagetool.desktop <<\EOF
@@ -150,7 +151,8 @@ jobs:
         Terminal=true
         EOF
         if [[ "${{ matrix.app }}" == "appimagetool" ]]; then
-          PATH=./${{ matrix.app }}.AppDir/usr/bin/:$PATH appimagetool ./${{ matrix.app}}.AppDir
+          ln -s ${{ matrix.app }}.AppDir/usr/bin/* .
+          PATH="${{ matrix.app }}.AppDir/usr/bin/:$PATH" ./appimagetool-* ./${{ matrix.app}}.AppDir
         else
           chmod +x ./appimage-deploy.AppImage
           ./appimage-deploy.AppImage ./${{ matrix.app}}.AppDir
