@@ -13,6 +13,7 @@
 !*.md
 !*.iml
 !*.xml
+!*.yml
 
 # Everything below this line is redundant
 # and may be removed once everything works as intended
