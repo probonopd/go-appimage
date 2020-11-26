@@ -12,6 +12,7 @@ jobs:
     name: Pre-deploy tests ${{ matrix.app }} (${{ matrix.arch }})
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         app: [appimagetool]
         arch: ['amd64', '386', 'arm64', 'arm']
@@ -86,6 +87,7 @@ jobs:
     needs: build-appimagetool
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         app: [appimagetool, appimaged]
         arch: ['amd64', '386', 'arm64', 'arm']
