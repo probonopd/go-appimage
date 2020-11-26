@@ -10,6 +10,21 @@ fi
 if [[ "$BUILD_ARCH" == "amd64" ]]; then
     export ARCHITECTURE="x86_64"
 fi
+if [[ "$BUILD_ARCH" == "arm64" ]]; then
+    export ARCHITECTURE="aarch64"
+fi
+if [[ "$BUILD_ARCH" == "arm" ]]; then
+    export ARCHITECTURE="armhf"
+fi
+
+export QEMU_USER_STATIC=""
+if [[ "$BUILD_ARCH" == "arm64"]]; then
+    export QEMU_USER_STATIC="qemu-$ARCHITECTURE -L /usr/$ARCHITECTURE-linux-gnu/"
+fi
+if [[ "$BUILD_ARCH" == "arm"]]; then
+    export QEMU_USER_STATIC="qemu-arm -L /usr/$ARCHITECTURE-linux-gnu/"
+fi
+
 
 mkdir -p "$BUILD_APP.AppDir/usr/bin"
 
@@ -42,7 +57,7 @@ sed -i "s,REPLACE_ME_APPNAME,$BUILD_APP,g" $BUILD_APP.AppDir/$BUILD_APP.desktop
 
 if [[ "$BUILD_APP" == "appimagetool" ]]; then
     ln -s $BUILD_APP.AppDir/usr/bin/* .
-    PATH="$BUILD_APP.AppDir/usr/bin/:$PATH" ./appimagetool-* ./$BUILD_APP.AppDir || true  # FIXME: remove this true
+    PATH="$BUILD_APP.AppDir/usr/bin/:$PATH" $QEMU_USER_STATIC ./appimagetool-* ./$BUILD_APP.AppDir || true  # FIXME: remove this true
 else
     # use our own dog food :)
     chmod +x ./appimagetool-*-deploy*.AppImage/*.AppImage

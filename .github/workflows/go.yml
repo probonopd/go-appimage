@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
         app: [appimagetool]
-        arch: ['amd64', '386']  # 386 == i386 or 32 bit
+        arch: ['amd64', '386', 'arm64', 'arm']
     steps:
 
     - name: Set up Go 1.x
@@ -44,13 +44,27 @@ jobs:
         sudo apt-get -qq -y install gcc-multilib autoconf
         
     - name: Install cross compile dependencies (ARM) 
-      if: matrix.arch == 'arm'
+      if: matrix.arch == 'arm64' || matrix.arch == 'arm'
+      shell: bash
       run: |
-        sudo apt-get -qq -y install gcc-arm-linux-gnueabi autoconf
+        export APT_GET_ARCH=${{ matrix.arch }}
+        if [[ "${{ matrix.arch }}" == "arm" ]]; then 
+            # ubuntu uses armhf and not armv7
+            # todo FIXME
+            export APT_GET_ARCH=armhf
+        fi
+        ./scripts/get-arm-sources-ubuntu.sh
+        
         
     - name: Build ${{ matrix.arch }}
       shell: bash
       run: |
+        if [[ "${{ matrix.arch }}" == "arm64" ]]; then
+            export CC="aarch64-linux-gnu-gcc"
+        fi
+        if [[ "${{ matrix.arch }}" == "arm" ]]; then
+            export CC="arm-linux-gnueabi-gcc"
+        fi
         env CGO_ENABLED=1 GOOS=linux GOARCH=${{ matrix.arch }} go build -v -trimpath -ldflags="-s -w" ./src/${{ matrix.app }}
         
     - name: Get Dependencies
@@ -74,7 +88,7 @@ jobs:
     strategy:
       matrix:
         app: [appimagetool, appimaged]
-        arch: ['amd64', '386']
+        arch: ['amd64', '386', 'arm64', 'arm']
     steps:
 
     - name: Set up Go 1.x
@@ -104,9 +118,17 @@ jobs:
         sudo apt-get -qq -y install gcc-multilib autoconf
         
     - name: Install cross compile dependencies (ARM) 
-      if: matrix.arch == 'arm'
+      if: matrix.arch == 'arm64' || matrix.arch == 'arm'
+      shell: bash
       run: |
-        sudo apt-get -qq -y install gcc-arm-linux-gnueabi autoconf
+        export APT_GET_ARCH=${{ matrix.arch }}
+        if [[ "${{ matrix.arch }}" == "arm" ]]; then 
+            # ubuntu uses armhf and not armv7
+            # todo FIXME
+            export APT_GET_ARCH=armhf
+        fi
+        ./scripts/get-arm-sources-ubuntu.sh
+        
         
     - name: Build ${{ matrix.arch }}
       shell: bash
