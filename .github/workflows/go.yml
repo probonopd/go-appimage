@@ -135,6 +135,12 @@ jobs:
     - name: Build ${{ matrix.arch }}
       shell: bash
       run: |
+        if [[ "${{ matrix.arch }}" == "arm64" ]]; then
+            export CC="aarch64-linux-gnu-gcc"
+        fi
+        if [[ "${{ matrix.arch }}" == "arm" ]]; then
+            export CC="arm-linux-gnueabi-gcc"
+        fi
         env CGO_ENABLED=1 GOOS=linux GOARCH=${{ matrix.arch }} go build -v -trimpath -ldflags="-s -w" ./src/${{ matrix.app }}
         
         

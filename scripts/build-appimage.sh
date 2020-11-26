@@ -2,6 +2,7 @@
 set -eux
 
 mv "./$BUILD_APP" ./$BUILD_APP-$(go env GOHOSTARCH)
+
 # export the ARCHITECTURE
 export ARCHITECTURE=$BUILD_ARCH
 if [[ "$BUILD_ARCH" == "386" ]]; then
@@ -19,10 +20,14 @@ fi
 
 export QEMU_USER_STATIC=""
 if [[ "$BUILD_ARCH" == "arm64" ]]; then
-    export QEMU_USER_STATIC="qemu-$ARCHITECTURE -L /usr/$ARCHITECTURE-linux-gnu/"
+    export LD_LIBRARY_PATH="/lib/$ARCHITECTURE-linux-gnu"
+    export QEMU_USER_STATIC="qemu-aarch64-static -L /usr/$ARCHITECTURE-linux-gnu/ "
 fi
 if [[ "$BUILD_ARCH" == "arm" ]]; then
-    export QEMU_USER_STATIC="qemu-arm -L /usr/$ARCHITECTURE-linux-gnu/"
+    sudo ln -s /lib/arm-linux-gnueabihf/ld-linux.so.3 /lib/ld-linux.so.3
+    export LD_LIBRARY_PATH="/lib/arm-linux-gnueabihf"
+    export QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf/
+    export QEMU_USER_STATIC="qemu-arm-static -L /usr/arm-linux-gnueabihf/ "
 fi
 
 

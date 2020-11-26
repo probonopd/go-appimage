@@ -20,5 +20,5 @@ sudo apt-get install -qq -y libc6:$APT_GET_ARCH zlib1g:$APT_GET_ARCH zlib1g-dev:
 if [[ "$APT_GET_ARCH" == "arm" ]]; then
     sudo apt-get install -qq -y libc6-armel:$APT_GET_ARCH
 fi
-sudo apt-get -y -qq install qemu-arm-static
+sudo apt-get -y -qq install qemu-user-static
 sudo apt-get -qq -y install gcc-arm-linux-gnueabi gcc-aarch64-linux-gnu autoconf
