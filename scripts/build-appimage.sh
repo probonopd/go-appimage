@@ -66,7 +66,7 @@ if [[ "$BUILD_APP" == "appimagetool" ]]; then
 else
     # use our own dog food :)
     chmod +x ./appimagetool-*-deploy*.AppImage/*.AppImage
-    ./appimagetool-*.AppImage/*.AppImage ./$BUILD_APP.AppDir || true
+    $QEMU_USER_STATIC ./appimagetool-*.AppImage/*.AppImage ./$BUILD_APP.AppDir || true
 fi
 rm -rf ./appimagetool-*-deploy*.AppImage
 mkdir dist
