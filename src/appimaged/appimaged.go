@@ -314,7 +314,10 @@ func moveDesktopFiles() {
 		if *verbosePtr == true {
 			log.Println("main: Moving", file.Name(), "to", xdg.DataHome+"/applications/")
 		}
-		err = os.Rename(desktopcachedir+"/"+file.Name(), xdg.DataHome+"/applications/"+file.Name())
+
+		// Call external mv because os.Rename() may fail with EXDEV error "invalid cross-device link"
+		cmd := exec.Command("mv", desktopcachedir+"/"+file.Name(), xdg.DataHome+"/applications/")
+		err := cmd.Run()
 		helpers.LogError("main", err)
 	}
 
