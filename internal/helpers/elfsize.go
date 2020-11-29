@@ -111,17 +111,20 @@ func EmbedStringInSegment(path string, section string, s string) error {
 		return (err)
 	}
 	fmt.Println("")
-	fmt.Println("Section " + section + " before embedding:")
-	fmt.Println(uidata)
+	// fmt.Println("Section " + section + " before embedding:")
+	// fmt.Println(uidata)
 	fmt.Println("")
 	uioffset, uilength, err := GetSectionOffsetAndLength(path, section)
 	PrintError("GetSectionData for '"+section+"'", err)
 	if err != nil {
+		// only show the before embedding part as its too verbose in case of errors
+		fmt.Println("Section " + section + " before embedding:")
+		fmt.Println(uidata)
 		os.Stderr.WriteString("Could not determine Offset and Length of " + section + " in runtime, exiting\n")
 		return (err)
 	}
-	fmt.Println("Embedded "+section+" section Offset:", uioffset)
-	fmt.Println("Embedded "+section+" section Length:", uilength)
+	fmt.Println("Embedded " + section + " section Offset:", uioffset)
+	fmt.Println("Embedded " + section + " section Length:", uilength)
 	fmt.Println("")
 	// Exit if data exceeds available space in section
 	if len(s) > len(uidata) {
@@ -137,17 +140,18 @@ func EmbedStringInSegment(path string, section string, s string) error {
 		return (err)
 	}
 	uidata, err = GetSectionData(path, section)
-	PrintError("GetSectionData for '"+section+"'", err)
+	PrintError("GetSectionData for '" + section + "'", err)
 	if err != nil {
 		os.Stderr.WriteString("Could not find section " + section + " in runtime, exiting\n")
-		return (err)
+		return err
 	}
 	fmt.Println("")
-	fmt.Println("Embedded " + section + " section after embedding:")
-	fmt.Println(uidata)
+	// FIXME: Might be too verbose? I am removing it
+	// fmt.Println("Embedded " + section + " section after embedding:")
+	// fmt.Println(uidata)
 	fmt.Println("")
 	fmt.Println("Embedded " + section + " section now contains:")
 	fmt.Println(string(uidata))
 	fmt.Println("")
-	return (nil)
+	return nil
 }

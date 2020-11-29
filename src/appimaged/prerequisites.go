@@ -244,7 +244,7 @@ func ensureRunningFromLiveSystem() {
 			return
 		}
 	}
-	
+
 	// Allow to run if we have been called by systemd with our special environment variable
 	if os.Getenv("LAUNCHED_BY_SYSTEMD") != "" {
 		return
@@ -426,30 +426,30 @@ func CheckIfInvokedBySystemd() bool {
 	// which is passed to the unit in the $INVOCATION_ID
 	// environment variable. You can check if that’s set or not.
 	/*
-	prc := exec.Command("systemctl", "--version") // systemd is not on $PATH e.g., on openSUSE, hence use this
-	out, err := prc.Output()
-	if err != nil {
-		log.Println(prc.String())
-		log.Println(err)
-		return (false)
-	}
-	output := strings.TrimSpace(string(out))
-	systemdVersion, err := strconv.Atoi(strings.Split(strings.Split(output, "\n")[0], " ")[1])
-	if err != nil {
-		log.Println(err)
-		return (false)
-	}
-	log.Println("systemd version:", systemdVersion)
+		prc := exec.Command("systemctl", "--version") // systemd is not on $PATH e.g., on openSUSE, hence use this
+		out, err := prc.Output()
+		if err != nil {
+			log.Println(prc.String())
+			log.Println(err)
+			return (false)
+		}
+		output := strings.TrimSpace(string(out))
+		systemdVersion, err := strconv.Atoi(strings.Split(strings.Split(output, "\n")[0], " ")[1])
+		if err != nil {
+			log.Println(err)
+			return (false)
+		}
+		log.Println("systemd version:", systemdVersion)
 
-	if systemdVersion < 232 {
-		log.Println("systemd version lower than 232, hence we cannot determine")
-		log.Println("whether we have been launched by it using $INVOCATION_ID")
-	}
+		if systemdVersion < 232 {
+			log.Println("systemd version lower than 232, hence we cannot determine")
+			log.Println("whether we have been launched by it using $INVOCATION_ID")
+		}
 
-	if invocationId, ok := os.LookupEnv("INVOCATION_ID"); ok {
-		log.Println("Launched by systemd: INVOCATION_ID", invocationId)
-		return true
-	}
+		if invocationId, ok := os.LookupEnv("INVOCATION_ID"); ok {
+			log.Println("Launched by systemd: INVOCATION_ID", invocationId)
+			return true
+		}
 	*/
 	if _, ok := os.LookupEnv("LAUNCHED_BY_SYSTEMD"); ok {
 		log.Println("Launched by systemd: LAUNCHED_BY_SYSTEMD is present")
@@ -512,7 +512,7 @@ Environment=LAUNCHED_BY_SYSTEMD=1
 
 [Install]
 WantedBy=default.target`)
-	err = ioutil.WriteFile(pathToServiceDir+"appimaged.service", d1, 0644)
+	err = syncWriteFile(pathToServiceDir+"appimaged.service", d1, 0644)
 	helpers.LogError("Error writing service file", err)
 
 	prc := exec.Command("systemctl", "--user", "daemon-reload")
@@ -522,4 +522,23 @@ WantedBy=default.target`)
 		log.Println(err)
 	}
 
+}
+
+// syncWritFile is a reproduction of ioutil.WriteFile,
+// with an additional call to f.Sync() before f.Close()
+func syncWriteFile(path string, data []byte, perm os.FileMode) error {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)
+	if err != nil {
+		return err
+	}
+
+	if _, err = f.Write(data); err != nil {
+		return err
+	}
+
+	if err = f.Sync(); err != nil {
+		return err
+	}
+
+	return f.Close()
 }

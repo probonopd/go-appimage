@@ -27,6 +27,7 @@ require (
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/srwiley/oksvg v0.0.0-20200311192757-870daf9aa564
 	github.com/srwiley/rasterx v0.0.0-20200120212402-85cb7272f5e9
+	github.com/urfave/cli/v2 v2.2.0
 	go.lsp.dev/uri v0.3.0
 	golang.org/x/crypto v0.0.0-20200311171314-f7b00557c8c4
 	golang.org/x/image v0.0.0-20200119044424-58c23975cae1 // indirect
