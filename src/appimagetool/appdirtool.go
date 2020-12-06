@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"path"
 	"strconv"
 	"syscall"
 
@@ -165,8 +166,18 @@ var packagesContainingFiles = make(map[string]string) // Need to use 'make', oth
       /usr/lib64.)  If the binary was linked with the -z nodeflib linker option, this step is skipped.
 */
 
-func AppDirDeploy(path string) {
 
+type DeployOptions struct {
+	standalone bool
+	libAppRunHooks bool
+}
+
+// this is the public options instance
+// which need to be set before the function is called
+var options DeployOptions
+
+
+func AppDirDeploy(path string) {
 	appdir, err := helpers.NewAppDir(path)
 	if err != nil {
 		helpers.PrintError("AppDir", err)
@@ -214,7 +225,7 @@ func AppDirDeploy(path string) {
 	}
 
 	// AppRun
-	if *libapprun_hooksPtr == false {
+	if options.libAppRunHooks == false {
 		// If libapprun_hooks is not used
 		log.Println("Adding AppRun...")
 		err = ioutil.WriteFile(appdir.Path+"/AppRun", []byte(AppRunData), 0755)
@@ -285,7 +296,6 @@ func AppDirDeploy(path string) {
 	for _, lib := range allELFs {
 
 		deployElf(lib, appdir, err)
-
 		patchRpathsInElf(appdir, libraryLocationsInAppDir, lib)
 
 		if strings.Contains(lib, "libQt5Core.so.5") {
@@ -329,7 +339,7 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 		}
 
 	}
-	if *standalonePtr == true {
+	if options.libAppRunHooks {
 		var err error
 		// ld-linux might be a symlink; hence we first need to resolve it
 		src, err := filepath.EvalSymlinks(ldLinux)
@@ -341,14 +351,14 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 		log.Println("Deploying", ldLinux+"...")
 
 		ldTargetPath := appdir.Path + ldLinux
-		if *libapprun_hooksPtr == true {
+		if options.libAppRunHooks {
 			// This file is part of the libc family of libraries and we want to use libapprun_hooks,
 			// hence copy to a separate directory unlike the rest of the libraries. The reason is
 			// that this familiy of libraries will only be used by libapprun_hooks if the
 			// bundled version is newer than what is already on the target system; this allows
 			// us to also load libraries from the system such as proprietary GPU drivers
-			log.Println(ldLinux, "is part of libc; copy to", libc_dir, "subdirectory")
-			ldTargetPath = appdir.Path + "/" + libc_dir + "/" + ldLinux // If libapprun_hooks is used
+			log.Println(ldLinux, "is part of libc; copy to", LibcDir, "subdirectory")
+			ldTargetPath = appdir.Path + "/" + LibcDir + "/" + ldLinux // If libapprun_hooks is used
 		}
 		err = copy.Copy(src, ldTargetPath)
 		if err != nil {
@@ -397,7 +407,7 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 // if it is not on the exclude list and it is not yet at the target location
 func deployElf(lib string, appdir helpers.AppDir, err error) {
 	for _, excludePrefix := range ExcludedLibraries {
-		if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true && *standalonePtr == false {
+		if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true && ! options.standalone {
 			log.Println("Skipping", lib, "because it is on the excludelist")
 			return
 		}
@@ -406,14 +416,14 @@ func deployElf(lib string, appdir helpers.AppDir, err error) {
 	log.Println("Working on", lib, "(TODO: Remove this message)")
 	if strings.HasPrefix(lib, appdir.Path) == false { // Do not copy if it is already in the AppDir
 		libTargetPath := appdir.Path + "/" + lib
-		if *libapprun_hooksPtr == true && checkWhetherPartOfLibc(lib) == true {
+		if options.libAppRunHooks && checkWhetherPartOfLibc(lib) == true {
 			// This file is part of the libc family of libraries and we want to use libapprun_hooks,
 			// hence copy to a separate directory unlike the rest of the libraries. The reason is
 			// that this familiy of libraries will only be used by libapprun_hooks if the
 			// bundled version is newer than what is already on the target system; this allows
 			// us to also load libraries from the system such as proprietary GPU drivers
-			log.Println(lib, "is part of libc; copy to", libc_dir, "subdirectory")
-			libTargetPath = appdir.Path + "/" + libc_dir + "/" + lib // If libapprun_hooks is used
+			log.Println(lib, "is part of libc; copy to", LibcDir, "subdirectory")
+			libTargetPath = appdir.Path + "/" + LibcDir + "/" + lib // If libapprun_hooks is used
 		}
 		log.Println("Copying to libTargetPath:", libTargetPath, "(TODO: Remove this message)")
 
@@ -502,7 +512,7 @@ func deployCopyrightFiles(appdir helpers.AppDir) {
 
 		shouldDoIt := true
 		for _, excludePrefix := range ExcludedLibraries {
-			if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true && *standalonePtr == false {
+			if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true && options.standalone == false {
 				log.Println("Skipping copyright file for ", lib, "because it is on the excludelist")
 				shouldDoIt = false
 				break
@@ -521,12 +531,12 @@ func deployCopyrightFiles(appdir helpers.AppDir) {
 		}
 	}
 	log.Println("Done")
-	if *standalonePtr == true {
+	if options.standalone == true {
 		log.Println("To check whether it is really self-contained, run:")
 		fmt.Println("LD_LIBRARY_PATH='' find " + appdir.Path + " -type f -exec ldd {} 2>&1 \\; | grep '=>' | grep -v " + appdir.Path)
 	}
 
-	if *libapprun_hooksPtr == true {
+	if options.libAppRunHooks == true {
 		log.Println("The option '-m' was used. Hence, you need to manually add AppRun, .env, and libapprun_hooks.so")
 		log.Println("from https://github.com/AppImageCrafters/AppRun/releases/tag/continuous. TODO: Automate this")
 	}
@@ -701,7 +711,7 @@ func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, 
 	newRpathStringForElf = strings.Join(newRpathStrings, ":")
 	// fmt.Println("Computed newRpathStringForElf:", appdir.Path+"/"+lib, newRpathStringForElf)
 
-	if *libapprun_hooksPtr == true && checkWhetherPartOfLibc(path) {
+	if options.libAppRunHooks && checkWhetherPartOfLibc(path) {
 		log.Println("Not writing rpath because file is part of the libc family of libraries")
 		return
 	}
@@ -786,7 +796,7 @@ func deployGtkDirectory(appdir helpers.AppDir, gtkVersion int) {
 func appendLib(path string) {
 
 	for _, excludedlib := range ExcludedLibraries {
-		if filepath.Base(path) == excludedlib && *standalonePtr == false {
+		if filepath.Base(path) == excludedlib && ! options.standalone {
 			// log.Println("Skipping", excludedlib, "because it is on the excludelist")
 			return
 		}
@@ -1335,13 +1345,12 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 				log.Println("qmlImport.Name:", qmlImport.Name)
 				log.Println("qmlImport.Path:", qmlImport.Path)
 				log.Println("qmlImport.RelativePath:", qmlImport.RelativePath)
-				os.MkdirAll(filepath.Dir(appdir.Path+"/"+qmlImport.Path), 0755)
-				copy.Copy(qmlImport.Path, appdir.Path+"/"+qmlImport.Path) // FIXME: Ideally we would not copy here but only after the point where we start copying everything
-				determineELFsInDirTree(appdir, appdir.Path+"/"+qmlImport.Path)
+				os.MkdirAll(filepath.Dir(path.Join(appdir.Path, qmlImport.Path)), 0755)
+				copy.Copy(qmlImport.Path, path.Join(appdir.Path, qmlImport.Path)) // FIXME: Ideally we would not copy here but only after the point where we start copying everything
+				path.Join("sss", "sss")
+				determineELFsInDirTree(appdir, path.Join(appdir.Path, qmlImport.Path))
 			}
 		}
-
-		// XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 	}
 }
 

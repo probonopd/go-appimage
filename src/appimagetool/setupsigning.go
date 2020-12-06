@@ -13,7 +13,6 @@ package main
 import (
 	"bufio"
 	"context"
-	"flag"
 	"fmt"
 	"math/rand"
 	"os"
@@ -26,12 +25,8 @@ import (
 	"gopkg.in/src-d/go-git.v4"
 )
 
-var overwritePtr = flag.Bool("o", false, "Overwrite pre-existing files")
 
-func setupSigning() {
-
-	// Parse command line arguments
-	flag.Parse()
+func setupSigning(overwriteSecretFiles bool) error {
 
 	// Check if we are on a clean git repository. Exit as fast as possible if we are not.
 	var gitRepo *git.Repository
@@ -70,9 +65,9 @@ func setupSigning() {
 	}
 
 	// Exit if the repo already contains the files we are about to add
-	exitIfFileExists(helpers.PubkeyFileName, "Public key")
-	exitIfFileExists(helpers.PrivkeyFileName, "Private key")
-	exitIfFileExists(helpers.EncPrivkeyFileName, "Encrypted private key")
+	exitIfFileExists(helpers.PubkeyFileName, "Public key", overwriteSecretFiles)
+	exitIfFileExists(helpers.PrivkeyFileName, "Private key", overwriteSecretFiles)
+	exitIfFileExists(helpers.EncPrivkeyFileName, "Encrypted private key", overwriteSecretFiles)
 
 	// Get repo_slug.
 	gitRemote, err := gitRepo.Remote("origin")
@@ -150,7 +145,7 @@ func setupSigning() {
 
 	// Check if password/secret already exists, delete it if -o was specified, exit otherwise
 	if _, err := os.Stat("secret"); err == nil {
-		if *overwritePtr == false {
+		if ! overwriteSecretFiles {
 			fmt.Println("Secret already exists, exiting")
 			os.Exit(1)
 		} else {
@@ -241,6 +236,9 @@ func setupSigning() {
 		fmt.Println("----------------------------------------------------------------------------------------------")
 	*/
 	fmt.Println("Then, run 'git commit' and 'git push'")
+
+	// FIXME: Use real error raising
+	return nil
 }
 
 // SetTravisEnv sets a private variable on Travis CI
@@ -271,9 +269,9 @@ func Contains(s []string, e string) bool {
 }
 
 // exitIfFileExists checks if file already exists, deletes it if -o was specified, exit otherwise
-func exitIfFileExists(file string, description string) {
+func exitIfFileExists(file string, description string, overwriteSecretFile bool) {
 	if _, err := os.Stat(file); err == nil {
-		if *overwritePtr == false {
+		if ! overwriteSecretFile {
 			fmt.Println(description, "'"+file+"'", "already exists, exiting")
 			os.Exit(1)
 		} else {
@@ -336,7 +334,7 @@ func containsString(slice []string, element string) bool {
 }
 
 //////////////////////////////// end AskForConfirmation
-
+// TODO: Please fix this extremely dangerous way of generating passwords
 // generatePassword generates a random password consisting
 // consisting of letters, numbers, and selected special characters
 // https://stackoverflow.com/a/22892986

@@ -7,9 +7,10 @@ import (
 	// "crypto/md5"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
+	"github.com/probonopd/go-appimage/internal/helpers"
 	"github.com/probonopd/go-zsyncmake/zsync"
+	"github.com/urfave/cli/v2"
 	"gopkg.in/ini.v1"
 	"io/ioutil"
 	"log"
@@ -19,28 +20,32 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/probonopd/go-appimage/internal/helpers"
 )
+
+// ============================
+// CONSTANTS
+// ============================
 
 // https://blog.kowalczyk.info/article/vEja/embedding-build-number-in-go-executable.html
 // The build script needs to set, e.g.,
 // go build -ldflags "-X main.commit=$TRAVIS_BUILD_NUMBER"
 var commit string
 
-var standalonePtr = flag.Bool("s", false, "Make standalone (self-contained) bundle")
-var libapprun_hooksPtr = flag.Bool("l", false, "Use libapprun_hooks")
-var libc_dir = "libc"
+// path to libc
+var LibcDir = "libc"
 
-func main() {
 
-	var version string
-	if commit != "" {
-		version = commit
-	} else {
-		version = "unsupported custom build"
-	}
+// array of string, Sections contains
+// * update information
+// * sha256 signature of the appimage
+// * signature key
+// * MD5 digest
+var Sections = []string{".upd_info", ".sha256_sig", ".sig_key", ".digest_md5"}
 
+
+// checkRunningWithinDocker  checks if the tool is running within a Docker container
+// and warn the user of passing Environment variables to the container
+func checkRunningWithinDocker() bool {
 	// Detect if we are running inside Docker; https://github.com/AppImage/AppImageKit/issues/912
 	// If the file /.dockerenv exists, and/or if /proc/1/cgroup begins with /lxc/ or /docker/
 	res, err := ioutil.ReadFile("/proc/1/cgroup")
@@ -51,58 +56,154 @@ func main() {
 			log.Println("available inside Docker if you are running on Travis CI.")
 			log.Println("This can be achieved by using something along the lines of 'docker run --env-file <(env)'.")
 			log.Println("Please see https://github.com/docker/cli/issues/2210.")
+			return true
 		}
 	}
+	return false
 
-	if os.Getenv("TRAVIS_TEST_RESULT") == "1" {
-		log.Println("$TRAVIS_TEST_RESULT is 1, exiting...")
-		os.Exit(1)
+}
+
+
+// bootstrapAppImageDeploy wrapper function to deploy an AppImage
+// from Desktop file
+// 		Args: c: cli.Context
+func bootstrapAppImageDeploy(c *cli.Context) error {
+	// make sure the user provided one and one only desktop
+	if c.NArg() != 1 {
+		log.Println("Please supply the path to a desktop file in an FHS-like AppDir")
+		log.Println("a FHS-like structure, e.g.:")
+		log.Println(os.Args[0], "appdir/usr/share/applications/myapp.desktop")
+		log.Fatal("Terminated.")
+	}
+	options = DeployOptions{
+		standalone:     c.Bool("standalone"),
+		libAppRunHooks: c.Bool("libapprun_hooks"),
+	}
+	AppDirDeploy(c.Args().Get(0))
+	return nil
+}
+
+
+// bootstrapValidateAppImage wrapper function to validate a AppImage
+// 		Args: c: cli.Context
+func bootstrapValidateAppImage(c *cli.Context) error {
+
+	// make sure that we received only 1 file path
+	if c.NArg() != 1 {
+		log.Fatal("Please specify the file path to an AppImage to validate")
 	}
 
-	sections := []string{".upd_info", ".sha256_sig", ".sig_key", ".digest_md5"}
+	// get the first argument, which is file path to the AppImage
+	filePathToValidate := c.Args().Get(0)
 
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "\n")
-		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" "+version+"\n")
-		fmt.Fprintf(os.Stderr, "\n")
+	// does the file exist? if not early-exit
+	if ! helpers.CheckIfFileExists(filePathToValidate) {
+		log.Fatal("The specified file could not be found")
+	}
 
-		fmt.Fprintf(os.Stderr, "Tool to convert an AppDir into an AppImage.\n")
-		fmt.Fprintf(os.Stderr, "If it is running on Travis CI, it also uploads the AppImage\nto GitHub Releases, creates update and publishes the information needed\nfor updating the AppImage.\n")
-		fmt.Fprintf(os.Stderr, "\n")
+	// Calculate the SHA256 signature
+	d := helpers.CalculateSHA256Digest(filePathToValidate)
+	log.Println("Calculated sha256 digest:", d)
+	ent, err := helpers.CheckSignature(filePathToValidate)
 
-		fmt.Fprintf(os.Stderr, "Usage:\n")
+	if err != nil {
+		// we encountered an error :(
+		log.Fatal("Could not validate the signature of", filePathToValidate)
+	}
 
-		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" deploy <path to PREFIX directory>\n")
-		fmt.Fprintf(os.Stderr, "\tTurns PREFIX directory into AppDir by deploying dependencies and AppRun file\n")
+	log.Println(filePathToValidate, "has a valid signature")
 
-		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" <path to AppDir>\n")
-		fmt.Fprintf(os.Stderr, "\tConvert the supplied AppDir into an AppImage and \n\t(if running on Travis CI) sign, upload, and publish it\n")
+	// TODO: Do something useful with this information
+	log.Println("Identities:", ent.Identities)
+	log.Println("KeyIdShortString:", ent.PrimaryKey.KeyIdShortString())
+	log.Println("CreationTime:", ent.PrimaryKey.CreationTime)
+	log.Println("KeyId:", ent.PrimaryKey.KeyId)
+	log.Println("Fingerprint:", ent.PrimaryKey.Fingerprint)
 
-		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" validate <path to AppImage>\n")
-		fmt.Fprintf(os.Stderr, "\tCalculate the sha256 digest and check whether the signature is valid\n")
+	// happily ever after! no errors occured
+	return nil
+}
 
-		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" setupsigning\n")
-		fmt.Fprintf(os.Stderr, "\tPrepare a git repository that is used with Travis CI \n\tfor signing AppImages\n")
 
-		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" sections <path to AppImage>\n")
-		fmt.Fprintf(os.Stderr, "\tPrint the AppImage specific ELF sections (for debugging), namely\n\t")
-		for _, section := range sections {
-			fmt.Print(section, " ")
+// bootstrapSetupSigning wrapper function to setup signing in
+// the current Git repository
+// 		Args: c: cli.Context
+func bootstrapSetupSigning(c *cli.Context) error {
+	return setupSigning(c.Bool("overwrite"))
+}
+
+
+// bootstrapAppImageSections is a function which converts cli.Context to
+// string based arguments. Wrapper function to show the sections of the AppImage
+// 		Args: c: cli.Context
+func bootstrapAppImageSections(c *cli.Context) error {
+	// check if the number of arguments are stictly 1, if not
+	// return
+	if c.NArg() != 1 {
+		log.Fatal("Please specify the file path to an AppImage to validate")
+
+	}
+	fileToAppImage := c.Args().Get(0)
+
+	// does the file exist? if not early-exit
+	if ! helpers.CheckIfFileExists(fileToAppImage) {
+		log.Fatal("The specified file could not be found")
+	}
+
+	fmt.Println("")
+	for _, section := range Sections {
+		offset, length, err := helpers.GetSectionOffsetAndLength(fileToAppImage, section)
+		if err != nil {
+			log.Println("Error getting ELF section", section, err)
+		} else {
+			uidata, err := helpers.GetSectionData(fileToAppImage, section)
+			fmt.Println("")
+			if err != nil {
+				_, _ = os.Stderr.WriteString("Could not find  ELF section " + section + ", exiting\n")
+				log.Println("Error getting ELF section", section, err)
+			} else {
+				log.Println("ELF section", section, "offset", offset, "length", length)
+				fmt.Println("")
+				fmt.Println(uidata)
+				fmt.Println("")
+				fmt.Println("Which is as a string:")
+				fmt.Println("")
+				fmt.Println(string(uidata))
+				fmt.Println("")
+				fmt.Println("===========================================================")
+				fmt.Println("")
+			}
 		}
-		fmt.Fprintf(os.Stderr, "\n")
-
-		flag.PrintDefaults()
 	}
+	return nil
+}
 
-	flag.Parse()
 
-	// Always show version
-	fmt.Fprintf(os.Stderr, "\n")
-	fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" "+version+"\n")
-	fmt.Fprintf(os.Stderr, "\n")
+// bootstrapAppImageBuild is a function which converts cli.Context to
+// string based arguments, checks if all the files
+// provided as arguments exists. If yes add the current path to PATH,
+// check if all the necessary dependencies exist,
+// finally check if the provided argument, AppDir is a directly.
+// Call GenerateAppImage with the converted arguments
+// 		Args: c: cli.Context
+func bootstrapAppImageBuild(c *cli.Context) error {
+
+	// check if the number of arguments are stictly 1, if not
+	// return
+	if c.NArg() != 1 {
+		log.Fatal("Please specify the path to the AppDir which you would like to aid.")
+
+	}
+	fileToAppDir := c.Args().Get(0)
+
+	// does the file exist? if not early-exit
+	if ! helpers.CheckIfFileOrFolderExists(fileToAppDir) {
+		log.Fatal("The specified directory does not exist")
+	}
 
 	// Add the location of the executable to the $PATH
 	helpers.AddHereToPath()
+
 
 	// Check for needed files on $PATH
 	tools := []string{"file", "mksquashfs", "desktop-file-validate", "uploadtool", "patchelf", "desktop-file-validate", "patchelf"} // "sh", "strings", "grep" no longer needed?; "curl" is needed for uploading only, "glib-compile-schemas" is needed in some cases only
@@ -121,111 +222,55 @@ func main() {
 		os.Exit(1)
 	}
 
-	if len(flag.Args()) > 0 {
-		switch flag.Args()[0] {
-		case "deploy":
-			if len(flag.Args()) < 2 {
-				log.Println("Please supply the path to a desktop file in an FHS-like AppDir")
-				log.Println("a FHS-like structure, e.g.:")
-				log.Println(os.Args[0], "appdir/usr/share/applications/myapp.desktop")
-				os.Exit(1)
-			}
-			AppDirDeploy(flag.Args()[1])
-			os.Exit(0)
-		case "validate":
-			if len(flag.Args()) > 1 {
-				if helpers.CheckIfFileExists(os.Args[2]) {
-					d := helpers.CalculateSHA256Digest(os.Args[2])
-					log.Println("Calculated sha256 digest:", d)
-					ent, err := helpers.CheckSignature(os.Args[2])
-					if err == nil {
-						log.Println(flag.Args()[1], "has a valid signature")
-						// TODO: Do something useful with this information
-						log.Println("Identities:", ent.Identities)
-						log.Println("KeyIdShortString:", ent.PrimaryKey.KeyIdShortString())
-						log.Println("CreationTime:", ent.PrimaryKey.CreationTime)
-						log.Println("KeyId:", ent.PrimaryKey.KeyId)
-						log.Println("Fingerprint:", ent.PrimaryKey.Fingerprint)
-					} else {
-						log.Println("Could not validate signature of", os.Args[2]+":", err)
-						os.Exit(1)
-					}
-				} else {
-					log.Println(flag.Args()[1], "does not exist")
-					os.Exit(1)
-				}
-			} else {
-				fmt.Println("Please specify an AppImage to validate")
-				os.Exit(1)
-			}
-			os.Exit(0)
-		case "setupsigning":
-			setupSigning()
-			os.Exit(0)
-		case "sections":
-			if len(flag.Args()) > 1 {
-				if helpers.CheckIfFileExists(flag.Args()[1]) {
-
-					fmt.Println("")
-					for _, section := range sections {
-						offset, length, err := helpers.GetSectionOffsetAndLength(flag.Args()[1], section)
-						if err != nil {
-							log.Println("Error getting ELF section", section, err)
-						} else {
-							uidata, err := helpers.GetSectionData(flag.Args()[1], section)
-							fmt.Println("")
-							if err != nil {
-								os.Stderr.WriteString("Could not find  ELF section " + section + ", exiting\n")
-								log.Println("Error getting ELF section", section, err)
-							} else {
-								log.Println("ELF section", section, "offset", offset, "length", length)
-								fmt.Println("")
-								fmt.Println(uidata)
-								fmt.Println("")
-								fmt.Println("Which is as a string:")
-								fmt.Println("")
-								fmt.Println(string(uidata))
-								fmt.Println("")
-								fmt.Println("===========================================================")
-								fmt.Println("")
-							}
-						}
-					}
-				} else {
-					log.Println(flag.Args()[1], "does not exist")
-					os.Exit(1)
-				}
-			} else {
-				log.Println("Please specify an AppImage to print the sections")
-				os.Exit(1)
-			}
-			os.Exit(0)
-
-		}
-	}
-
-	// Check if first argument is present, exit otherwise
-	if len(flag.Args()) < 1 {
-		os.Stderr.WriteString("Please specify an AppDir to be converted to an AppImage \n")
-		os.Exit(1)
-	}
-
 	// Check if is directory, then assume we want to convert an AppDir into an AppImage
-	firstArg, _ := filepath.EvalSymlinks(flag.Args()[0])
-	if info, err := os.Stat(firstArg); err == nil && info.IsDir() {
-		GenerateAppImage(firstArg)
+	fileToAppDir, _ = filepath.EvalSymlinks(fileToAppDir)
+	if info, err := os.Stat(fileToAppDir); err == nil && info.IsDir() {
+		GenerateAppImage(fileToAppDir)
 	} else {
 		// TODO: If it is a file, then check if it is an AppImage and if yes, extract it
-		os.Stderr.WriteString("Supplied argument is not a directory \n")
-		os.Stderr.WriteString("To extract an AppImage, run it with --appimage-extract \n")
-		os.Exit(1)
+		log.Fatal("Supplied argument is not a directory \n" +
+			"To extract an AppImage, run it with --appimage-extract \n")
+
 	}
+	return nil
 }
+
+
+// constructMQTTPayload TODO: Add documentation
+func constructMQTTPayload(name string, version string, FSTime time.Time) (string, error) {
+
+	psd := helpers.PubSubData{
+		Name:    name,
+		Version: version,
+		FSTime:  FSTime,
+		// Size:    size,
+		// Fruit:   []string{"Apple", "Banana", "Orange"},
+		// Id:      999,
+		// private: "Unexported field",
+		// Created: time.Now(),
+	}
+
+	var jsonData []byte
+	jsonData, err := json.Marshal(psd)
+	if err != nil {
+		return "", err
+	}
+	// Print it in a nice readable form, unlike the one that actually gets returned
+	var jsonDataReadable []byte
+	jsonDataReadable, err = json.MarshalIndent(psd, "", "    ")
+	if err != nil {
+		return "", err
+	}
+	fmt.Println(string(jsonDataReadable))
+
+	return string(jsonData), nil
+}
+
 
 // GenerateAppImage converts an AppDir into an AppImage
 func GenerateAppImage(appdir string) {
 	if _, err := os.Stat(appdir + "/AppRun"); os.IsNotExist(err) {
-		os.Stderr.WriteString("AppRun is missing \n")
+		_, _ = os.Stderr.WriteString("AppRun is missing \n")
 		os.Exit(1)
 	}
 
@@ -260,11 +305,12 @@ func GenerateAppImage(appdir string) {
 			log.Println("git root:", gitRoot)
 			if version == "" {
 				gitHead, err := gitRepo.Head()
-				version = gitHead.Hash().String()[:7] // This equals 'git rev-parse --short HEAD'
 				if err != nil {
-					os.Stderr.WriteString("Could not determine version automatically, please supply the application version as $VERSION " + filepath.Base(os.Args[0]) + " ... \n")
-					os.Exit(1)
+					log.Fatal("Could not determine version automatically, " +
+						"please supply the application version as $VERSION " +
+						filepath.Base(os.Args[0]) + " ... \n")
 				} else {
+					version = gitHead.Hash().String()[:7] // This equals 'git rev-parse --short HEAD'
 					log.Println("NOTE: Using", version, "from 'git rev-parse --short HEAD' as the version")
 					log.Println("      Please set the $VERSION environment variable if this is not intended")
 				}
@@ -276,21 +322,18 @@ func GenerateAppImage(appdir string) {
 
 	// If no version found, exit
 	if version == "" {
-		os.Stderr.WriteString("Version not found, aborting. Set it with VERSION=... " + os.Args[0] + "\n")
-		os.Exit(1)
+		log.Fatal("Version not found, aborting. Set it with VERSION=... " + os.Args[0] + "\n")
 	}
 
 	// If no desktop file found, exit
 	n := len(helpers.FilesWithSuffixInDirectory(appdir, ".desktop"))
 	if n < 1 {
-		os.Stderr.WriteString("No top-level desktop file found in " + appdir + ", aborting\n")
-		os.Exit(1)
+		log.Fatal("No top-level desktop file found in " + appdir + ", aborting\n")
 	}
 
 	// If more than one desktop files found, exit
 	if n > 1 {
-		os.Stderr.WriteString("Multiple top-level desktop files found in" + appdir + ", aborting\n")
-		os.Exit(1)
+		log.Fatal("Multiple top-level desktop files found in" + appdir + ", aborting\n")
 	}
 
 	desktopfile := helpers.FilesWithSuffixInDirectory(appdir, ".desktop")[0]
@@ -361,8 +404,7 @@ func GenerateAppImage(appdir string) {
 	}
 
 	if len(archs) != 1 {
-		os.Stderr.WriteString("Could not determine architecture automatically, please supply it as $ARCH " + filepath.Base(os.Args[0]) + " ... \n")
-		os.Exit(1)
+		log.Fatal("Could not determine architecture automatically, please supply it as $ARCH " + filepath.Base(os.Args[0]) + " ... \n")
 	}
 	arch := archs[0]
 
@@ -390,9 +432,8 @@ func GenerateAppImage(appdir string) {
 	} else if helpers.CheckIfFileExists(appdir + "/usr/share/icons/hicolor/256x256/apps/" + iconname + ".png") {
 		iconfile = appdir + "/usr/share/icons/hicolor/256x256/apps/" + iconname + ".png"
 	} else {
-		os.Stderr.WriteString("Could not find icon file at " + appdir + "/" + iconname + ".png" + "\n")
-		os.Stderr.WriteString("nor at " + appdir + "/usr/share/icons/hicolor/256x256/apps/" + iconname + ".png" + ", exiting\n")
-		os.Exit(1)
+		log.Fatal("Could not find icon file at " + appdir + "/" + iconname + ".png" + "\n" +
+			"nor at " + appdir + "/usr/share/icons/hicolor/256x256/apps/" + iconname + ".png" + ", exiting\n")
 	}
 	log.Println("Icon file:", iconfile)
 
@@ -401,7 +442,7 @@ func GenerateAppImage(appdir string) {
 	// Deleting pre-existing .DirIcon
 	if helpers.CheckIfFileExists(appdir+"/.DirIcon") == true {
 		log.Println("Deleting pre-existing .DirIcon")
-		os.Remove(appdir + "/.DirIcon")
+		_ = os.Remove(appdir + "/.DirIcon")
 	}
 
 	// "Copying .DirIcon in place based on information from desktop file"
@@ -500,7 +541,7 @@ func GenerateAppImage(appdir string) {
 	}
 
 	fmt.Println("Marking the AppImage as executable...")
-	os.Chmod(target, 0755)
+	_ = os.Chmod(target, 0755)
 
 	// Get the filesize in bytes of the resulting AppImage
 	fi, err = os.Stat(target)
@@ -576,30 +617,38 @@ func GenerateAppImage(appdir string) {
 		}
 	}
 
-	if updateinformation != "" {
+	// declare an empty digest
+	// we will replace this digest with a sha256 signature if the appimage
+	// does not contain update information.
+	// if it does contain update information, we should first try to sign it
+	// with the PGP signature
+	digest := ""
 
+	if updateinformation != "" {
 		err = helpers.ValidateUpdateInformation(updateinformation)
 		if err != nil {
 			helpers.PrintError("VerifyUpdateInformation", err)
 			os.Exit(1)
 		}
 
-		helpers.EmbedStringInSegment(target, ".upd_info", updateinformation)
+		err = helpers.EmbedStringInSegment(target, ".upd_info", updateinformation)
 		if err != nil {
 			helpers.PrintError("EmbedStringInSegment", err)
 			os.Exit(1)
 		}
-	}
-
-	// Embed SHA256 digest into '.sha256_sig' section if it exists
-	// This is not part of the AppImageSpec yet, but in the future we will want to put this into the AppImageSpec:
-	// If an AppImage is not signed, it should have the SHA256 digest in the '.sha256_sig' section; this might
-	// eventually remove the need for an extra '.digest_md5' section and hence simplify the format
-	digest := helpers.CalculateSHA256Digest(target)
-	err = helpers.EmbedStringInSegment(target, ".sha256_sig", digest)
-	if err != nil {
-		helpers.PrintError("EmbedStringInSegment", err)
-		os.Exit(1)
+	} else {
+		// Embed the SHA256 digest only for appimages which are not having
+		// update information.
+		// Embed SHA256 digest into '.sha256_sig' section if it exists
+		// This is not part of the AppImageSpec yet, but in the future we will want to put this into the AppImageSpec:
+		// If an AppImage is not signed, it should have the SHA256 digest in the '.sha256_sig' section; this might
+		// eventually remove the need for an extra '.digest_md5' section and hence simplify the format
+		digest = helpers.CalculateSHA256Digest(target)
+		err = helpers.EmbedStringInSegment(target, ".sha256_sig", digest)
+		if err != nil {
+			helpers.PrintError("EmbedStringInSegment", err)
+			os.Exit(1)
+		}
 	}
 
 	// TODO: calculate and embed MD5 digest (in case we want to use it)
@@ -644,15 +693,16 @@ func GenerateAppImage(appdir string) {
 		}
 	}
 
+	// Sign the AppImage
 	if helpers.CheckIfFileExists(helpers.PrivkeyFileName) == true {
 		fmt.Println("Attempting to sign the AppImage...")
 		err = helpers.SignAppImage(target, digest)
 		if err != nil {
 			helpers.PrintError("SignAppImage", err)
-			os.Remove(helpers.PrivkeyFileName)
+			_ = os.Remove(helpers.PrivkeyFileName)
 			os.Exit(1)
 		}
-		os.Remove(helpers.PrivkeyFileName)
+		_ = os.Remove(helpers.PrivkeyFileName)
 	}
 
 	// Embed public key into '.sig_key' section if it exists
@@ -667,9 +717,9 @@ func GenerateAppImage(appdir string) {
 		}
 	}
 
+	// No updateinformation was provided nor calculated, so the following steps make no sense.
+	// Hence we print an information message and exit.
 	if updateinformation == "" {
-		// No updateinformation was provided nor calculated, so the following steps make no sense.
-		// Hence we print an information message and exit.
 		fmt.Println("Almost a success")
 		fmt.Println("")
 		fmt.Println("The AppImage was created, but is lacking update information.")
@@ -682,7 +732,7 @@ func GenerateAppImage(appdir string) {
 
 	// If updateinformation was provided, then we also generate the zsync file (after having signed the AppImage)
 	if updateinformation != "" {
-		opts := zsync.Options{0, "", filepath.Base(target)}
+		opts := zsync.Options{Url: filepath.Base(target)}
 		zsync.ZsyncMake(target, opts)
 
 		// Check if the zsync file is really there
@@ -705,6 +755,7 @@ func GenerateAppImage(appdir string) {
 	body, err := helpers.GetCommitMessageForThisCommitOnTravis()
 	fmt.Println("Commit message for this commit:", body)
 
+	// If its a TRAVIS CI, then upload the release assets and zsync file
 	if os.Getenv("TRAVIS_REPO_SLUG") != "" {
 		cmd := exec.Command("uploadtool", target, target+".zsync")
 		fmt.Println(cmd.String())
@@ -721,6 +772,7 @@ func GenerateAppImage(appdir string) {
 		helpers.PublishMQTTMessage(updateinformation, pl)
 	}
 
+	// everything went well.
 	fmt.Println("Success")
 	fmt.Println("")
 	fmt.Println("Please consider submitting your AppImage to AppImageHub, the crowd-sourced")
@@ -728,31 +780,95 @@ func GenerateAppImage(appdir string) {
 	fmt.Println("at https://github.com/AppImage/appimage.github.io")
 }
 
-func constructMQTTPayload(name string, version string, FSTime time.Time) (string, error) {
 
-	psd := helpers.PubSubData{
-		Name:    name,
-		Version: version,
-		FSTime:  FSTime,
-		// Size:    size,
-		// Fruit:   []string{"Apple", "Banana", "Orange"},
-		// Id:      999,
-		// private: "Unexported field",
-		// Created: time.Now(),
+// main Command Line Entrypoint. Defines the command line structure
+// and assign each subcommand and option to the appropriate function
+// which should be triggered when the subcommand is used
+func main() {
+
+	var version string
+
+	// Derive the commit message from -X main.commit=$YOUR_VALUE_HERE
+	// if the build does not have the commit variable set externally,
+	// fall back to unsupported custom build
+	if commit != "" {
+		version = commit
+	} else {
+		version = "unsupported custom build"
 	}
 
-	var jsonData []byte
-	jsonData, err := json.Marshal(psd)
-	if err != nil {
-		return "", err
-	}
-	// Print it in a nice readable form, unlike the one that actually gets returned
-	var jsonDataReadable []byte
-	jsonDataReadable, err = json.MarshalIndent(psd, "", "    ")
-	if err != nil {
-		return "", err
-	}
-	fmt.Println(string(jsonDataReadable))
+	// let the user know that we are running within a docker container
+	checkRunningWithinDocker()
 
-	return string(jsonData), nil
+	// build the Command Line interface
+	// https://github.com/urfave/cli/blob/master/docs/v2/manual.md
+
+	// basic information
+	app := &cli.App{
+		Name:                   "appimagetool",
+		Authors: 				[]*cli.Author{{Name: "AppImage Project"}},
+		Version:                version,
+		Usage:            		"An automatic tool to create AppImages",
+		EnableBashCompletion:   false,
+		HideHelp:               false,
+		HideVersion:            false,
+		Compiled:               time.Time{},
+		Copyright:              "MIT License",
+		Action: 				bootstrapAppImageBuild,
+
+	}
+
+	// define subcommands, like 'deploy', 'validate', ...
+	app.Commands = []*cli.Command{
+		{
+			Name:   "deploy",
+			Usage:  "Turns PREFIX directory into AppDir by deploying dependencies and AppRun file",
+			Action: bootstrapAppImageDeploy,
+		},
+		{
+			Name:   "validate",
+			Usage:  "Calculate the sha256 digest and check whether the signature is valid",
+			Action: bootstrapValidateAppImage,
+		},
+		{
+			Name:   "setupsigning",
+			Usage:  "Prepare a git repository that is used with Travis CI for signing AppImages",
+			Action: bootstrapSetupSigning,
+		},
+		{
+			Name: 	"sections",
+			Usage: 	"",
+			Action:	bootstrapAppImageSections,
+		},
+	}
+
+	// define flags, such as --libapprun_hooks, --standalone here ...
+	app.Flags = []cli.Flag{
+		&cli.BoolFlag{
+			Name: "libapprun_hooks",
+			Aliases: []string{"l"},
+			Usage: "Use libapprun_hooks",
+		},
+		&cli.BoolFlag{
+			Name: "overwrite",
+			Aliases: []string{"o"},
+			Usage: "Overwrite existing files",
+		},
+		&cli.BoolFlag{
+			Name: "standalone",
+			Aliases: []string{"s"},
+			Usage: "Make standalone self-contained bundle",
+		},
+	}
+
+	// TODO: move travis based Sections to travis.go in future
+	if os.Getenv("TRAVIS_TEST_RESULT") == "1" {
+		log.Fatal("$TRAVIS_TEST_RESULT is 1, exiting...")
+	}
+
+	errRuntime := app.Run(os.Args)
+	if errRuntime != nil {
+		log.Fatal(errRuntime)
+	}
+
 }

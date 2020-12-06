@@ -158,6 +158,18 @@ func CheckIfFileExists(filepath string) bool {
 	return true
 }
 
+
+// CheckIfFileOrFolderExists checks if a file exists and is not a directory before we
+// try using it to prevent further errors.
+// Returns true if it does, false otherwise.
+func CheckIfFileOrFolderExists(filepath string) bool {
+	_, err := os.Stat(filepath)
+	if os.IsNotExist(err){
+		return false
+	}
+	return true
+}
+
 // CheckIfExecFileExists checks whether a desktop file
 // that points to an-existing Exec= entries.
 // Returns true if it does, false otherwise.
