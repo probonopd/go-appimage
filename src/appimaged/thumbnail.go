@@ -2,13 +2,6 @@ package main
 
 import (
 	"bufio"
-	"github.com/adrg/xdg"
-	issvg "github.com/h2non/go-is-svg"
-	"github.com/probonopd/go-appimage/internal/helpers"
-	"github.com/sabhiram/png-embed" // For embedding metadata into PNG
-	. "github.com/srwiley/oksvg" // https://github.com/niemeyer/gopkg/issues/72
-	. "github.com/srwiley/rasterx"
-	"gopkg.in/ini.v1"
 	"image"
 	"image/png"
 	"io/ioutil"
@@ -18,6 +11,14 @@ import (
 	"path/filepath"
 	"strconv"
 	"time"
+
+	"github.com/adrg/xdg"
+	issvg "github.com/h2non/go-is-svg"
+	"github.com/probonopd/go-appimage/internal/helpers"
+	pngembed "github.com/sabhiram/png-embed" // For embedding metadata into PNG
+	. "github.com/srwiley/oksvg"             // https://github.com/niemeyer/gopkg/issues/72
+	. "github.com/srwiley/rasterx"
+	"gopkg.in/ini.v1"
 )
 
 /* The thumbnail cache directory is prefixed with $XDG_CACHE_DIR/ and the leading dot removed
@@ -47,6 +48,25 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	// 	cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, ".DirIcon")
 	// 	runCommand(cmd)
 	// }
+
+	//this will try to extract the thumbnail, or goes back to command based extraction if it fails.
+	if ai.reader != nil {
+		thumbnail := ai.reader.GetFileAtPath(".DirIcon")
+		if thumbnail != nil {
+			if thumbnail.IsSymlink() {
+				thumbnail = thumbnail.GetSymlinkFile()
+			}
+			if thumbnail != nil {
+				errs := thumbnail.ExtractTo(thumbnailcachedir)
+				if len(errs) == 0 {
+					err := os.Rename(thumbnailcachedir+"/"+thumbnail.Name, thumbnailcachedir+"/.DirIcon")
+					if err == nil {
+						return
+					}
+				}
+			}
+		}
+	}
 	err := ai.ExtractFile(".DirIcon", thumbnailcachedir)
 	if err != nil {
 		// Too verbose

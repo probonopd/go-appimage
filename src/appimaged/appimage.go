@@ -23,6 +23,7 @@ import (
 	"github.com/probonopd/go-appimage/internal/helpers"
 	"go.lsp.dev/uri"
 )
+import "github.com/CalebQ42/squashfs"
 
 // Handles AppImage files.
 // Currently it is using using a static build of mksquashfs/unsquashfs
@@ -41,6 +42,7 @@ type AppImage struct {
 	rawcontents       string
 	updateinformation string
 	niceName          string
+	reader            *squashfs.Reader
 }
 
 // NewAppImage creates an AppImage object from the location defined by path.
@@ -81,6 +83,25 @@ func NewAppImage(path string) AppImage {
 	if ai.imagetype > 1 {
 		ai.offset = helpers.CalculateElfSize(ai.path)
 	}
+	if ai.imagetype == 2 {
+		//Run this in an inline func so we can handle errors more elegently. If there's a problem with the library, the unsquashfs tool will probably still work.
+		ai.reader = func() *squashfs.Reader {
+			aiFil, err := os.Open(path)
+			if err != nil {
+				return nil
+			}
+			stat, err := aiFil.Stat()
+			if err != nil {
+				return nil
+			}
+			secReader := io.NewSectionReader(aiFil, ai.offset, stat.Size()-ai.offset)
+			reader, err := squashfs.NewSquashfsReader(secReader)
+			if err != nil {
+				return nil
+			}
+			return reader
+		}()
+	}
 	ui, err := ai.ReadUpdateInformation()
 	if err == nil && ui != "" {
 		ai.updateinformation = ui
@@ -105,6 +126,18 @@ func (ai AppImage) discoverContents() {
 	if ai.imagetype == 1 {
 		cmd = exec.Command("bsdtar", "-t", ai.path)
 	} else if ai.imagetype == 2 {
+		if ai.reader != nil {
+			files, err := ai.reader.GetAllFiles()
+			//this will allow it to fallback to using unsquashfs if there is problems
+			if err == nil {
+				out := make([]string, 0)
+				for _, file := range files {
+					out = append(out, file.Path())
+				}
+				ai.rawcontents = strings.Join(out, "\n")
+				return
+			}
+		}
 		cmd = exec.Command("unsquashfs", "-f", "-n", "-ll", "-o", strconv.FormatInt(ai.offset, 10), "-d ''", ai.path)
 	}
 	if *verbosePtr == true {
@@ -224,13 +257,13 @@ func (ai AppImage) Validate() error {
 func (ai AppImage) _integrate() {
 
 	// log.Println("integrate called on:", ai.path)
-	
+
 	// Return immediately if the filename extension is not .AppImage or .app
 	if (strings.HasSuffix(ai.path, ".AppImage") != true) && (strings.HasSuffix(ai.path, ".app") != true) {
 		// log.Println("No .AppImage suffix:", ai.path)
 		return
 	}
-	
+
 	// Return immediately if this is not an AppImage
 	if ai.imagetype < 0 {
 		// log.Println("Not an AppImage:", ai.path)
@@ -353,6 +386,17 @@ func (ai AppImage) ExtractFile(filepath string, destinationdirpath string) error
 		_, err = runCommand(cmd)
 		return err
 	} else if ai.imagetype == 2 {
+		if ai.reader != nil {
+			file := ai.reader.GetFileAtPath(filepath)
+			if file != nil { //so we can fall back to command based extraction.
+				errs := file.ExtractTo(destinationdirpath)
+				if len(errs) != 0 {
+					//just return the first error
+					return errs[0]
+				}
+				return nil
+			}
+		}
 		cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", destinationdirpath, ai.path, filepath)
 		_, err = runCommand(cmd)
 		return err
