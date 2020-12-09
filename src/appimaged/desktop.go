@@ -10,10 +10,12 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"golang.org/x/sys/unix"
 
+	"github.com/CalebQ42/squashfs"
 	"github.com/adrg/xdg"
 	"github.com/probonopd/go-appimage/internal/helpers"
 	"gopkg.in/ini.v1"
@@ -49,37 +51,67 @@ func writeDesktopFile(ai AppImage) {
 	// }
 	// BLOCKED: To do this in a halfway decent way, we need to improve
 	// ai.ExtractFile() so that it resolves symlinks!
-
-	cfg := ini.Empty()
-
+	var cfg *ini.File
 	ini.PrettyFormat = false
+	startingPoint := false //An easy way to tell if extracting the desktop file worked.
+	arg0abs, err := filepath.Abs(os.Args[0])
 
 	// FIXME: KDE seems to have a problem when the AppImage is on a partition of which the disklabel contains "_"?
 	// Then the desktop file won't run the application
-	
-	arg0abs, err := filepath.Abs(os.Args[0])
 	if err != nil {
 		log.Println(err)
 	}
+	if ai.reader != nil {
+		desktopFil := ai.reader.GetFileAtPath("*.desktop")
+		if desktopFil == nil {
+			//If there isn't a top level .desktop file, try to find one SOMEWHERE.
+			//TODO: Try to look at some predetermined location first before seaching everywhere.
+			desktopFil = ai.reader.FindFile(func(fil *squashfs.File) bool {
+				return strings.HasSuffix(fil.Name, ".desktop")
+			})
+		}
+		if desktopFil != nil {
+			errs := desktopFil.ExtractSymlink(desktopcachedir)
+			if len(errs) == 0 {
+				err = os.Rename(desktopcachedir+desktopFil.Name, desktopcachedir+filename)
+				if err == nil {
+					startingPoint = true
+				}
+			}
+		}
+	}
+	if !startingPoint {
+		cfg = ini.Empty()
+		cfg.Section("Desktop Entry").Key("Type").SetValue("Application")
+		cfg.Section("Desktop Entry").Key("Name").SetValue(ai.niceName)
+		thumbnail := ThumbnailsDirNormal + ai.md5 + ".png"
+		cfg.Section("Desktop Entry").Key("Icon").SetValue(thumbnail)
+		// Construct the Name entry based on the actual filename
+		// so that renaming the file in the file manager results in a changed name in the menu
+		// FIXME: If the thumbnail is not generated here but by another external thumbnailer, it may not be fast enough
+		time.Sleep(1 * time.Second)
+	} else {
+		cfg, err = ini.Load(desktopcachedir + filename)
+		if err != nil {
+			cfg = ini.Empty()
+			cfg.Section("Desktop Entry").Key("Type").SetValue("Application")
+			cfg.Section("Desktop Entry").Key("Name").SetValue(ai.niceName)
+			thumbnail := ThumbnailsDirNormal + ai.md5 + ".png"
+			cfg.Section("Desktop Entry").Key("Icon").SetValue(thumbnail)
+			// Construct the Name entry based on the actual filename
+			// so that renaming the file in the file manager results in a changed name in the menu
+			// FIXME: If the thumbnail is not generated here but by another external thumbnailer, it may not be fast enough
+			time.Sleep(1 * time.Second)
+		}
+	}
 
-	cfg.Section("Desktop Entry").Key("Exec").SetValue(arg0abs + " wrap \"" + ai.path + "\"")  // Resolve to a full path
+	cfg.Section("Desktop Entry").Key("Exec").SetValue(arg0abs + " wrap \"" + ai.path + "\"") // Resolve to a full path
 	cfg.Section("Desktop Entry").Key(ExecLocationKey).SetValue(ai.path)
 	cfg.Section("Desktop Entry").Key("TryExec").SetValue(arg0abs) // Resolve to a full path
-	cfg.Section("Desktop Entry").Key("Type").SetValue("Application")
-	// Construct the Name entry based on the actual filename
-	// so that renaming the file in the file manager results in a changed name in the menu
-
-	cfg.Section("Desktop Entry").Key("Name").SetValue(ai.niceName)
-
-	thumbnail := ThumbnailsDirNormal + ai.md5 + ".png"
-	// FIXME: If the thumbnail is not generated here but by another external thumbnailer, it may not be fast enough
-	time.Sleep(1 * time.Second)
 	// For icons, use absolute paths. This way icons start working
 	// without having to restart the desktop, and possibly
 	// we can even get around messing around with the XDG icon spec
 	// that expects different sizes of icons in different directories
-
-	cfg.Section("Desktop Entry").Key("Icon").SetValue(thumbnail)
 	/*
 		if _, err := os.Stat(thumbnail); err == nil {
 			// Thumbnail exists, then we use it as the Icon in the desktop file

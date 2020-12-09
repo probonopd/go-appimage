@@ -53,18 +53,15 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	if ai.reader != nil {
 		thumbnail := ai.reader.GetFileAtPath(".DirIcon")
 		if thumbnail != nil {
-			if thumbnail.IsSymlink() {
-				thumbnail = thumbnail.GetSymlinkFile()
-			}
-			if thumbnail != nil {
-				errs := thumbnail.ExtractTo(thumbnailcachedir)
-				if len(errs) == 0 {
-					err := os.Rename(thumbnailcachedir+"/"+thumbnail.Name, thumbnailcachedir+"/.DirIcon")
-					if err == nil {
-						return
-					}
+			errs := thumbnail.ExtractSymlink(thumbnailcachedir)
+			if len(errs) == 0 {
+				err := os.Rename(thumbnailcachedir+"/"+thumbnail.Name, thumbnailcachedir+"/.DirIcon")
+				if err == nil {
+					return
 				}
 			}
+			thumbnail.Close()
+			return
 		}
 	}
 	err := ai.ExtractFile(".DirIcon", thumbnailcachedir)
