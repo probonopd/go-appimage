@@ -2,8 +2,8 @@ package goappimage
 
 import (
 	"bytes"
+	"errors"
 
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +15,7 @@ import (
 
 	"github.com/CalebQ42/squashfs"
 	"github.com/probonopd/go-appimage/internal/helpers"
+	"gopkg.in/ini.v1"
 )
 
 /*
@@ -28,15 +29,12 @@ TODO List:
 */
 
 // AppImage handles AppImage files.
-// Currently it is using using a static build of mksquashfs/unsquashfs
-// but eventually may be rewritten to do things natively in Go
-//
-// None of this is currently NEEDED to be exposed to the library user to edit.
 type AppImage struct {
+	Name              string
+	Desktop           *ini.File //The AppImages main .desktop file as an ini.File. Only available on type 2 AppImages right now.
 	path              string
 	offset            int64
 	updateInformation string
-	niceName          string
 	imageType         int
 	reader            *squashfs.Reader
 }
@@ -65,16 +63,12 @@ func NewAppImage(path string) AppImage {
 	if ai.imageType < 0 {
 		return ai
 	}
-	ai.niceName = ai.calculateNiceName()
-	if ai.imageType < 1 {
-		return ai
-	}
 	if ai.imageType > 1 {
 		ai.offset = helpers.CalculateElfSize(ai.path)
 	}
 	if ai.imageType == 2 {
 		//Try to populate the ai.Reader to make it easier to use and get information.
-		//The library is still very new, so we can fallback to command based functions if necessary.
+		//The library is still very new, so we can always fallback to command based functions if necessary.
 		aiFil, err := os.Open(path)
 		if err != nil {
 			return ai
@@ -89,14 +83,20 @@ func NewAppImage(path string) AppImage {
 			return ai
 		}
 		ai.reader = reader
-		//TODO: possibly get some info (such as name) from the appimage's files, specifically it's desktop file.
+		//try to load up the desktop file for some information.
+		desktopFil := reader.GetFileAtPath("*.desktop")
+		if desktopFil != nil {
+			defer desktopFil.Close()
+			ai.Desktop, err = ini.Load(desktopFil)
+			if err == nil {
+				ai.Name = ai.Desktop.Section("Desktop Entry").Key("Name").Value()
+			}
+		}
+	}
+	if ai.Name == "" {
+		ai.Name = ai.calculateNiceName()
 	}
 	return ai
-}
-
-//Name is the "nice" name of the AppImage.
-func (ai AppImage) Name() string {
-	return ai.niceName
 }
 
 func (ai AppImage) calculateNiceName() string {
@@ -110,18 +110,6 @@ func (ai AppImage) calculateNiceName() string {
 	niceName = strings.Replace(niceName, "-", " ", -1)
 	niceName = strings.Replace(niceName, "_", " ", -1)
 	return niceName
-}
-
-func runCommand(cmd *exec.Cmd, verbose bool) (io.Writer, error) {
-	if verbose == true {
-		log.Printf("runCommand: %q\n", cmd)
-	}
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
-	// printError("runCommand", err)
-	// log.Println(cmd.Stdout)
-	return cmd.Stdout, err
 }
 
 // Check whether we have an AppImage at all.
@@ -158,36 +146,19 @@ func (ai AppImage) determineImageType() int {
 	return -1
 }
 
-// Validate checks the quality of an AppImage and sends desktop notification, returns error or nil
-// TODO: Add more checks and reuse this in appimagetool
-// func (ai AppImage) Validate(verbose bool) error {
-// 	if verbose == true {
-// 		log.Println("Validating AppImage", ai.path)
-// 	}
-// 	// Check validity of the updateinformation in this AppImage, if it contains some
-// 	if ai.UpdateInformation != "" {
-// 		log.Println("Validating updateinformation in", ai.path)
-// 		err := helpers.ValidateUpdateInformation(ai.UpdateInformation)
-// 		if err != nil {
-// 			helpers.PrintError("appimage: updateinformation verification", err)
-// 			return err
-// 		}
-// 	}
-// 	return nil
-// }
-
-// ExtractFile extracts a file from from filepath (which may contain * wildcards)
-// in an AppImage to the destinationdirpath.
-// Returns err in case of errors, or nil.
-// TODO: resolve symlinks
-// TODO: Should this be a io.Reader()?
-func (ai AppImage) ExtractFile(filepath string, destinationdirpath string, verbose bool) error {
+//ExtractFile extracts a file from from filepath (which may contain * wildcards)
+//in an AppImage to the destinationdirpath.
+//
+//If resolveSymlinks is true, any files that would be a symlink, the file or folder
+//being linked is extracted in it's place. This is currently only supported on type 2 AppImages.
+//TODO: make resolveSymlinks work, even if it's a type 1 appimage or using commands.
+func (ai AppImage) ExtractFile(filepath string, destinationdirpath string, resolveSymlinks bool) error {
 	var err error
 	if ai.imageType == 1 {
 		//TODO: possibly replace this with a library
 		err = os.MkdirAll(destinationdirpath, os.ModePerm)
 		cmd := exec.Command("bsdtar", "-C", destinationdirpath, "-xf", ai.path, filepath)
-		_, err = runCommand(cmd, verbose)
+		_, err = runCommand(cmd)
 		return err
 	} else if ai.imageType == 2 {
 		if ai.reader != nil {
@@ -195,7 +166,12 @@ func (ai AppImage) ExtractFile(filepath string, destinationdirpath string, verbo
 			if file == nil {
 				goto commandFallback
 			}
-			errs := file.ExtractTo(destinationdirpath)
+			var errs []error
+			if resolveSymlinks {
+				errs = file.ExtractSymlink(destinationdirpath)
+			} else {
+				errs = file.ExtractTo(destinationdirpath)
+			}
 			if len(errs) > 0 {
 				goto commandFallback
 			}
@@ -204,53 +180,81 @@ func (ai AppImage) ExtractFile(filepath string, destinationdirpath string, verbo
 		}
 	commandFallback:
 		cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.Itoa(int(ai.offset)), "-d", destinationdirpath, ai.path, filepath)
-		_, err = runCommand(cmd, verbose)
+		_, err = runCommand(cmd)
 		return err
 	}
 	// FIXME: What we may have extracted may well be (until here) broken symlinks... we need to do better than that
 	return nil
 }
 
+//This would actually simplify a bunch of things.
+//TODO: func (ai AppImage) ExtractFileReader(filepath string, resolveSymlinks bool) (io.Reader, error){}
+
+//Icon tries to get the AppImage's icon and returns it as a io.ReadCloser.
+func (ai AppImage) Icon() (io.ReadCloser, error) {
+	if ai.imageType == 1 {
+		//TODO
+	} else if ai.imageType == 2 {
+		if ai.reader != nil {
+			iconFil := ai.reader.GetFileAtPath(".DirIcon")
+			if iconFil == nil {
+				goto commandFallback
+			}
+			if iconFil.IsSymlink() {
+				iconFil = iconFil.GetSymlinkFile()
+				if iconFil == nil {
+					//If we've gotten this far, the reader is probably working properly and shouldn't fallback to commands.
+					return nil, errors.New("Icon is a symlink to a file outside the AppImage") //TODO: give the path to where it's pointing
+				}
+			}
+			return iconFil, nil
+		}
+	commandFallback:
+		//TODO
+	}
+	return nil, errors.New("Icon couldn't be found")
+}
+
+func runCommand(cmd *exec.Cmd) (io.Writer, error) {
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	// printError("runCommand", err)
+	// log.Println(cmd.Stdout)
+	return cmd.Stdout, err
+}
+
 // ReadUpdateInformation reads updateinformation from an AppImage
-// Returns updateinformation string and error
-//
-// Not needed until a proper interface for upgrading is implemented.
 func (ai AppImage) readUpdateInformation() (string, error) {
 	aibytes, err := helpers.GetSectionData(ai.path, ".upd_info")
 	if err != nil {
 		return "", err
 	}
 	ui := strings.TrimSpace(string(bytes.Trim(aibytes, "\x00")))
-	// Don't validate here, we don't want to get warnings all the time.
-	// We have AppImage.Validate as its own function which we call less frequently than this.
 	return ui, nil
 }
 
-// getFSTime reads FSTime from the AppImage. We are doing this only when it is needed,
-// not when an NewAppImage is called
-func (ai AppImage) getFSTime() time.Time {
-	if ai.imageType == 1 {
-		fil, err := os.Open(ai.path)
-		if err != nil {
-			return time.Unix(0, 0)
-		}
-		stat, _ := fil.Stat()
-		return stat.ModTime()
-	} else if ai.imageType == 2 {
-		if ai.reader != nil {
-			return ai.reader.ModTime()
-		}
+//ModTime is the time the AppImage was edited/created. If the AppImage is type 2,
+//it will try to get that information from the squashfs, if not, it returns the file's ModTime.
+func (ai AppImage) ModTime() time.Time {
+	if ai.reader != nil {
+		return ai.reader.ModTime()
+	}
+	if ai.imageType == 2 {
 		result, err := exec.Command("unsquashfs", "-q", "-fstime", "-o", strconv.FormatInt(ai.offset, 10), ai.path).Output()
 		resstr := strings.TrimSpace(string(bytes.TrimSpace(result)))
 		if err != nil {
-			helpers.PrintError("appimage: getFSTime: "+ai.path, err)
-			return time.Unix(0, 0)
+			goto fallback
 		}
 		if n, err := strconv.Atoi(resstr); err == nil {
 			return time.Unix(int64(n), 0)
 		}
-		log.Println("appimage: getFSTime:", resstr, "is not an integer.")
+	}
+fallback:
+	fil, err := os.Open(ai.path)
+	if err != nil {
 		return time.Unix(0, 0)
 	}
-	return time.Unix(0, 0)
+	stat, _ := fil.Stat()
+	return stat.ModTime()
 }
