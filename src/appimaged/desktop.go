@@ -67,13 +67,13 @@ func writeDesktopFile(ai AppImage) {
 			//If there isn't a top level .desktop file, try to find one SOMEWHERE.
 			//TODO: Try to look at some predetermined location first before seaching everywhere.
 			desktopFil = ai.reader.FindFile(func(fil *squashfs.File) bool {
-				return strings.HasSuffix(fil.Name, ".desktop")
+				return strings.HasSuffix(fil.Name(), ".desktop")
 			})
 		}
 		if desktopFil != nil {
 			errs := desktopFil.ExtractSymlink(desktopcachedir)
 			if len(errs) == 0 {
-				err = os.Rename(desktopcachedir+desktopFil.Name, desktopcachedir+filename)
+				err = os.Rename(desktopcachedir+desktopFil.Name(), desktopcachedir+filename)
 				if err == nil {
 					startingPoint = true
 				}
