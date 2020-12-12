@@ -3,7 +3,7 @@ package goappimage
 import (
 	"bytes"
 	"errors"
-
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,9 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"io"
-
 	"github.com/CalebQ42/squashfs"
+	iso "github.com/kdomanski/iso9660"
 	"github.com/probonopd/go-appimage/internal/helpers"
 	"gopkg.in/ini.v1"
 )
@@ -156,10 +155,10 @@ func (ai AppImage) ExtractFile(filepath string, destinationdirpath string, resol
 	var err error
 	if ai.imageType == 1 {
 		//TODO: possibly replace this with a library
-		err = os.MkdirAll(destinationdirpath, os.ModePerm)
-		cmd := exec.Command("bsdtar", "-C", destinationdirpath, "-xf", ai.path, filepath)
-		_, err = runCommand(cmd)
-		return err
+		// err = os.MkdirAll(destinationdirpath, os.ModePerm)
+		// cmd := exec.Command("bsdtar", "-C", destinationdirpath, "-xf", ai.path, filepath)
+		// _, err = runCommand(cmd)
+		// return err
 	} else if ai.imageType == 2 {
 		if ai.reader != nil {
 			file := ai.reader.GetFileAtPath(filepath)
@@ -188,7 +187,30 @@ func (ai AppImage) ExtractFile(filepath string, destinationdirpath string, resol
 }
 
 //This would actually simplify a bunch of things.
-//TODO: func (ai AppImage) ExtractFileReader(filepath string, resolveSymlinks bool) (io.Reader, error){}
+func (ai AppImage) ExtractFileReader(filepath string, resolveSymlinks bool) (io.ReadCloser, error) {
+	if ai.imageType == 1 {
+		fil, err := os.Open(ai.path)
+		if err != nil {
+			return nil, err
+		}
+		isoRdr, err := iso.OpenImage(fil)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if ai.reader != nil {
+
+	}
+	// commandFallback:
+	// This will allows us to fallback to commands if necessary for either type.
+	// Will probably extract the file to a temp file using os.TempFile and delete it when Close() is called.
+	if ai.imageType == 1 {
+
+	} else if ai.imageType == 2 {
+
+	}
+	return nil, errors.New("Uh Oh")
+}
 
 //Icon tries to get the AppImage's icon and returns it as a io.ReadCloser.
 func (ai AppImage) Icon() (io.ReadCloser, error) {
