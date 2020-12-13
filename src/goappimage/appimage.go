@@ -186,8 +186,24 @@ func (ai AppImage) ExtractFile(filepath string, destinationdirpath string, resol
 	return nil
 }
 
-//This would actually simplify a bunch of things.
-func (ai AppImage) ExtractFileReader(filepath string, resolveSymlinks bool) (io.ReadCloser, error) {
+//ExtractFileReader tries to get an io.ReadCloser for the file at filepath.
+//Returns an error if the path is pointing to a folder. If the path is pointing to a symlink,
+//it will try to return the file being pointed to, but only if it's within the AppImage.
+//
+//This will try to use a native Go library, but if that fails it will fallback to using
+//unsquashfs or bsdtar by extracting the file to the temp directory (defined by os.TempDir)
+//that gets deleted when close is called on the returned ReadCloser.
+func (ai AppImage) ExtractFileReader(filepath string) (io.ReadCloser, error) {
+	if ai.reader != nil {
+		fil := ai.reader.GetFileAtPath(filepath)
+		if fil == nil {
+			goto commandFallback
+		}
+		if fil.IsSymlink() {
+			fil = fil.GetSymlinkFile()
+		}
+		return fil, nil
+	}
 	if ai.imageType == 1 {
 		fil, err := os.Open(ai.path)
 		if err != nil {
@@ -198,10 +214,7 @@ func (ai AppImage) ExtractFileReader(filepath string, resolveSymlinks bool) (io.
 			return nil, err
 		}
 	}
-	if ai.reader != nil {
-
-	}
-	// commandFallback:
+commandFallback:
 	// This will allows us to fallback to commands if necessary for either type.
 	// Will probably extract the file to a temp file using os.TempFile and delete it when Close() is called.
 	if ai.imageType == 1 {

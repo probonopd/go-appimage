@@ -14,10 +14,11 @@ func TestAppImageType1(t *testing.T) {
 	if ai.imageType == -1 {
 		t.Fatal("Not an appimage")
 	}
-	_, err := ai.ExtractFileReader("*.desktop", false)
+	rdr, err := ai.ExtractFileReader("*.desktop")
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer rdr.Close()
 	t.Fatal("No Problem")
 }
 
