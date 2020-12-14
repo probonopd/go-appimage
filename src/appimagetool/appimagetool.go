@@ -804,7 +804,7 @@ func main() {
 	// basic information
 	app := &cli.App{
 		Name:                   "appimagetool",
-		Authors: 				[]*cli.Author{{Name: "AppImage Project"}},
+		Authors: 				[]*cli.Author{{Name: "Simon Peter"}},
 		Version:                version,
 		Usage:            		"An automatic tool to create AppImages",
 		EnableBashCompletion:   false,
