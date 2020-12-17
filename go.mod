@@ -3,7 +3,7 @@ module github.com/probonopd/go-appimage
 go 1.13
 
 require (
-	github.com/CalebQ42/squashfs v0.3.4
+	github.com/CalebQ42/squashfs v0.3.5
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/acobaugh/osrelease v0.0.0-20181218015638-a93a0a55a249
 	github.com/adrg/xdg v0.2.3
@@ -17,7 +17,6 @@ require (
 	github.com/grandcat/zeroconf v1.0.0
 	github.com/h2non/go-is-svg v0.0.0-20160927212452-35e8c4b0612c
 	github.com/hashicorp/go-version v1.2.0
-	github.com/kdomanski/iso9660 v0.2.0
 	github.com/otiai10/copy v1.1.1
 	github.com/probonopd/go-zsyncmake v0.0.0-20181008012426-5db478ac2be7
 	github.com/prometheus/procfs v0.0.10

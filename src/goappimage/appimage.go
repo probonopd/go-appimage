@@ -6,13 +6,13 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/CalebQ42/squashfs"
-	iso "github.com/kdomanski/iso9660"
 	"github.com/probonopd/go-appimage/internal/helpers"
 	"gopkg.in/ini.v1"
 )
@@ -29,13 +29,13 @@ TODO List:
 
 // AppImage handles AppImage files.
 type AppImage struct {
-	Name              string
-	Desktop           *ini.File //The AppImages main .desktop file as an ini.File. Only available on type 2 AppImages right now.
-	path              string
-	offset            int64
-	updateInformation string
-	imageType         int
 	reader            *squashfs.Reader
+	Desktop           *ini.File
+	path              string
+	updateInformation string
+	Name              string
+	offset            int64
+	imageType         int //The AppImages main .desktop file as an ini.File. Only available on type 2 AppImages right now.
 }
 
 const execLocationKey = helpers.ExecLocationKey
@@ -45,7 +45,7 @@ const execLocationKey = helpers.ExecLocationKey
 // because the AppImage that used to be there may need to be removed
 // and for this the functions of an AppImage are needed.
 // Non-existing and invalid AppImages will have type -1.
-func NewAppImage(path string) AppImage {
+func NewAppImage(path string) (*AppImage, error) {
 	ai := AppImage{path: path, imageType: -1}
 	// If we got a temp file, exit immediately
 	// E.g., ignore typical Internet browser temporary files used during download
@@ -55,12 +55,12 @@ func NewAppImage(path string) AppImage {
 		strings.HasSuffix(path, ".partial") ||
 		strings.HasSuffix(path, ".zs-old") ||
 		strings.HasSuffix(path, ".crdownload") {
-		return ai
+		return nil, errors.New("Given path is a temporary file")
 	}
 	ai.imageType = ai.determineImageType()
 	// Don't waste more time if the file is not actually an AppImage
 	if ai.imageType < 0 {
-		return ai
+		return nil, errors.New("Given path is NOT an AppImage")
 	}
 	if ai.imageType > 1 {
 		ai.offset = helpers.CalculateElfSize(ai.path)
@@ -68,18 +68,14 @@ func NewAppImage(path string) AppImage {
 	if ai.imageType == 2 {
 		//Try to populate the ai.Reader to make it easier to use and get information.
 		//The library is still very new, so we can always fallback to command based functions if necessary.
-		aiFil, err := os.Open(path)
-		if err != nil {
-			return ai
-		}
+		aiFil, _ := os.Open(path)
 		stat, err := aiFil.Stat()
 		if err != nil {
-			return ai
+			return &ai, err
 		}
-		secReader := io.NewSectionReader(aiFil, ai.offset, stat.Size()-ai.offset)
-		reader, err := squashfs.NewSquashfsReader(secReader)
+		reader, err := squashfs.NewSquashfsReader(io.NewSectionReader(aiFil, ai.offset, stat.Size()-ai.offset))
 		if err != nil {
-			return ai
+			return &ai, nil
 		}
 		ai.reader = reader
 		//try to load up the desktop file for some information.
@@ -95,7 +91,7 @@ func NewAppImage(path string) AppImage {
 	if ai.Name == "" {
 		ai.Name = ai.calculateNiceName()
 	}
-	return ai
+	return &ai, nil
 }
 
 func (ai AppImage) calculateNiceName() string {
@@ -145,20 +141,43 @@ func (ai AppImage) determineImageType() int {
 	return -1
 }
 
-//ExtractFile extracts a file from from filepath (which may contain * wildcards)
-//in an AppImage to the destinationdirpath.
+//ExtractFile extracts a file from from filepath (which may contain * wildcards) in an AppImage to the destinationdirpath.
 //
-//If resolveSymlinks is true, any files that would be a symlink, the file or folder
-//being linked is extracted in it's place. This is currently only supported on type 2 AppImages.
-//TODO: make resolveSymlinks work, even if it's a type 1 appimage or using commands.
+//If resolveSymlinks is true, if the filepath specified is a symlink, the actual file is extracted in it's place.
+//On type 2 AppImages, this behavior is recursive if extracting a folder.
+//resolveSymlinks will have no effect on absolute symlinks (symlinks that start at root).
 func (ai AppImage) ExtractFile(filepath string, destinationdirpath string, resolveSymlinks bool) error {
 	var err error
 	if ai.imageType == 1 {
-		//TODO: possibly replace this with a library
-		// err = os.MkdirAll(destinationdirpath, os.ModePerm)
-		// cmd := exec.Command("bsdtar", "-C", destinationdirpath, "-xf", ai.path, filepath)
-		// _, err = runCommand(cmd)
-		// return err
+		err = os.MkdirAll(destinationdirpath, os.ModePerm)
+		if err != nil {
+			return err
+		}
+		name := path.Base(filepath)
+		filepath = strings.TrimPrefix(filepath, "/")
+		destinationdirpath = strings.TrimSuffix(destinationdirpath, "/")
+		tmpDir := destinationdirpath + "/" + ".temp"
+		err = os.Mkdir(tmpDir, os.ModePerm)
+		if err != nil {
+			return err
+		}
+		defer os.RemoveAll(tmpDir)
+		if resolveSymlinks {
+			filepath, err = ai.getSymlinkLocation(filepath)
+			if err != nil {
+				return err //The only way to get an error is if the bsdtar command spits out an error for filepath, so actual extraction will fail.
+			}
+		}
+		cmd := exec.Command("bsdtar", "-C", tmpDir, "-xf", ai.path, filepath)
+		_, err = runCommand(cmd)
+		if err != nil {
+			return err
+		}
+		err = os.Rename(tmpDir+"/"+filepath, destinationdirpath+"/"+name)
+		if err != nil {
+			return err
+		}
+		return err
 	} else if ai.imageType == 2 {
 		if ai.reader != nil {
 			file := ai.reader.GetFileAtPath(filepath)
@@ -205,22 +224,11 @@ func (ai AppImage) ExtractFileReader(filepath string) (io.ReadCloser, error) {
 		return fil, nil
 	}
 	if ai.imageType == 1 {
-		fil, err := os.Open(ai.path)
-		if err != nil {
-			return nil, err
-		}
-		isoRdr, err := iso.OpenImage(fil)
-		if err != nil {
-			return nil, err
-		}
 	}
 commandFallback:
 	// This will allows us to fallback to commands if necessary for either type.
 	// Will probably extract the file to a temp file using os.TempFile and delete it when Close() is called.
-	if ai.imageType == 1 {
-
-	} else if ai.imageType == 2 {
-
+	if ai.imageType == 2 {
 	}
 	return nil, errors.New("Uh Oh")
 }
@@ -250,13 +258,11 @@ func (ai AppImage) Icon() (io.ReadCloser, error) {
 	return nil, errors.New("Icon couldn't be found")
 }
 
-func runCommand(cmd *exec.Cmd) (io.Writer, error) {
+func runCommand(cmd *exec.Cmd) (bytes.Buffer, error) {
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()
-	// printError("runCommand", err)
-	// log.Println(cmd.Stdout)
-	return cmd.Stdout, err
+	return out, err
 }
 
 // ReadUpdateInformation reads updateinformation from an AppImage

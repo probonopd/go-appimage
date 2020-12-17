@@ -1,8 +1,8 @@
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/CalebQ42/GoAppImage v0.4.0 h1:aF+Y/vyo/RGhoyZEW1CMY6WyRWrZZO4ydsRFAtIGnaY=
 github.com/CalebQ42/GoAppImage v0.4.0/go.mod h1:qHudJKAn/dlkNWNnH4h1YKXp29EZ7Bppsn7sNP2HuvU=
-github.com/CalebQ42/squashfs v0.3.4 h1:eVwy1UrBouv3iOUFHGIboyqM1Z8n6ZRMEOV/SbQWyx0=
-github.com/CalebQ42/squashfs v0.3.4/go.mod h1:vKz+LDiKqKGDlB6tiykL3rtHdGT+QEPicvoF80S2S0Q=
+github.com/CalebQ42/squashfs v0.3.5 h1:EniKQIvaGkPIz/6WebIZGFnEV9Viio6cyRPMJs0B+/Y=
+github.com/CalebQ42/squashfs v0.3.5/go.mod h1:vKz+LDiKqKGDlB6tiykL3rtHdGT+QEPicvoF80S2S0Q=
 github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d h1:G0m3OIz70MZUWq3EgK3CesDbo8upS2Vm9/P3FtgI+Jk=
 github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d/go.mod h1:3eOhrUMpNV+6aFIbp5/iudMxNCF27Vw2OZgy4xEx0Fg=
 github.com/acobaugh/osrelease v0.0.0-20181218015638-a93a0a55a249 h1:fMi9ZZ/it4orHj3xWrM6cLkVFcCbkXQALFUiNtHtCPs=
@@ -68,8 +68,6 @@ github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99/go.mod h1:1lJo3i
 github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
 github.com/jtolds/gls v4.20.0+incompatible h1:xdiiI2gbIgH/gLH7ADydsJ1uDOEzR8yvV7C0MuV77Wo=
 github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
-github.com/kdomanski/iso9660 v0.2.0 h1:RMKfXdkq6bRs2ktomORF/sYAMY4An93IhUbHIiwFbTA=
-github.com/kdomanski/iso9660 v0.2.0/go.mod h1:LY50s7BlG+ES6V99oxYGd0ub9giLrKdHZb3LLOweBj0=
 github.com/kevinburke/ssh_config v0.0.0-20190725054713-01f96b0aa0cd h1:Coekwdh0v2wtGp9Gmz1Ze3eVRAWJMLokvN3QjdzCHLY=
 github.com/kevinburke/ssh_config v0.0.0-20190725054713-01f96b0aa0cd/go.mod h1:CT57kijsi8u/K/BOFA39wgDQJ9CxiF4nAY/ojJ6r6mM=
 github.com/klauspost/compress v1.11.3 h1:dB4Bn0tN3wdCzQxnS8r06kV74qN/TAfaIS0bVE8h3jc=
@@ -141,7 +139,6 @@ github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+
 github.com/stretchr/objx v0.2.0/go.mod h1:qt09Ya8vawLte6SNmTgCsAVtYtaKzEcn8ATUoHMkEqE=
 github.com/stretchr/testify v1.3.0 h1:TivCn/peBQ7UY8ooIcPgZFpTNSz0Q2U6UrFlUfqbe0Q=
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
-github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5cxcmMvtA=
 github.com/stretchr/testify v1.6.1 h1:hDPOHmpOpP40lSULcqw7IrRb/u7w6RpDC9399XyoNd0=
 github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/ulikunitz/xz v0.5.8 h1:ERv8V6GKqVi23rgu5cj9pVfVzJbOqAY2Ntl88O6c2nQ=
