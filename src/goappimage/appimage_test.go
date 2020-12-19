@@ -1,6 +1,7 @@
 package goappimage
 
 import (
+	"fmt"
 	"os"
 	"testing"
 )
@@ -32,10 +33,11 @@ func TestAppImageType1(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	fmt.Println("name", ai.Name)
 	if ai.imageType == -1 {
 		t.Fatal("Not an appimage")
 	}
-	err = ai.ExtractFile("usr/bin/lib/libGL.so", wdDir+"/testing/", true) //this tests nested extraction AND symlink resolution.
+	_, err = newType1Reader(testImg)
 	if err != nil {
 		t.Fatal(err)
 	}

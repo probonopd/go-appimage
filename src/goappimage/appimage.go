@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/CalebQ42/squashfs"
 	"github.com/probonopd/go-appimage/internal/helpers"
 	"gopkg.in/ini.v1"
 )
@@ -29,7 +28,7 @@ TODO List:
 
 // AppImage handles AppImage files.
 type AppImage struct {
-	reader            *squashfs.Reader
+	reader            archiveReader
 	Desktop           *ini.File
 	path              string
 	updateInformation string
@@ -65,23 +64,11 @@ func NewAppImage(path string) (*AppImage, error) {
 	if ai.imageType > 1 {
 		ai.offset = helpers.CalculateElfSize(ai.path)
 	}
-	if ai.imageType == 2 {
-		//Try to populate the ai.Reader to make it easier to use and get information.
-		//The library is still very new, so we can always fallback to command based functions if necessary.
-		aiFil, _ := os.Open(path)
-		stat, err := aiFil.Stat()
-		if err != nil {
-			return &ai, err
-		}
-		reader, err := squashfs.NewSquashfsReader(io.NewSectionReader(aiFil, ai.offset, stat.Size()-ai.offset))
-		if err != nil {
-			return &ai, nil
-		}
-		ai.reader = reader
+	err := ai.populateReader()
+	if err == nil {
 		//try to load up the desktop file for some information.
-		desktopFil := reader.GetFileAtPath("*.desktop")
-		if desktopFil != nil {
-			defer desktopFil.Close()
+		desktopFil, err := ai.reader.FileReader("*.desktop")
+		if err == nil {
 			ai.Desktop, err = ini.Load(desktopFil)
 			if err == nil {
 				ai.Name = ai.Desktop.Section("Desktop Entry").Key("Name").Value()
@@ -201,17 +188,12 @@ func (ai AppImage) ExtractFile(filepath string, destinationdirpath string, resol
 		_, err = runCommand(cmd)
 		return err
 	}
-	// FIXME: What we may have extracted may well be (until here) broken symlinks... we need to do better than that
 	return nil
 }
 
 //ExtractFileReader tries to get an io.ReadCloser for the file at filepath.
 //Returns an error if the path is pointing to a folder. If the path is pointing to a symlink,
-//it will try to return the file being pointed to, but only if it's within the AppImage.
-//
-//This will try to use a native Go library, but if that fails it will fallback to using
-//unsquashfs or bsdtar by extracting the file to the temp directory (defined by os.TempDir)
-//that gets deleted when close is called on the returned ReadCloser.
+// //it will try to return the file being pointed to, but only if it's within the AppImage.
 func (ai AppImage) ExtractFileReader(filepath string) (io.ReadCloser, error) {
 	if ai.reader != nil {
 		fil := ai.reader.GetFileAtPath(filepath)
@@ -229,6 +211,7 @@ commandFallback:
 	// This will allows us to fallback to commands if necessary for either type.
 	// Will probably extract the file to a temp file using os.TempFile and delete it when Close() is called.
 	if ai.imageType == 2 {
+		//TODO
 	}
 	return nil, errors.New("Uh Oh")
 }
