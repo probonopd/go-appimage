@@ -25,6 +25,10 @@ type archiveReader interface {
 	//SymlinkPath returns where the symlink at path is pointing.
 	//If the given path is not a symlink, just returns the given path.
 	SymlinkPath(path string) string
+	//SymlinkPath is similiar to SymlinkPath, but will recursively try
+	//to get the symlink's path. If the location is outside the archive,
+	//the initial path is returned.
+	SymlinkPathRecursive(path string) string
 	//Contains returns if the given path is contained in the archive.
 	Contains(path string) bool
 	//ListFiles returns a list of filenames at the given directory.
@@ -101,7 +105,21 @@ func (r *type2Reader) SymlinkPath(path string) string {
 		return path
 	}
 	if fil.IsSymlink() {
-		fil = fil.GetSymlinkFile()
+		return fil.SymlinkPath()
+	}
+	return path
+}
+
+func (r *type2Reader) SymlinkPathRecursive(path string) string {
+	fil := r.rdr.GetFileAtPath(path)
+	if fil == nil {
+		return path
+	}
+	if fil.IsSymlink() {
+		tmpLoc := r.SymlinkPathRecursive(fil.Path())
+		if tmpLoc != fil.Path() {
+			return tmpLoc
+		}
 	}
 	return path
 }
@@ -159,8 +177,9 @@ func (r *type2Reader) ExtractTo(path, destination string, resolveSymlinks bool) 
 }
 
 type type1Reader struct {
-	structure map[string][]string //[folder]files
+	structure map[string][]string //[folder]File
 	path      string
+	folders   []string
 }
 
 func newType1Reader(filepath string) (*type1Reader, error) {
@@ -180,41 +199,59 @@ func newType1Reader(filepath string) (*type1Reader, error) {
 		}
 		fileName := path.Base(contained)
 		dir := path.Dir(contained)
+		dir = path.Clean(dir)
 		if !strings.Contains(contained, "/") {
 			dir = "/"
 		}
-		if rdr.structure[dir] == nil {
-			rdr.structure[dir] = make([]string, 0)
+		if rdr.structure[dir] == nil && dir != "/" {
+			rdr.folders = append(rdr.folders, dir)
 		}
 		rdr.structure[dir] = append(rdr.structure[dir], fileName)
 	}
+	sort.Strings(rdr.folders)
 	for folds := range rdr.structure {
 		sort.Strings(rdr.structure[folds])
 	}
 	return nil, nil
 }
 
-func (r *type1Reader) getSymlinkLocation(filepath string) (string, error) {
-	cmd := exec.Command("bsdtar", "-f", r.path, "-tv", filepath)
-	wrt, err := runCommand(cmd)
-	if err != nil {
-		return filepath, err
-	}
-	output := strings.TrimSuffix(string(wrt.Bytes()), "\n")
-	if index := strings.Index(output, "->"); index != -1 { //signifies symlink
-		symlinkedFile := output[index+3:]
-		if strings.HasPrefix(symlinkedFile, "/") {
-			return filepath, nil //we can't help with absolute symlinks...
-		}
-		return r.getSymlinkLocation(path.Dir(filepath) + "/" + symlinkedFile)
-	}
-	return filepath, nil
-}
-
 func (r *type1Reader) FileReader(filepath string) (io.ReadCloser, error) {
-	if !r.Contains(filepath) {
-		return nil, errors.New("File not found at: " + filepath)
+	//I need to make sure that, if there is wildcards, that we only get ONE file. If we get more then one, ALL matching files will be in Stdout.
+	//Probably a bit spagetti code...
+	filepath = strings.TrimPrefix(filepath, "/")
+	filepath = path.Clean(filepath)
+	var filepathDir string
+	if strings.Contains(filepath, "/") {
+		for _, dir := range r.folders {
+			match, _ := path.Match(dir, path.Dir(filepath))
+			if match {
+				filepathDir = dir
+				break
+			}
+		}
+	} else {
+		filepathDir = "/"
 	}
+	if filepathDir == "" {
+		return nil, errors.New("File not found in the archive")
+	}
+	var filepathName string
+	for _, fil := range r.structure[filepathDir] {
+		match, _ := path.Match(fil, path.Base(filepath))
+		if match {
+			filepathName = fil
+			break
+		}
+	}
+	if filepathName == "" {
+		return nil, errors.New("File not found in the archive")
+	}
+	if filepathDir == "/" {
+		filepath = filepathName
+	} else {
+		filepath = filepathDir + "/" + filepathName
+	}
+	//We're finally sure we have just ONE file, lol
 	cmd := exec.Command("bsdtar", "-f", r.path, "-xO", filepath)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -244,6 +281,26 @@ func (r *type1Reader) SymlinkPath(filepath string) string {
 	output = strings.Split(output, "\n")[0]                //Make sure we are only getting the first value that matches
 	if index := strings.Index(output, "->"); index != -1 { //signifies symlink
 		return output[index+3:]
+	}
+	return filepath
+}
+
+func (r *type1Reader) SymlinkPathRecursive(filepath string) string {
+	cmd := exec.Command("bsdtar", "-f", r.path, "-tv", filepath)
+	wrt, err := runCommand(cmd)
+	if err != nil {
+		return filepath
+	}
+	output := strings.TrimSuffix(string(wrt.Bytes()), "\n")
+	if index := strings.Index(output, "->"); index != -1 { //signifies symlink
+		symlinkedFile := output[index+3:]
+		if strings.HasPrefix(symlinkedFile, "/") {
+			return filepath //we can't help with absolute symlinks...
+		}
+		tmp := r.SymlinkPathRecursive(path.Dir(filepath) + "/" + symlinkedFile)
+		if tmp != path.Dir(filepath)+"/"+symlinkedFile {
+			return tmp
+		}
 	}
 	return filepath
 }
@@ -282,10 +339,7 @@ func (r *type1Reader) ExtractTo(filepath, destination string, resolveSymlinks bo
 	}
 	defer os.RemoveAll(tmpDir)
 	if resolveSymlinks {
-		filepath, err = r.getSymlinkLocation(filepath)
-		if err != nil {
-			return err //The only way to get an error is if the bsdtar command spits out an error for filepath, so actual extraction will fail.
-		}
+		filepath = r.SymlinkPathRecursive(filepath)
 	}
 	cmd := exec.Command("bsdtar", "-C", tmpDir, "-f", r.path, "-x", filepath)
 	_, err = runCommand(cmd)

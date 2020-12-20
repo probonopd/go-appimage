@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -82,7 +81,6 @@ func NewAppImage(path string) (*AppImage, error) {
 }
 
 func (ai AppImage) calculateNiceName() string {
-	//TODO: have this as a fallback to reading the appimage's .desktop file
 	niceName := filepath.Base(ai.path)
 	niceName = strings.Replace(niceName, ".AppImage", "", -1)
 	niceName = strings.Replace(niceName, ".appimage", "", -1)
@@ -134,61 +132,15 @@ func (ai AppImage) determineImageType() int {
 //On type 2 AppImages, this behavior is recursive if extracting a folder.
 //resolveSymlinks will have no effect on absolute symlinks (symlinks that start at root).
 func (ai AppImage) ExtractFile(filepath string, destinationdirpath string, resolveSymlinks bool) error {
-	var err error
-	if ai.imageType == 1 {
-		err = os.MkdirAll(destinationdirpath, os.ModePerm)
-		if err != nil {
-			return err
-		}
-		name := path.Base(filepath)
-		filepath = strings.TrimPrefix(filepath, "/")
-		destinationdirpath = strings.TrimSuffix(destinationdirpath, "/")
-		tmpDir := destinationdirpath + "/" + ".temp"
-		err = os.Mkdir(tmpDir, os.ModePerm)
-		if err != nil {
-			return err
-		}
-		defer os.RemoveAll(tmpDir)
-		if resolveSymlinks {
-			filepath, err = ai.getSymlinkLocation(filepath)
-			if err != nil {
-				return err //The only way to get an error is if the bsdtar command spits out an error for filepath, so actual extraction will fail.
-			}
-		}
-		cmd := exec.Command("bsdtar", "-C", tmpDir, "-xf", ai.path, filepath)
-		_, err = runCommand(cmd)
-		if err != nil {
-			return err
-		}
-		err = os.Rename(tmpDir+"/"+filepath, destinationdirpath+"/"+name)
-		if err != nil {
-			return err
-		}
-		return err
-	} else if ai.imageType == 2 {
-		if ai.reader != nil {
-			file := ai.reader.GetFileAtPath(filepath)
-			if file == nil {
-				goto commandFallback
-			}
-			var errs []error
-			if resolveSymlinks {
-				errs = file.ExtractSymlink(destinationdirpath)
-			} else {
-				errs = file.ExtractTo(destinationdirpath)
-			}
-			if len(errs) > 0 {
-				goto commandFallback
-			}
-			file.Close()
-			return nil
-		}
-	commandFallback:
+	if ai.reader != nil {
+		return ai.reader.ExtractTo(filepath, destinationdirpath, resolveSymlinks)
+	}
+	if ai.imageType == 2 {
 		cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.Itoa(int(ai.offset)), "-d", destinationdirpath, ai.path, filepath)
-		_, err = runCommand(cmd)
+		_, err := runCommand(cmd)
 		return err
 	}
-	return nil
+	return errors.New("Unable to extract")
 }
 
 //ExtractFileReader tries to get an io.ReadCloser for the file at filepath.
@@ -196,47 +148,15 @@ func (ai AppImage) ExtractFile(filepath string, destinationdirpath string, resol
 // //it will try to return the file being pointed to, but only if it's within the AppImage.
 func (ai AppImage) ExtractFileReader(filepath string) (io.ReadCloser, error) {
 	if ai.reader != nil {
-		fil := ai.reader.GetFileAtPath(filepath)
-		if fil == nil {
-			goto commandFallback
-		}
-		if fil.IsSymlink() {
-			fil = fil.GetSymlinkFile()
-		}
-		return fil, nil
+		return ai.reader.FileReader(filepath)
 	}
-	if ai.imageType == 1 {
-	}
-commandFallback:
-	// This will allows us to fallback to commands if necessary for either type.
-	// Will probably extract the file to a temp file using os.TempFile and delete it when Close() is called.
-	if ai.imageType == 2 {
-		//TODO
-	}
-	return nil, errors.New("Uh Oh")
+	return nil, errors.New("Unable to get reader for " + filepath)
 }
 
-//Icon tries to get the AppImage's icon and returns it as a io.ReadCloser.
-func (ai AppImage) Icon() (io.ReadCloser, error) {
-	if ai.imageType == 1 {
-		//TODO
-	} else if ai.imageType == 2 {
-		if ai.reader != nil {
-			iconFil := ai.reader.GetFileAtPath(".DirIcon")
-			if iconFil == nil {
-				goto commandFallback
-			}
-			if iconFil.IsSymlink() {
-				iconFil = iconFil.GetSymlinkFile()
-				if iconFil == nil {
-					//If we've gotten this far, the reader is probably working properly and shouldn't fallback to commands.
-					return nil, errors.New("Icon is a symlink to a file outside the AppImage") //TODO: give the path to where it's pointing
-				}
-			}
-			return iconFil, nil
-		}
-	commandFallback:
-		//TODO
+//Thumbnail tries to get the AppImage's thumbnail and returns it as a io.ReadCloser.
+func (ai AppImage) Thumbnail() (io.ReadCloser, error) {
+	if ai.reader != nil {
+		return ai.reader.FileReader(".DirIcon")
 	}
 	return nil, errors.New("Icon couldn't be found")
 }
@@ -261,10 +181,10 @@ func (ai AppImage) readUpdateInformation() (string, error) {
 //ModTime is the time the AppImage was edited/created. If the AppImage is type 2,
 //it will try to get that information from the squashfs, if not, it returns the file's ModTime.
 func (ai AppImage) ModTime() time.Time {
-	if ai.reader != nil {
-		return ai.reader.ModTime()
-	}
 	if ai.imageType == 2 {
+		if ai.reader != nil {
+			return ai.reader.(*type2Reader).rdr.ModTime()
+		}
 		result, err := exec.Command("unsquashfs", "-q", "-fstime", "-o", strconv.FormatInt(ai.offset, 10), ai.path).Output()
 		resstr := strings.TrimSpace(string(bytes.TrimSpace(result)))
 		if err != nil {
