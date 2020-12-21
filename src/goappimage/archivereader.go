@@ -41,6 +41,7 @@ type archiveReader interface {
 func (ai *AppImage) populateReader() (err error) {
 	if ai.imageType == 1 {
 		ai.reader, err = newType1Reader(ai.path)
+		return err
 	} else if ai.imageType == 2 {
 		ai.reader, err = newType2Reader(ai)
 		return err
@@ -212,18 +213,24 @@ func newType1Reader(filepath string) (*type1Reader, error) {
 	for folds := range rdr.structure {
 		sort.Strings(rdr.structure[folds])
 	}
-	return nil, nil
+	return &rdr, nil
 }
 
-func (r *type1Reader) FileReader(filepath string) (io.ReadCloser, error) {
-	//I need to make sure that, if there is wildcards, that we only get ONE file. If we get more then one, ALL matching files will be in Stdout.
-	//Probably a bit spagetti code...
+//makes sure taht the path is nice and only points to ONE file, which is needed if there are wildcards.
+//If you were to search for *.desktop, you will get both blender.desktop & /usr/bin/blender.desktop.
+//
+//Probably a bit spagetti and can be cleaned up. Maybe add a rawPaths variable to type1reader to make
+//it easier to find a match with wildcards.
+func (r *type1Reader) cleanPath(filepath string) (string, error) {
 	filepath = strings.TrimPrefix(filepath, "/")
 	filepath = path.Clean(filepath)
-	var filepathDir string
-	if strings.Contains(filepath, "/") {
+	if filepath == "" {
+		return "", nil
+	}
+	filepathDir := path.Dir(filepath)
+	if filepathDir != "." {
 		for _, dir := range r.folders {
-			match, _ := path.Match(dir, path.Dir(filepath))
+			match, _ := path.Match(filepathDir, dir)
 			if match {
 				filepathDir = dir
 				break
@@ -233,29 +240,36 @@ func (r *type1Reader) FileReader(filepath string) (io.ReadCloser, error) {
 		filepathDir = "/"
 	}
 	if filepathDir == "" {
-		return nil, errors.New("File not found in the archive")
+		return "", errors.New("File not found in the archive")
 	}
-	var filepathName string
+	filepathName := path.Base(filepath)
 	for _, fil := range r.structure[filepathDir] {
-		match, _ := path.Match(fil, path.Base(filepath))
+		match, _ := path.Match(filepathName, fil)
 		if match {
 			filepathName = fil
 			break
 		}
 	}
 	if filepathName == "" {
-		return nil, errors.New("File not found in the archive")
+		return "", errors.New("File not found in the archive")
 	}
 	if filepathDir == "/" {
 		filepath = filepathName
 	} else {
 		filepath = filepathDir + "/" + filepathName
 	}
-	//We're finally sure we have just ONE file, lol
+	return filepath, nil
+}
+
+func (r *type1Reader) FileReader(filepath string) (io.ReadCloser, error) {
+	filepath, err := r.cleanPath(filepath)
+	if err != nil {
+		return nil, err
+	}
 	cmd := exec.Command("bsdtar", "-f", r.path, "-xO", filepath)
 	var out bytes.Buffer
 	cmd.Stdout = &out
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		return nil, err
 	}
@@ -263,15 +277,18 @@ func (r *type1Reader) FileReader(filepath string) (io.ReadCloser, error) {
 }
 
 func (r *type1Reader) IsDir(filepath string) bool {
-	filepath = strings.TrimPrefix(filepath, "/")
-	filepath = path.Clean(filepath)
-	if filepath == "" {
-		return true //this means they're asking if root is a dir.....
+	filepath, err := r.cleanPath(filepath)
+	if err != nil {
+		return false
 	}
 	return r.structure[filepath] != nil
 }
 
 func (r *type1Reader) SymlinkPath(filepath string) string {
+	filepath, err := r.cleanPath(filepath)
+	if err != nil {
+		return filepath
+	}
 	cmd := exec.Command("bsdtar", "-f", r.path, "-tv", filepath)
 	wrt, err := runCommand(cmd)
 	if err != nil {
@@ -286,6 +303,10 @@ func (r *type1Reader) SymlinkPath(filepath string) string {
 }
 
 func (r *type1Reader) SymlinkPathRecursive(filepath string) string {
+	filepath, err := r.cleanPath(filepath)
+	if err != nil {
+		return filepath
+	}
 	cmd := exec.Command("bsdtar", "-f", r.path, "-tv", filepath)
 	wrt, err := runCommand(cmd)
 	if err != nil {
@@ -306,8 +327,10 @@ func (r *type1Reader) SymlinkPathRecursive(filepath string) string {
 }
 
 func (r *type1Reader) Contains(filepath string) bool {
-	filepath = strings.TrimPrefix(filepath, "/")
-	filepath = path.Clean(filepath)
+	filepath, err := r.cleanPath(filepath)
+	if err != nil {
+		return false
+	}
 	dir := path.Dir(filepath)
 	name := path.Base(filepath)
 	if dir == "" {
@@ -316,21 +339,29 @@ func (r *type1Reader) Contains(filepath string) bool {
 	return sort.SearchStrings(r.structure[dir], name) != len(r.structure[dir])
 }
 func (r *type1Reader) ListFiles(filepath string) []string {
-	filepath = strings.TrimPrefix(filepath, "/")
-	filepath = path.Clean(filepath)
+	filepath, err := r.cleanPath(filepath)
+	if err != nil {
+		return nil
+	}
 	if filepath == "" {
 		return r.structure["/"]
 	}
-	return r.structure[filepath]
+	if r.IsDir(filepath) {
+		return r.structure[filepath]
+	}
+	return nil
 }
 
 func (r *type1Reader) ExtractTo(filepath, destination string, resolveSymlinks bool) error {
-	err := os.MkdirAll(destination, os.ModePerm)
+	filepath, err := r.cleanPath(filepath)
+	if err != nil {
+		return err
+	}
+	err = os.MkdirAll(destination, os.ModePerm)
 	if err != nil {
 		return err
 	}
 	name := path.Base(filepath)
-	filepath = strings.TrimPrefix(filepath, "/")
 	destination = strings.TrimSuffix(destination, "/")
 	tmpDir := destination + "/" + ".temp"
 	err = os.Mkdir(tmpDir, os.ModePerm)

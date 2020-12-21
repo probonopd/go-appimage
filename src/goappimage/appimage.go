@@ -18,8 +18,6 @@ import (
 /*
 
 TODO List:
-* Provide a way to get the desktop file, or at least an ini.File representation of it.
-* Provide a way to get thumbnail.
 * Check if there IS an update
 * Download said update
 
@@ -27,13 +25,14 @@ TODO List:
 
 // AppImage handles AppImage files.
 type AppImage struct {
-	reader            archiveReader
-	Desktop           *ini.File
-	path              string
-	updateInformation string
-	Name              string
-	offset            int64
-	imageType         int //The AppImages main .desktop file as an ini.File. Only available on type 2 AppImages right now.
+	reader archiveReader
+	//Desktop is the AppImage's main .desktop file parsed as an ini.File.
+	Desktop *ini.File
+	path    string
+	// updateInformation string TODO: add update stuff
+	Name      string
+	offset    int64
+	imageType int
 }
 
 const execLocationKey = helpers.ExecLocationKey
@@ -129,7 +128,6 @@ func (ai AppImage) determineImageType() int {
 //ExtractFile extracts a file from from filepath (which may contain * wildcards) in an AppImage to the destinationdirpath.
 //
 //If resolveSymlinks is true, if the filepath specified is a symlink, the actual file is extracted in it's place.
-//On type 2 AppImages, this behavior is recursive if extracting a folder.
 //resolveSymlinks will have no effect on absolute symlinks (symlinks that start at root).
 func (ai AppImage) ExtractFile(filepath string, destinationdirpath string, resolveSymlinks bool) error {
 	if ai.reader != nil {
@@ -145,11 +143,12 @@ func (ai AppImage) ExtractFile(filepath string, destinationdirpath string, resol
 
 //ExtractFileReader tries to get an io.ReadCloser for the file at filepath.
 //Returns an error if the path is pointing to a folder. If the path is pointing to a symlink,
-// //it will try to return the file being pointed to, but only if it's within the AppImage.
+//it will try to return the file being pointed to, but only if it's within the AppImage.
 func (ai AppImage) ExtractFileReader(filepath string) (io.ReadCloser, error) {
 	if ai.reader != nil {
 		return ai.reader.FileReader(filepath)
 	}
+	//TODO: possible type2 command fallback, but unsquashfs can't print to Stdout from what I've seen.
 	return nil, errors.New("Unable to get reader for " + filepath)
 }
 
@@ -168,15 +167,16 @@ func runCommand(cmd *exec.Cmd) (bytes.Buffer, error) {
 	return out, err
 }
 
+// TODO: implement update functionality
 // ReadUpdateInformation reads updateinformation from an AppImage
-func (ai AppImage) readUpdateInformation() (string, error) {
-	aibytes, err := helpers.GetSectionData(ai.path, ".upd_info")
-	if err != nil {
-		return "", err
-	}
-	ui := strings.TrimSpace(string(bytes.Trim(aibytes, "\x00")))
-	return ui, nil
-}
+// func (ai AppImage) readUpdateInformation() (string, error) {
+// 	aibytes, err := helpers.GetSectionData(ai.path, ".upd_info")
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	ui := strings.TrimSpace(string(bytes.Trim(aibytes, "\x00")))
+// 	return ui, nil
+// }
 
 //ModTime is the time the AppImage was edited/created. If the AppImage is type 2,
 //it will try to get that information from the squashfs, if not, it returns the file's ModTime.
