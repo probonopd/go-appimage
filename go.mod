@@ -17,7 +17,7 @@ require (
 	github.com/grandcat/zeroconf v1.0.0
 	github.com/h2non/go-is-svg v0.0.0-20160927212452-35e8c4b0612c
 	github.com/hashicorp/go-version v1.2.1
-	github.com/otiai10/copy v1.3.0
+	github.com/otiai10/copy v1.1.1
 	github.com/probonopd/go-zsyncmake v0.0.0-20181008012426-5db478ac2be7
 	github.com/prometheus/procfs v0.2.0
 	github.com/rjeczalik/notify v0.9.2
