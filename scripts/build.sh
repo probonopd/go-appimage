@@ -35,7 +35,7 @@ fi
 # Get pinned version of Go directly from upstream
 if [ "aarch64" == "$TRAVIS_ARCH" ] ; then export ARCH=arm64 ; fi
 if [ "amd64" == "$TRAVIS_ARCH" ] ; then export ARCH=amd64 ; fi
-wget -c -nv https://dl.google.com/go/go1.13.15.linux-$ARCH.tar.gz
+wget -c -nv https://dl.google.com/go/go1.15.6.linux-$ARCH.tar.gz
 sudo tar -C /usr/local -xzf go*.tar.gz
 export PATH=/usr/local/go/bin:$PATH
 
