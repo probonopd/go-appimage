@@ -4,12 +4,10 @@ import (
 	"bufio"
 	"image"
 	"image/png"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/adrg/xdg"
@@ -18,7 +16,6 @@ import (
 	pngembed "github.com/sabhiram/png-embed" // For embedding metadata into PNG
 	. "github.com/srwiley/oksvg"             // https://github.com/niemeyer/gopkg/issues/72
 	. "github.com/srwiley/rasterx"
-	"gopkg.in/ini.v1"
 )
 
 /* The thumbnail cache directory is prefixed with $XDG_CACHE_DIR/ and the leading dot removed
@@ -28,7 +25,7 @@ var ThumbnailsDirNormal = xdg.CacheHome + "/thumbnails/normal/"
 
 func (ai AppImage) extractDirIconAsThumbnail() {
 	// log.Println("thumbnail: extract DirIcon as thumbnail")
-	if ai.imagetype <= 0 {
+	if ai.Type() <= 0 {
 		return
 	}
 
@@ -50,115 +47,41 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	// }
 
 	//this will try to extract the thumbnail, or goes back to command based extraction if it fails.
-	if ai.reader != nil {
-		thumbnail := ai.reader.GetFileAtPath(".DirIcon")
-		if thumbnail == nil {
-			goto fallback
-		}
-		errs := thumbnail.ExtractSymlink(thumbnailcachedir)
-		if len(errs) > 0 {
-			goto fallback
-		}
-		err := os.Rename(thumbnailcachedir+"/"+thumbnail.Name(), thumbnailcachedir+"/.DirIcon")
-		if err != nil {
-			goto fallback
-		}
-		thumbnail.Close()
-		return
-	}
-fallback:
-	err := ai.ExtractFile(".DirIcon", thumbnailcachedir)
-	if err != nil {
-		// Too verbose
-		// sendErrorDesktopNotification(ai.niceName+" may be defective", "Could not read .DirIcon")
-	}
-	// What we have just extracted may well have been a symlink
-	// hence we try to resolve it
-	fileInfo, err := ioutil.ReadDir(thumbnailcachedir)
-	for _, file := range fileInfo {
-		// log.Println(file.Name())
-		originFile, err := os.Readlink(thumbnailcachedir + "/" + file.Name())
-		// If we could resolve the symlink, then extract its parent
-		// and throw the symlink away
-		if err == nil {
-			if ai.imagetype == 1 {
-				log.Println("TODO: Not yet implemented for type-1: We have a symlink, extract the original file")
-			} else if ai.imagetype == 2 {
-				cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, originFile)
-				_, err = runCommand(cmd)
-				if err != nil {
-					helpers.LogError("thumbnail", err)
-				}
-			}
-			err = os.RemoveAll(thumbnailcachedir + "/.DirIcon")                              // Remove the symlink
-			err = os.Rename(thumbnailcachedir+"/"+originFile, thumbnailcachedir+"/.DirIcon") // Put the real file there instead
-			helpers.LogError("thumbnail", err)
-			// TODO: Rinse and repeat: May we still have a symlink at this point?
-		}
-	}
+	err := ai.ExtractFile(".DirIcon", thumbnailcachedir, true)
+	// if err != nil {
+	// Too verbose
+	// sendErrorDesktopNotification(ai.niceName+" may be defective", "Could not read .DirIcon")
+	// }
 
 	// Workaround for electron-builder not generating .DirIcon
 	// We may still not have an icon. For example, AppImages made by electron-builder
 	// are lacking .DirIcon files as of Fall 2019; here we have to parse the desktop
 	// file, and try to extract the value of Icon= with the suffix ".png" from the AppImage
-	if helpers.Exists(thumbnailcachedir+"/.DirIcon") == false && ai.imagetype == 2 {
+	if helpers.Exists(thumbnailcachedir+"/.DirIcon") == false {
 		if *verbosePtr == true {
 			log.Println(".DirIcon extraction failed. Is it missing? Trying to figure out alternative")
 		}
-		cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", "/tmp", ai.path, "*.desktop")
-		_, err = runCommand(cmd)
-		if err != nil {
-			helpers.LogError("thumbnail", err)
-		}
-		files, _ := ioutil.ReadDir(thumbnailcachedir)
-		for _, file := range files {
-			if filepath.Ext(thumbnailcachedir+file.Name()) == ".desktop" {
-				log.Println("Determine iconname from desktop file:", "/tmp"+"/"+file.Name())
-				cfg, err := ini.LoadSources(ini.LoadOptions{IgnoreInlineComment: true}, // Do not cripple lines hat contain ";"
-					thumbnailcachedir+"/"+file.Name())
-				if err == nil {
-					section, _ := cfg.GetSection("Desktop Entry")
-					iconkey, _ := section.GetKey("Icon")
-					iconvalue := iconkey.Value() + ".png" // We are just assuming ".png" here
-					log.Println("iconname from desktop file:", iconvalue)
-					helpers.LogError("thumbnail: thumbnailcachedir", err)
-					cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, iconvalue)
-					_, err = runCommand(cmd)
-					if err != nil {
-						helpers.LogError("thumbnail", err)
-					}
-					err = os.Rename(thumbnailcachedir+"/"+iconvalue, thumbnailcachedir+"/.DirIcon")
-					helpers.LogError("thumbnail", err)
-					err = os.RemoveAll(thumbnailcachedir + "/" + file.Name())
-					helpers.LogError("thumbnail", err)
-				}
-			}
+		var iconName string
+		if ai.Desktop != nil {
+			iconTmp, _ := ai.Desktop.Section("Desktop Entry").GetKey("Icon")
+			iconName = iconTmp.String()
 		}
 
-		// Workaround for electron-builder not generating .DirIcon
-		// Also for the fallback:
-		// What we have just extracted may well have been a symlink (in the case of electron-builder, it is)
-		// hence we try to resolve it
-		fileInfo, err = ioutil.ReadDir(thumbnailcachedir)
-		for _, file := range fileInfo {
-			log.Println(file.Name())
-			originFile, err := os.Readlink(thumbnailcachedir + "/" + file.Name())
-			// If we could resolve the symlink, then extract its parent
-			// and throw the symlink away
+		if iconName != "" {
+			iconName += ".png"
+			os.Remove(thumbnailcachedir + "/.DirIcon")
+			fil, err := os.Create(thumbnailcachedir + "/.DirIcon")
 			if err == nil {
-				if ai.imagetype == 1 {
-					log.Println("TODO: Not yet implemented for type-1: We have a symlink, extract the original file")
-				} else if ai.imagetype == 2 {
-					cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.FormatInt(ai.offset, 10), "-d", thumbnailcachedir, ai.path, originFile)
-					_, err = runCommand(cmd)
+				rdr, err := ai.ExtractFileReader("iconName")
+				if err == nil {
+					_, err = io.Copy(fil, rdr)
 					if err != nil {
-						helpers.LogError("thumbnail", err)
+						os.Remove(thumbnailcachedir + "/.DirIcon")
 					}
+					rdr.Close()
+				} else {
+					os.Remove(thumbnailcachedir + "/.DirIcon")
 				}
-				err = os.RemoveAll(thumbnailcachedir + "/.DirIcon")                              // Remove the symlink
-				err = os.Rename(thumbnailcachedir+"/"+originFile, thumbnailcachedir+"/.DirIcon") // Put the real file there instead
-				helpers.LogError("thumbnail", err)
-				// TODO: Rinse and repeat: May we still have a symlink at this point?
 			}
 		}
 	}
@@ -178,7 +101,7 @@ fallback:
 		log.Printf("Error: %s\n", err)
 	}
 	if issvg.Is(buf) {
-		log.Println("thumbnail: .DirIcon in", ai.path, "is an SVG, this is discouraged. Costly converting it now")
+		log.Println("thumbnail: .DirIcon in", ai.Path, "is an SVG, this is discouraged. Costly converting it now")
 		err = convertToPng(thumbnailcachedir + "/.DirIcon")
 		helpers.LogError("thumbnail", err)
 	}
@@ -217,11 +140,11 @@ fallback:
 
 	if *verbosePtr == true {
 		if _, ok := content["Thumb::URI"]; ok {
-			log.Println("thumbnail: FIXME: Remove pre-existing Thumb::URI in", ai.path)
+			log.Println("thumbnail: FIXME: Remove pre-existing Thumb::URI in", ai.Path)
 			// log.Println(content["Thumb::URI"])
 		}
 		if _, ok := content["Thumb::MTime"]; ok {
-			log.Println("thumbnail: FIXME: Remove pre-existing Thumb::MTime", content["Thumb::MTime"], "in", ai.path) // FIXME; pngembed does not seem to overwrite pre-existing values, is it a bug there?
+			log.Println("thumbnail: FIXME: Remove pre-existing Thumb::MTime", content["Thumb::MTime"], "in", ai.Path) // FIXME; pngembed does not seem to overwrite pre-existing values, is it a bug there?
 			// log.Println(content["Thumb::MTime"])
 		}
 	}
@@ -236,7 +159,7 @@ fallback:
 	than the thumbnail stored mtime, we won't recognize this modification.
 	If for some reason the thumbnail doesn't have the 'Thumb::MTime' key (although it's required)
 	it should be recreated in any case. */
-	if appImageInfo, err := os.Stat(ai.path); err == nil {
+	if appImageInfo, err := os.Stat(ai.Path); err == nil {
 		_, err := pngembed.EmbedFile(thumbnailcachedir+"/.DirIcon", "Thumb::MTime", appImageInfo.ModTime())
 		helpers.LogError("thumbnail", err)
 	}
@@ -266,7 +189,7 @@ fallback:
 	/* Also set mtime of the thumbnail file to the mtime of the AppImage. Quite possibly this is not needed.
 	TODO: Perhaps we can remove it.
 	See https://specifications.freedesktop.org/thumbnail-spec/thumbnail-spec-latest.html#MODIFICATIONS  */
-	if appImageInfo, err := os.Stat(ai.path); err == nil {
+	if appImageInfo, err := os.Stat(ai.Path); err == nil {
 		err := os.Chtimes(ai.thumbnailfilepath, time.Now().Local(), appImageInfo.ModTime())
 		helpers.LogError("thumbnail", err)
 	}

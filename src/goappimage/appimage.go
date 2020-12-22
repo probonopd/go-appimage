@@ -28,7 +28,7 @@ type AppImage struct {
 	reader archiveReader
 	//Desktop is the AppImage's main .desktop file parsed as an ini.File.
 	Desktop *ini.File
-	path    string
+	Path    string
 	// updateInformation string TODO: add update stuff
 	Name      string
 	offset    int64
@@ -43,7 +43,7 @@ const execLocationKey = helpers.ExecLocationKey
 // and for this the functions of an AppImage are needed.
 // Non-existing and invalid AppImages will have type -1.
 func NewAppImage(path string) (*AppImage, error) {
-	ai := AppImage{path: path, imageType: -1}
+	ai := AppImage{Path: path, imageType: -1}
 	// If we got a temp file, exit immediately
 	// E.g., ignore typical Internet browser temporary files used during download
 	if strings.HasSuffix(path, ".temp") ||
@@ -60,7 +60,7 @@ func NewAppImage(path string) (*AppImage, error) {
 		return nil, errors.New("Given path is NOT an AppImage")
 	}
 	if ai.imageType > 1 {
-		ai.offset = helpers.CalculateElfSize(ai.path)
+		ai.offset = helpers.CalculateElfSize(ai.Path)
 	}
 	err := ai.populateReader()
 	if err == nil {
@@ -80,7 +80,7 @@ func NewAppImage(path string) (*AppImage, error) {
 }
 
 func (ai AppImage) calculateNiceName() string {
-	niceName := filepath.Base(ai.path)
+	niceName := filepath.Base(ai.Path)
 	niceName = strings.Replace(niceName, ".AppImage", "", -1)
 	niceName = strings.Replace(niceName, ".appimage", "", -1)
 	niceName = strings.Replace(niceName, "-x86_64", "", -1)
@@ -95,12 +95,12 @@ func (ai AppImage) calculateNiceName() string {
 // Return image type, or -1 if it is not an AppImage
 func (ai AppImage) determineImageType() int {
 	// log.Println("appimage: ", ai.path)
-	f, err := os.Open(ai.path)
+	f, err := os.Open(ai.Path)
 	// printError("appimage", err)
 	if err != nil {
 		return -1 // If we were not able to open the file, then we report that it is not an AppImage
 	}
-	info, err := os.Stat(ai.path)
+	info, err := os.Stat(ai.Path)
 	if err != nil {
 		return -1
 	}
@@ -125,6 +125,11 @@ func (ai AppImage) determineImageType() int {
 	return -1
 }
 
+//Type is the type of the AppImage. Should be either 1 or 2.
+func (ai AppImage) Type() int {
+	return ai.imageType
+}
+
 //ExtractFile extracts a file from from filepath (which may contain * wildcards) in an AppImage to the destinationdirpath.
 //
 //If resolveSymlinks is true, if the filepath specified is a symlink, the actual file is extracted in it's place.
@@ -134,7 +139,7 @@ func (ai AppImage) ExtractFile(filepath string, destinationdirpath string, resol
 		return ai.reader.ExtractTo(filepath, destinationdirpath, resolveSymlinks)
 	}
 	if ai.imageType == 2 {
-		cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.Itoa(int(ai.offset)), "-d", destinationdirpath, ai.path, filepath)
+		cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.Itoa(int(ai.offset)), "-d", destinationdirpath, ai.Path, filepath)
 		_, err := runCommand(cmd)
 		return err
 	}
@@ -185,7 +190,7 @@ func (ai AppImage) ModTime() time.Time {
 		if ai.reader != nil {
 			return ai.reader.(*type2Reader).rdr.ModTime()
 		}
-		result, err := exec.Command("unsquashfs", "-q", "-fstime", "-o", strconv.FormatInt(ai.offset, 10), ai.path).Output()
+		result, err := exec.Command("unsquashfs", "-q", "-fstime", "-o", strconv.FormatInt(ai.offset, 10), ai.Path).Output()
 		resstr := strings.TrimSpace(string(bytes.TrimSpace(result)))
 		if err != nil {
 			goto fallback
@@ -195,7 +200,7 @@ func (ai AppImage) ModTime() time.Time {
 		}
 	}
 fallback:
-	fil, err := os.Open(ai.path)
+	fil, err := os.Open(ai.Path)
 	if err != nil {
 		return time.Unix(0, 0)
 	}

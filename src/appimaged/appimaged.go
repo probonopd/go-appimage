@@ -87,8 +87,7 @@ var candidateDirectories = []string{
 }
 
 func main() {
-
-	thisai.path = helpers.Args0()
+	thisai.Path = helpers.Args0()
 
 	// As quickly as possible go there if we are invoked from the command line with a command
 	takeCareOfCommandlineCommands()
@@ -288,13 +287,16 @@ func moveDesktopFiles() {
 	var sem = make(chan int, 1024)
 
 	for _, path := range ToBeIntegratedOrUnintegrated {
-		ai := NewAppImage(path)
+		ai, err := NewAppImage(path)
+		if err != nil {
+			continue
+		}
 		sem <- 1
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			ai.IntegrateOrUnintegrate()
-			ToBeIntegratedOrUnintegrated = RemoveFromSlice(ToBeIntegratedOrUnintegrated, ai.path)
+			ToBeIntegratedOrUnintegrated = RemoveFromSlice(ToBeIntegratedOrUnintegrated, ai.Path)
 		}()
 		<-sem
 	}
@@ -451,12 +453,11 @@ func watchDirectoriesReally(watchedDirectories []string) {
 			} else if info.IsDir() == true {
 				// go inotifyWatch(v + "/" + info.Name())
 			} else if info.IsDir() == false {
-				ai := NewAppImage(v + "/" + info.Name())
-				if ai.imagetype > 0 {
-					// We must not process too many in parallel here either, so instead of starting a routine
-					// here we just put it into ToBeIntegratedOrUnintegrated and let the main timer function take care of it
-					ToBeIntegratedOrUnintegrated = helpers.AppendIfMissing(ToBeIntegratedOrUnintegrated, ai.path)
+				ai, err := NewAppImage(v + "/" + info.Name())
+				if err != nil {
+					continue
 				}
+				ToBeIntegratedOrUnintegrated = helpers.AppendIfMissing(ToBeIntegratedOrUnintegrated, ai.Path)
 			}
 		}
 		helpers.LogError("main: watchDirectoriesReally", err)

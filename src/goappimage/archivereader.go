@@ -40,21 +40,22 @@ type archiveReader interface {
 
 func (ai *AppImage) populateReader() (err error) {
 	if ai.imageType == 1 {
-		ai.reader, err = newType1Reader(ai.path)
+		ai.reader, err = newType1Reader(ai.Path)
 		return err
 	} else if ai.imageType == 2 {
 		ai.reader, err = newType2Reader(ai)
 		return err
 	}
-	return errors.New("HIII")
+	return errors.New("Invalid AppImage type")
 }
 
+//TODO: Implement command based fallback here.
 type type2Reader struct {
 	rdr *squashfs.Reader
 }
 
 func newType2Reader(ai *AppImage) (*type2Reader, error) {
-	aiFil, err := os.Open(ai.path)
+	aiFil, err := os.Open(ai.Path)
 	if err != nil {
 		return nil, err
 	}
