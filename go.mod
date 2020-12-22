@@ -17,7 +17,7 @@ require (
 	github.com/grandcat/zeroconf v1.0.0
 	github.com/h2non/go-is-svg v0.0.0-20160927212452-35e8c4b0612c
 	github.com/hashicorp/go-version v1.2.1
-	github.com/otiai10/copy v1.1.1
+	github.com/otiai10/copy v1.3.0
 	github.com/probonopd/go-zsyncmake v0.0.0-20181008012426-5db478ac2be7
 	github.com/prometheus/procfs v0.2.0
 	github.com/rjeczalik/notify v0.9.2
@@ -29,9 +29,9 @@ require (
 	github.com/srwiley/rasterx v0.0.0-20200120212402-85cb7272f5e9
 	github.com/urfave/cli/v2 v2.3.0
 	go.lsp.dev/uri v0.3.0
-	golang.org/x/crypto v0.0.0-20201217014255-9d1352758620
+	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
 	golang.org/x/image v0.0.0-20201208152932-35266b937fa6 // indirect
-	golang.org/x/sys v0.0.0-20201214210602-f9fddec55a1e
+	golang.org/x/sys v0.0.0-20201221093633-bc327ba9c2f0
 	gopkg.in/ini.v1 v1.62.0
 	gopkg.in/src-d/go-git.v4 v4.13.1
 )
