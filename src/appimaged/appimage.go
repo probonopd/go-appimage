@@ -1,11 +1,9 @@
 package main
 
 import (
-	"C"
 	"bytes"
 	"crypto/md5"
 	"encoding/hex"
-	"io"
 	"io/ioutil"
 	"net/url"
 
@@ -231,13 +229,6 @@ func (ai AppImage) IntegrateOrUnintegrate() {
 	} else {
 		ai._integrate()
 	}
-}
-
-func ioReader(file string) io.ReaderAt {
-	r, err := os.Open(file)
-	defer r.Close()
-	helpers.LogError("appimage: elf:", err)
-	return r
 }
 
 // ReadUpdateInformation reads updateinformation from an AppImage

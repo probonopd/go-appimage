@@ -50,7 +50,7 @@ var noZeroconfPtr = flag.Bool("nz", false, "Do not announce this service on the 
 
 var ToBeIntegratedOrUnintegrated []string
 
-var thisai AppImage // A reference to myself
+var thisai *AppImage // A reference to myself
 
 var MQTTclient mqtt.Client
 
@@ -87,7 +87,7 @@ var candidateDirectories = []string{
 }
 
 func main() {
-	thisai.Path = helpers.Args0()
+	thisai, _ = NewAppImage(helpers.Args0())
 
 	// As quickly as possible go there if we are invoked from the command line with a command
 	takeCareOfCommandlineCommands()
