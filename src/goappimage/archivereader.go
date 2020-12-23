@@ -38,12 +38,12 @@ type archiveReader interface {
 	ExtractTo(path, destination string, resolveSymlinks bool) error
 }
 
-func (ai *AppImage) populateReader() (err error) {
+func (ai *AppImage) populateReader(allowFallback, forceFallback bool) (err error) {
 	if ai.imageType == 1 {
 		ai.reader, err = newType1Reader(ai.Path)
 		return err
 	} else if ai.imageType == 2 {
-		ai.reader, err = newType2Reader(ai)
+		ai.reader, err = newType2Reader(ai, allowFallback, forceFallback)
 		return err
 	}
 	return errors.New("Invalid AppImage type")
@@ -51,10 +51,17 @@ func (ai *AppImage) populateReader() (err error) {
 
 //TODO: Implement command based fallback here.
 type type2Reader struct {
-	rdr *squashfs.Reader
+	rdr             *squashfs.Reader
+	fallbackAllowed bool
+	forceFallback   bool
 }
 
-func newType2Reader(ai *AppImage) (*type2Reader, error) {
+func newType2Reader(ai *AppImage, fallbackAllowed, forceFallback bool) (*type2Reader, error) {
+	if forceFallback {
+		return &type2Reader{
+			forceFallback: true,
+		}, nil
+	}
 	aiFil, err := os.Open(ai.Path)
 	if err != nil {
 		return nil, err
@@ -62,15 +69,29 @@ func newType2Reader(ai *AppImage) (*type2Reader, error) {
 	stat, _ := aiFil.Stat()
 	aiRdr := io.NewSectionReader(aiFil, ai.offset, stat.Size()-ai.offset)
 	squashRdr, err := squashfs.NewSquashfsReader(aiRdr)
-	if err != nil {
+	if err == squashfs.ErrOptions {
+		//Force fallbackAllowed if there might be incompatible compressor options
+		return &type2Reader{
+			rdr:             squashRdr,
+			fallbackAllowed: true,
+		}, nil
+	} else if err != nil {
+		//If there are other errors, we can always use unsquashfs
+		if fallbackAllowed {
+			return &type2Reader{
+				forceFallback: true,
+			}, nil
+		}
 		return nil, err
 	}
 	return &type2Reader{
-		rdr: squashRdr,
+		rdr:             squashRdr,
+		fallbackAllowed: fallbackAllowed,
 	}, nil
 }
 
 func (r *type2Reader) FileReader(path string) (io.ReadCloser, error) {
+	//TODO: command fallback
 	fil := r.rdr.GetFileAtPath(path)
 	if fil == nil {
 		return nil, errors.New("Can't find file at: " + path)
@@ -88,6 +109,7 @@ func (r *type2Reader) FileReader(path string) (io.ReadCloser, error) {
 }
 
 func (r *type2Reader) IsDir(path string) bool {
+	//TODO: command fallback
 	fil := r.rdr.GetFileAtPath(path)
 	if fil == nil {
 		return false
@@ -102,6 +124,7 @@ func (r *type2Reader) IsDir(path string) bool {
 }
 
 func (r *type2Reader) SymlinkPath(path string) string {
+	//TODO: command fallback
 	fil := r.rdr.GetFileAtPath(path)
 	if fil == nil {
 		return path
@@ -113,6 +136,7 @@ func (r *type2Reader) SymlinkPath(path string) string {
 }
 
 func (r *type2Reader) SymlinkPathRecursive(path string) string {
+	//TODO: command fallback
 	fil := r.rdr.GetFileAtPath(path)
 	if fil == nil {
 		return path
@@ -127,11 +151,13 @@ func (r *type2Reader) SymlinkPathRecursive(path string) string {
 }
 
 func (r *type2Reader) Contains(path string) bool {
+	//TODO: command fallback
 	fil := r.rdr.GetFileAtPath(path)
 	return fil != nil
 }
 
 func (r *type2Reader) ListFiles(path string) []string {
+	//TODO: command fallback
 	fil := r.rdr.GetFileAtPath(path)
 	if fil == nil {
 		return nil
@@ -157,6 +183,7 @@ func (r *type2Reader) ListFiles(path string) []string {
 }
 
 func (r *type2Reader) ExtractTo(path, destination string, resolveSymlinks bool) error {
+	//TODO: command fallback
 	fil := r.rdr.GetFileAtPath(path)
 	if fil == nil {
 		return nil
@@ -217,8 +244,9 @@ func newType1Reader(filepath string) (*type1Reader, error) {
 	return &rdr, nil
 }
 
-//makes sure taht the path is nice and only points to ONE file, which is needed if there are wildcards.
-//If you were to search for *.desktop, you will get both blender.desktop & /usr/bin/blender.desktop.
+//makes sure that the path is nice and only points to ONE file, which is needed if there are wildcards.
+//If you were to search for *.desktop, you will get both blender.desktop AND /usr/bin/blender.desktop.
+//This could cause issues, especially for FileReader
 //
 //Probably a bit spagetti and can be cleaned up. Maybe add a rawPaths variable to type1reader to make
 //it easier to find a match with wildcards.
@@ -263,6 +291,8 @@ func (r *type1Reader) cleanPath(filepath string) (string, error) {
 }
 
 func (r *type1Reader) FileReader(filepath string) (io.ReadCloser, error) {
+	//TODO: check size of file and if it's large, extract to a temp directory, read that, and delete it on close.
+	//This would make sure a huge file isn't completely held in memory via the byte buffer.
 	filepath, err := r.cleanPath(filepath)
 	if err != nil {
 		return nil, err

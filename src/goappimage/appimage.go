@@ -38,10 +38,8 @@ type AppImage struct {
 const execLocationKey = helpers.ExecLocationKey
 
 // NewAppImage creates an AppImage object from the location defined by path.
-// The AppImage object will also be created if path does not exist,
-// because the AppImage that used to be there may need to be removed
-// and for this the functions of an AppImage are needed.
-// Non-existing and invalid AppImages will have type -1.
+// Returns an error if the given path is not an appimage, or is a temporary file.
+// In all instances, will still return the AppImage.
 func NewAppImage(path string) (*AppImage, error) {
 	ai := AppImage{Path: path, imageType: -1}
 	// If we got a temp file, exit immediately
@@ -52,25 +50,26 @@ func NewAppImage(path string) (*AppImage, error) {
 		strings.HasSuffix(path, ".partial") ||
 		strings.HasSuffix(path, ".zs-old") ||
 		strings.HasSuffix(path, ".crdownload") {
-		return nil, errors.New("Given path is a temporary file")
+		return &ai, errors.New("Given path is a temporary file")
 	}
 	ai.imageType = ai.determineImageType()
 	// Don't waste more time if the file is not actually an AppImage
 	if ai.imageType < 0 {
-		return nil, errors.New("Given path is NOT an AppImage")
+		return &ai, errors.New("Given path is NOT an AppImage")
 	}
 	if ai.imageType > 1 {
 		ai.offset = helpers.CalculateElfSize(ai.Path)
 	}
-	err := ai.populateReader()
+	err := ai.populateReader(true, false)
+	if err != nil {
+		return &ai, err
+	}
+	//try to load up the desktop file for some information.
+	desktopFil, err := ai.reader.FileReader("*.desktop")
 	if err == nil {
-		//try to load up the desktop file for some information.
-		desktopFil, err := ai.reader.FileReader("*.desktop")
+		ai.Desktop, err = ini.Load(desktopFil)
 		if err == nil {
-			ai.Desktop, err = ini.Load(desktopFil)
-			if err == nil {
-				ai.Name = ai.Desktop.Section("Desktop Entry").Key("Name").Value()
-			}
+			ai.Name = ai.Desktop.Section("Desktop Entry").Key("Name").Value()
 		}
 	}
 	if ai.Name == "" {
