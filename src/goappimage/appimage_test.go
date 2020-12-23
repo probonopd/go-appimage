@@ -33,8 +33,29 @@ func TestAppImageType2(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	getCleanSquashfsFromAppImage(ai, testImg+".sfs", t)
 	fmt.Println("Name", ai.Name)
 	t.Fatal("No Problem")
+}
+
+//this is so I can easily use unsquashfs & gui tools to double check my work
+func getCleanSquashfsFromAppImage(ai *AppImage, name string, t *testing.T) {
+	fil, err := os.Create(name)
+	if os.IsExist(err) {
+		return
+	} else if err != nil {
+		t.Fatal(err)
+	}
+	aiFil, err := os.Open(ai.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stat, _ := aiFil.Stat()
+	rdr := io.NewSectionReader(aiFil, ai.offset, stat.Size()-ai.offset)
+	_, err = io.Copy(fil, rdr)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func getAppImage(imageType int, t *testing.T) string {

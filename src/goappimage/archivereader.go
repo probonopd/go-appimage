@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/CalebQ42/squashfs"
@@ -52,15 +53,23 @@ func (ai *AppImage) populateReader(allowFallback, forceFallback bool) (err error
 //TODO: Implement command based fallback here.
 type type2Reader struct {
 	rdr             *squashfs.Reader
+	structure       map[string][]string
+	path            string
+	folders         []string
 	fallbackAllowed bool
 	forceFallback   bool
 }
 
 func newType2Reader(ai *AppImage, fallbackAllowed, forceFallback bool) (*type2Reader, error) {
 	if forceFallback {
-		return &type2Reader{
+		out := &type2Reader{
 			forceFallback: true,
-		}, nil
+		}
+		err := out.setupCommandFallback(ai)
+		if err != nil {
+			return nil, err
+		}
+		return out, nil
 	}
 	aiFil, err := os.Open(ai.Path)
 	if err != nil {
@@ -69,18 +78,17 @@ func newType2Reader(ai *AppImage, fallbackAllowed, forceFallback bool) (*type2Re
 	stat, _ := aiFil.Stat()
 	aiRdr := io.NewSectionReader(aiFil, ai.offset, stat.Size()-ai.offset)
 	squashRdr, err := squashfs.NewSquashfsReader(aiRdr)
-	if err == squashfs.ErrOptions {
-		//Force fallbackAllowed if there might be incompatible compressor options
-		return &type2Reader{
-			rdr:             squashRdr,
-			fallbackAllowed: true,
-		}, nil
-	} else if err != nil {
-		//If there are other errors, we can always use unsquashfs
+	if err != nil {
 		if fallbackAllowed {
-			return &type2Reader{
+			//If there are errors, we force the use of unsquashfs.
+			out := &type2Reader{
 				forceFallback: true,
-			}, nil
+			}
+			err := out.setupCommandFallback(ai)
+			if err != nil {
+				return nil, err
+			}
+			return out, nil
 		}
 		return nil, err
 	}
@@ -88,6 +96,40 @@ func newType2Reader(ai *AppImage, fallbackAllowed, forceFallback bool) (*type2Re
 		rdr:             squashRdr,
 		fallbackAllowed: fallbackAllowed,
 	}, nil
+}
+
+func (r *type2Reader) setupCommandFallback(ai *AppImage) error {
+	r.structure = make(map[string][]string)
+	r.folders = make([]string, 0)
+	cmd := exec.Command("unsquashfs", "-o", strconv.FormatInt(ai.offset, 10), "-l", ai.Path)
+	out, err := runCommand(cmd)
+	if err != nil {
+		return err
+	}
+	allFiles := strings.Split(string(out.Bytes()), "\n")
+	for _, filepath := range allFiles {
+		if filepath == "" {
+			continue
+		}
+		filepath = strings.TrimPrefix(filepath, "squashfs-root/")
+		dir := path.Dir(filepath)
+		name := path.Base(filepath)
+		if dir == "." {
+			dir = "/"
+		}
+		if r.structure[dir] == nil {
+			if dir != "/" {
+				r.folders = append(r.folders, dir)
+			}
+			r.structure[dir] = make([]string, 0)
+		}
+		r.structure[dir] = append(r.structure[dir], name)
+	}
+	sort.Strings(r.folders)
+	for dir := range r.structure {
+		sort.Strings(r.structure[dir])
+	}
+	return nil
 }
 
 func (r *type2Reader) FileReader(path string) (io.ReadCloser, error) {
@@ -108,19 +150,25 @@ func (r *type2Reader) FileReader(path string) (io.ReadCloser, error) {
 	return fil, nil
 }
 
-func (r *type2Reader) IsDir(path string) bool {
+func (r *type2Reader) IsDir(filepath string) bool {
 	//TODO: command fallback
-	fil := r.rdr.GetFileAtPath(path)
-	if fil == nil {
-		return false
-	}
-	if fil.IsSymlink() {
-		fil = fil.GetSymlinkFileRecursive()
+	if !r.forceFallback {
+		fil := r.rdr.GetFileAtPath(filepath)
 		if fil == nil {
+			//TODO: make squashfs differenciate between a not found file, and compression extraction issues.
 			return false
 		}
+		if fil.IsSymlink() {
+			fil = fil.GetSymlinkFileRecursive()
+			if fil == nil {
+				return false
+			}
+		}
+		return fil.IsDir()
 	}
-	return fil.IsDir()
+	// commandFallback: TODO: when i can differenciate the above errors
+	filepath = path.Clean(strings.TrimPrefix(filepath, "/"))
+	return filepath == "." || r.structure[filepath] != nil
 }
 
 func (r *type2Reader) SymlinkPath(path string) string {
