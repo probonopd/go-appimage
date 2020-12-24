@@ -88,7 +88,7 @@ var candidateDirectories = []string{
 
 func main() {
 
-	thisai.path = helpers.Args0()
+	thisai.path, _ = exec.LookPath(os.Args[0])
 
 	// As quickly as possible go there if we are invoked from the command line with a command
 	takeCareOfCommandlineCommands()
