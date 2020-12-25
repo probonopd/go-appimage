@@ -56,12 +56,13 @@ type type2Reader struct {
 	structure       map[string][]string
 	path            string
 	folders         []string
+	offset          int
 	fallbackAllowed bool
 	forceFallback   bool
 }
 
 func newType2Reader(ai *AppImage, fallbackAllowed, forceFallback bool) (*type2Reader, error) {
-	if forceFallback {
+	if forceFallback || ai == nil {
 		out := &type2Reader{
 			forceFallback: true,
 		}
@@ -101,6 +102,8 @@ func newType2Reader(ai *AppImage, fallbackAllowed, forceFallback bool) (*type2Re
 func (r *type2Reader) setupCommandFallback(ai *AppImage) error {
 	r.structure = make(map[string][]string)
 	r.folders = make([]string, 0)
+	r.offset = int(ai.offset)
+	r.path = ai.Path
 	cmd := exec.Command("unsquashfs", "-o", strconv.FormatInt(ai.offset, 10), "-l", ai.Path)
 	out, err := runCommand(cmd)
 	if err != nil {
@@ -111,7 +114,10 @@ func (r *type2Reader) setupCommandFallback(ai *AppImage) error {
 		if filepath == "" {
 			continue
 		}
-		filepath = strings.TrimPrefix(filepath, "squashfs-root/")
+		filepath = path.Clean(strings.TrimPrefix(filepath, "squashfs-root/"))
+		if filepath == "." {
+			continue
+		}
 		dir := path.Dir(filepath)
 		name := path.Base(filepath)
 		if dir == "." {
@@ -130,6 +136,52 @@ func (r *type2Reader) setupCommandFallback(ai *AppImage) error {
 		sort.Strings(r.structure[dir])
 	}
 	return nil
+}
+
+//makes sure that the path is nice and only points to ONE file, which is needed if there are wildcards.
+//If you were to search for *.desktop, you will get both blender.desktop AND /usr/bin/blender.desktop.
+//This could cause issues, especially for FileReader
+//
+//Probably a bit spagetti and can be cleaned up. Maybe add a rawPaths variable to type1reader to make
+//it easier to find a match with wildcards.
+func (r *type2Reader) cleanPath(filepath string) (string, error) {
+	filepath = strings.TrimPrefix(filepath, "/")
+	filepath = path.Clean(filepath)
+	if filepath == "." {
+		return "/", nil
+	}
+	filepathDir := path.Dir(filepath)
+	if filepathDir != "." {
+		for _, dir := range r.folders {
+			match, _ := path.Match(filepathDir, dir)
+			if match {
+				filepathDir = dir
+				break
+			}
+		}
+	} else {
+		filepathDir = "/"
+	}
+	if filepathDir == "" {
+		return "", errors.New("File not found in the archive")
+	}
+	filepathName := path.Base(filepath)
+	for _, fil := range r.structure[filepathDir] {
+		match, _ := path.Match(filepathName, fil)
+		if match {
+			filepathName = fil
+			break
+		}
+	}
+	if filepathName == "" {
+		return "", errors.New("File not found in the archive")
+	}
+	if filepathDir == "/" {
+		filepath = filepathName
+	} else {
+		filepath = filepathDir + "/" + filepathName
+	}
+	return filepath, nil
 }
 
 func (r *type2Reader) FileReader(path string) (io.ReadCloser, error) {
@@ -151,7 +203,6 @@ func (r *type2Reader) FileReader(path string) (io.ReadCloser, error) {
 }
 
 func (r *type2Reader) IsDir(filepath string) bool {
-	//TODO: command fallback
 	if !r.forceFallback {
 		fil := r.rdr.GetFileAtPath(filepath)
 		if fil == nil {
@@ -167,35 +218,73 @@ func (r *type2Reader) IsDir(filepath string) bool {
 		return fil.IsDir()
 	}
 	// commandFallback: TODO: when i can differenciate the above errors
-	filepath = path.Clean(strings.TrimPrefix(filepath, "/"))
-	return filepath == "." || r.structure[filepath] != nil
+	filepath, err := r.cleanPath(filepath)
+	if err != nil {
+		return false
+	}
+	return r.structure[filepath] != nil
 }
 
-func (r *type2Reader) SymlinkPath(path string) string {
-	//TODO: command fallback
-	fil := r.rdr.GetFileAtPath(path)
-	if fil == nil {
-		return path
-	}
-	if fil.IsSymlink() {
-		return fil.SymlinkPath()
-	}
-	return path
-}
-
-func (r *type2Reader) SymlinkPathRecursive(path string) string {
-	//TODO: command fallback
-	fil := r.rdr.GetFileAtPath(path)
-	if fil == nil {
-		return path
-	}
-	if fil.IsSymlink() {
-		tmpLoc := r.SymlinkPathRecursive(fil.Path())
-		if tmpLoc != fil.Path() {
-			return tmpLoc
+func (r *type2Reader) SymlinkPath(filepath string) string {
+	if !r.forceFallback {
+		fil := r.rdr.GetFileAtPath(filepath)
+		if fil == nil {
+			return filepath
 		}
+		if fil.IsSymlink() {
+			return fil.SymlinkPath()
+		}
+		return filepath
 	}
-	return path
+	//fallingback to commands.
+	//TODO: add a way fro the above to fallback down here.
+	filepath, err := r.cleanPath(filepath)
+	if err != nil {
+		return filepath
+	}
+	cmd := exec.Command("unsquashfs", "-ll", "-o", strconv.Itoa(r.offset), r.path, filepath)
+	out, err := runCommand(cmd)
+	if err != nil {
+		return filepath
+	}
+	tmpOutput := strings.Split(strings.TrimSuffix(string(out.Bytes()), "\n"), "\n")
+	neededLine := tmpOutput[len(tmpOutput)-1]
+	if strings.Contains(neededLine, "->") {
+		neededLine = neededLine[strings.Index(neededLine, "->")+3:]
+	}
+	return path.Dir(filepath) + "/" + neededLine
+}
+
+func (r *type2Reader) SymlinkPathRecursive(filepath string) string {
+	if !r.forceFallback {
+		fil := r.rdr.GetFileAtPath(filepath)
+		if fil == nil {
+			return filepath
+		}
+		tmp := fil.GetSymlinkFileRecursive()
+		if tmp == nil {
+			return filepath
+		}
+		return tmp.Path()
+	}
+	//Command fallback
+	//TODO: allow command fallback from above
+	filepath, err := r.cleanPath(filepath)
+	if err != nil {
+		return filepath
+	}
+	symlinkedFile := r.SymlinkPath(filepath)
+	if symlinkedFile == filepath {
+		return filepath
+	}
+	if strings.HasPrefix(symlinkedFile, "/") {
+		return filepath //we can't help with absolute symlinks...
+	}
+	tmp := r.SymlinkPathRecursive(path.Dir(filepath) + "/" + symlinkedFile)
+	if tmp != path.Dir(filepath)+"/"+symlinkedFile {
+		return tmp
+	}
+	return filepath
 }
 
 func (r *type2Reader) Contains(path string) bool {
