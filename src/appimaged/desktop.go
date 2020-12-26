@@ -40,15 +40,6 @@ func writeDesktopFile(ai AppImage) {
 		log.Printf("desktop: %v", err)
 	}
 	// log.Println(xdg.RuntimeDir)
-
-	// TODO: Instead of starting with an empty file, start with reading the original one
-	// cfg, err := ini.Load("my.ini")
-	// if err != nil {
-	// 	fmt.Printf("Fail to read file: %v", err)
-	// 	os.Exit(1)
-	// }
-	// BLOCKED: To do this in a halfway decent way, we need to improve
-	// ai.ExtractFile() so that it resolves symlinks!
 	var cfg *ini.File
 	ini.PrettyFormat = false
 	startingPoint := false //An easy way to tell if extracting the desktop file worked.
@@ -62,19 +53,19 @@ func writeDesktopFile(ai AppImage) {
 	if ai.Desktop != nil {
 		startingPoint = true
 		cfg = ai.Desktop
+		//TODO: check if the thumbnail is already present and only extract it and set it's value if it isn't
 	}
 	if !startingPoint {
 		cfg = ini.Empty()
 		cfg.Section("Desktop Entry").Key("Type").SetValue("Application")
 		cfg.Section("Desktop Entry").Key("Name").SetValue(ai.Name)
-		thumbnail := ThumbnailsDirNormal + ai.md5 + ".png"
-		cfg.Section("Desktop Entry").Key("Icon").SetValue(thumbnail)
-		// Construct the Name entry based on the actual filename
-		// so that renaming the file in the file manager results in a changed name in the menu
-		// FIXME: If the thumbnail is not generated here but by another external thumbnailer, it may not be fast enough
-		time.Sleep(1 * time.Second)
 	}
-
+	thumbnail := ThumbnailsDirNormal + ai.md5 + ".png"
+	cfg.Section("Desktop Entry").Key("Icon").SetValue(thumbnail)
+	// Construct the Name entry based on the actual filename
+	// so that renaming the file in the file manager results in a changed name in the menu
+	// FIXME: If the thumbnail is not generated here but by another external thumbnailer, it may not be fast enough
+	time.Sleep(1 * time.Second)
 	cfg.Section("Desktop Entry").Key("Exec").SetValue(arg0abs + " wrap \"" + ai.Path + "\"") // Resolve to a full path
 	cfg.Section("Desktop Entry").Key(ExecLocationKey).SetValue(ai.Path)
 	cfg.Section("Desktop Entry").Key("TryExec").SetValue(arg0abs) // Resolve to a full path

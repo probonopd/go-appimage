@@ -19,7 +19,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/CalebQ42/copy"
+	"github.com/otiai10/copy"
 	"github.com/probonopd/go-appimage/internal/helpers"
 )
 

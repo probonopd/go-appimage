@@ -47,45 +47,22 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	// }
 
 	//this will try to extract the thumbnail, or goes back to command based extraction if it fails.
-	err := ai.ExtractFile(".DirIcon", thumbnailcachedir, true)
+	dirIconFil, _ := os.Create(thumbnailcachedir + "/.DirIcon")
+	dirIconRdr, err := ai.Thumbnail()
+	if err != nil {
+		dirIconRdr, _, err = ai.Icon()
+		if err != nil {
+			goto genericIcon
+		}
+	}
+	_, err = io.Copy(dirIconFil, dirIconRdr)
+	//TODO: I could probably dump it directly to the buffer below
+	dirIconRdr.Close()
 	// if err != nil {
 	// Too verbose
 	// sendErrorDesktopNotification(ai.niceName+" may be defective", "Could not read .DirIcon")
 	// }
-
-	// Workaround for electron-builder not generating .DirIcon
-	// We may still not have an icon. For example, AppImages made by electron-builder
-	// are lacking .DirIcon files as of Fall 2019; here we have to parse the desktop
-	// file, and try to extract the value of Icon= with the suffix ".png" from the AppImage
-	if helpers.Exists(thumbnailcachedir+"/.DirIcon") == false {
-		if *verbosePtr == true {
-			log.Println(".DirIcon extraction failed. Is it missing? Trying to figure out alternative")
-		}
-		var iconName string
-		if ai.Desktop != nil {
-			iconTmp, _ := ai.Desktop.Section("Desktop Entry").GetKey("Icon")
-			iconName = iconTmp.String()
-		}
-
-		if iconName != "" {
-			iconName += ".png"
-			os.Remove(thumbnailcachedir + "/.DirIcon")
-			fil, err := os.Create(thumbnailcachedir + "/.DirIcon")
-			if err == nil {
-				rdr, err := ai.ExtractFileReader("iconName")
-				if err == nil {
-					_, err = io.Copy(fil, rdr)
-					if err != nil {
-						os.Remove(thumbnailcachedir + "/.DirIcon")
-					}
-					rdr.Close()
-				} else {
-					os.Remove(thumbnailcachedir + "/.DirIcon")
-				}
-			}
-		}
-	}
-
+genericIcon:
 	buf, err := ioutil.ReadFile(thumbnailcachedir + "/.DirIcon")
 	if os.IsNotExist(err) {
 		if *verbosePtr == true {

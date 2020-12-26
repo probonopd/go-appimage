@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/CalebQ42/squashfs"
+	ioutilextra "gopkg.in/src-d/go-git.v4/utils/ioutil"
 )
 
 type archiveReader interface {
@@ -184,22 +185,61 @@ func (r *type2Reader) cleanPath(filepath string) (string, error) {
 	return filepath, nil
 }
 
-func (r *type2Reader) FileReader(path string) (io.ReadCloser, error) {
+type anonymousCloser struct {
+	close func() error
+}
+
+func (a anonymousCloser) Close() error {
+	return a.close()
+}
+
+func (r *type2Reader) FileReader(filepath string) (io.ReadCloser, error) {
 	//TODO: command fallback
-	fil := r.rdr.GetFileAtPath(path)
-	if fil == nil {
-		return nil, errors.New("Can't find file at: " + path)
-	}
-	if fil.IsSymlink() {
-		fil = fil.GetSymlinkFileRecursive()
+	if !r.forceFallback {
+		fil := r.rdr.GetFileAtPath(filepath)
 		if fil == nil {
-			return nil, errors.New("Can't resolve symlink at: " + path)
+			return nil, errors.New("Can't find file at: " + filepath)
 		}
+		if fil.IsSymlink() {
+			fil = fil.GetSymlinkFileRecursive()
+			if fil == nil {
+				return nil, errors.New("Can't resolve symlink at: " + filepath)
+			}
+		}
+		if fil.IsDir() {
+			return nil, errors.New("Path is a directory: " + filepath)
+		}
+		return fil, nil
 	}
-	if fil.IsDir() {
-		return nil, errors.New("Path is a directory: " + path)
+	filepath, err := r.cleanPath(filepath)
+	filepath = r.SymlinkPathRecursive(filepath)
+	if filepath != r.SymlinkPath(filepath) {
+		return nil, errors.New("Can't resolve symlink at: " + filepath)
 	}
-	return fil, nil
+	if r.IsDir(filepath) {
+		return nil, errors.New("Path is a directory: " + filepath)
+	}
+	tmpDir, err := ioutil.TempDir("", filepath)
+	if err != nil {
+		return nil, errors.New("Cannot make the temp directory")
+	}
+	err = r.ExtractTo(filepath, tmpDir, true)
+	if err != nil {
+		os.RemoveAll(tmpDir)
+		return nil, err
+	}
+	tmpFil, err := os.Open(tmpDir + "/" + path.Base(filepath))
+	if err != nil {
+		os.RemoveAll(tmpDir)
+		return nil, err
+	}
+	closer := anonymousCloser{
+		close: func() error {
+			tmpFil.Close()
+			return os.RemoveAll(tmpDir)
+		},
+	}
+	return ioutilextra.NewReadCloser(tmpFil, closer), nil
 }
 
 func (r *type2Reader) IsDir(filepath string) bool {
@@ -251,8 +291,9 @@ func (r *type2Reader) SymlinkPath(filepath string) string {
 	neededLine := tmpOutput[len(tmpOutput)-1]
 	if strings.Contains(neededLine, "->") {
 		neededLine = neededLine[strings.Index(neededLine, "->")+3:]
+		return path.Dir(filepath) + "/" + neededLine
 	}
-	return path.Dir(filepath) + "/" + neededLine
+	return filepath
 }
 
 func (r *type2Reader) SymlinkPathRecursive(filepath string) string {
@@ -288,56 +329,99 @@ func (r *type2Reader) SymlinkPathRecursive(filepath string) string {
 }
 
 func (r *type2Reader) Contains(path string) bool {
-	//TODO: command fallback
-	fil := r.rdr.GetFileAtPath(path)
-	return fil != nil
+	if !r.forceFallback {
+		fil := r.rdr.GetFileAtPath(path)
+		return fil != nil
+	}
+	path, err := r.cleanPath(path)
+	return err == nil
 }
 
 func (r *type2Reader) ListFiles(path string) []string {
-	//TODO: command fallback
-	fil := r.rdr.GetFileAtPath(path)
-	if fil == nil {
-		return nil
-	}
-	if fil.IsSymlink() {
-		fil = fil.GetSymlinkFileRecursive()
+	if !r.forceFallback {
+		fil := r.rdr.GetFileAtPath(path)
 		if fil == nil {
 			return nil
 		}
+		if fil.IsSymlink() {
+			fil = fil.GetSymlinkFileRecursive()
+			if fil == nil {
+				return nil
+			}
+		}
+		if !fil.IsDir() {
+			return nil
+		}
+		children, err := fil.GetChildren()
+		if err != nil {
+			return nil
+		}
+		out := make([]string, 0)
+		for _, child := range children {
+			out = append(out, child.Name())
+		}
+		return out
 	}
-	if !fil.IsDir() {
-		return nil
-	}
-	children, err := fil.GetChildren()
+	path, err := r.cleanPath(path)
 	if err != nil {
 		return nil
 	}
-	out := make([]string, 0)
-	for _, child := range children {
-		out = append(out, child.Name())
-	}
-	return out
+	return r.structure[path]
 }
 
-func (r *type2Reader) ExtractTo(path, destination string, resolveSymlinks bool) error {
-	//TODO: command fallback
-	fil := r.rdr.GetFileAtPath(path)
-	if fil == nil {
-		return nil
-	}
-	if fil.IsSymlink() && resolveSymlinks {
-		tmp := fil.GetSymlinkFileRecursive()
-		if tmp != nil {
-			errs := tmp.ExtractTo(destination)
-			if len(errs) > 0 {
-				return errs[0]
-			}
+func (r *type2Reader) ExtractTo(filepath, destination string, resolveSymlinks bool) error {
+	if !r.forceFallback {
+		fil := r.rdr.GetFileAtPath(filepath)
+		if fil == nil {
 			return nil
 		}
+		var errs []error
+		if resolveSymlinks {
+			errs = fil.ExtractSymlink(filepath)
+		} else {
+			errs = fil.ExtractTo(destination)
+		}
+		if len(errs) > 0 {
+			return errs[0]
+		}
+		return nil
 	}
-	errs := fil.ExtractTo(destination)
-	if len(errs) > 0 {
-		return errs[0]
+	filepath, err := r.cleanPath(filepath)
+	if err != nil {
+		return err
+	}
+	var origName string
+	if resolveSymlinks {
+		origName = path.Base(filepath)
+		filepath = r.SymlinkPathRecursive(filepath)
+	}
+	var tmp string
+	for i := -1; ; i++ { //let's make sure we aren't going to coincidentally extracting to a directoyr that already has a temp directory in it...
+		if i == -1 {
+			tmp = destination + "/.tmp"
+		} else {
+			tmp = destination + "/.tmp" + strconv.Itoa(i)
+		}
+		_, err = os.Open(tmp)
+		if os.IsNotExist(err) {
+			break
+		} else if err != nil {
+			return err //make sure other issues aren't going to cause this loop to run forever.
+		}
+	}
+	defer os.RemoveAll(tmp)
+	cmd := exec.Command("unsquashfs", "-o", strconv.Itoa(r.offset), "-d", tmp, r.path, filepath)
+	err = cmd.Run()
+	if err != nil {
+		return err
+	}
+	name := path.Base(filepath)
+	if origName != "" {
+		name = origName
+	}
+	err = os.Rename(tmp+"/"+filepath, destination+"/"+name)
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -531,7 +615,7 @@ func (r *type1Reader) ExtractTo(filepath, destination string, resolveSymlinks bo
 	}
 	name := path.Base(filepath)
 	destination = strings.TrimSuffix(destination, "/")
-	tmpDir := destination + "/" + ".temp"
+	tmpDir := destination + "/" + ".tmp"
 	err = os.Mkdir(tmpDir, os.ModePerm)
 	if err != nil {
 		return err

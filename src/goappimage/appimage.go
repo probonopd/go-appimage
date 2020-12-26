@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -34,8 +35,6 @@ type AppImage struct {
 	offset    int64
 	imageType int
 }
-
-const execLocationKey = helpers.ExecLocationKey
 
 // NewAppImage creates an AppImage object from the location defined by path.
 // Returns an error if the given path is not an appimage, or is a temporary file.
@@ -66,11 +65,12 @@ func NewAppImage(path string) (*AppImage, error) {
 	}
 	//try to load up the desktop file for some information.
 	desktopFil, err := ai.reader.FileReader("*.desktop")
+	if err != nil {
+		return nil, err
+	}
+	ai.Desktop, err = ini.Load(desktopFil)
 	if err == nil {
-		ai.Desktop, err = ini.Load(desktopFil)
-		if err == nil {
-			ai.Name = ai.Desktop.Section("Desktop Entry").Key("Name").Value()
-		}
+		ai.Name = ai.Desktop.Section("Desktop Entry").Key("Name").Value()
 	}
 	if ai.Name == "" {
 		ai.Name = ai.calculateNiceName()
@@ -134,34 +134,42 @@ func (ai AppImage) Type() int {
 //If resolveSymlinks is true, if the filepath specified is a symlink, the actual file is extracted in it's place.
 //resolveSymlinks will have no effect on absolute symlinks (symlinks that start at root).
 func (ai AppImage) ExtractFile(filepath string, destinationdirpath string, resolveSymlinks bool) error {
-	if ai.reader != nil {
-		return ai.reader.ExtractTo(filepath, destinationdirpath, resolveSymlinks)
-	}
-	if ai.imageType == 2 {
-		cmd := exec.Command("unsquashfs", "-f", "-n", "-o", strconv.Itoa(int(ai.offset)), "-d", destinationdirpath, ai.Path, filepath)
-		_, err := runCommand(cmd)
-		return err
-	}
-	return errors.New("Unable to extract")
+	return ai.reader.ExtractTo(filepath, destinationdirpath, resolveSymlinks)
 }
 
 //ExtractFileReader tries to get an io.ReadCloser for the file at filepath.
 //Returns an error if the path is pointing to a folder. If the path is pointing to a symlink,
 //it will try to return the file being pointed to, but only if it's within the AppImage.
 func (ai AppImage) ExtractFileReader(filepath string) (io.ReadCloser, error) {
-	if ai.reader != nil {
-		return ai.reader.FileReader(filepath)
-	}
-	//TODO: possible type2 command fallback, but unsquashfs can't print to Stdout from what I've seen.
-	return nil, errors.New("Unable to get reader for " + filepath)
+	return ai.reader.FileReader(filepath)
 }
 
 //Thumbnail tries to get the AppImage's thumbnail and returns it as a io.ReadCloser.
 func (ai AppImage) Thumbnail() (io.ReadCloser, error) {
-	if ai.reader != nil {
-		return ai.reader.FileReader(".DirIcon")
+	return ai.reader.FileReader(".DirIcon")
+}
+
+//Icon tries to get a io.ReadCloser for the icon dictated in the AppImage's desktop file.
+//Returns the ReadCloser and the file's name (which could be useful for decoding).
+func (ai AppImage) Icon() (io.ReadCloser, string, error) {
+	if ai.Desktop == nil {
+		return nil, "", errors.New("Desktop file wasn't parsed")
 	}
-	return nil, errors.New("Icon couldn't be found")
+	icon := ai.Desktop.Section("Desktop Entry").Key("Icon").Value()
+	if icon == "" {
+		return nil, "", errors.New("Desktop file doesn't specify an icon")
+	}
+	rootFils := ai.reader.ListFiles("/")
+	for _, fil := range rootFils {
+		if match, _ := path.Match(icon+"*", fil); match {
+			reader, err := ai.reader.FileReader(fil)
+			if err != nil {
+				return nil, "", err
+			}
+			return reader, fil, nil
+		}
+	}
+	return nil, "", errors.New("Cannot find the AppImage's icon: " + icon)
 }
 
 func runCommand(cmd *exec.Cmd) (bytes.Buffer, error) {

@@ -34,11 +34,7 @@ func TestAppImageType2(t *testing.T) {
 		t.Fatal(err)
 	}
 	getCleanSquashfsFromAppImage(ai, testImg+".sfs", t)
-	typ2Rdr, err := newType2Reader(ai, true, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	typ2Rdr.SymlinkPath("AppRun")
+	fmt.Println("Name", ai.Name)
 	t.Fatal("No Problem")
 }
 
