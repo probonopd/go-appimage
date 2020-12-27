@@ -46,7 +46,7 @@ func NewAppImage(path string) (ai *AppImage, err error) {
 	ai = new(AppImage)
 	ai.AppImage, err = goappimage.NewAppImage(path)
 	if err != nil {
-		return nil, err
+		return ai, err
 	}
 
 	ai.uri = strings.TrimSpace(string(uri.File(filepath.Clean(ai.Path))))

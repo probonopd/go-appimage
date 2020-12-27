@@ -34,6 +34,7 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 
 	// Write out the icon to a temporary location
 	thumbnailcachedir := xdg.CacheHome + "/thumbnails/" + ai.md5
+	os.MkdirAll(thumbnailcachedir, os.ModePerm)
 
 	// if ai.imagetype == 1 {
 	// 	err := os.MkdirAll(thumbnailcachedir, os.ModePerm)
@@ -50,14 +51,20 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	dirIconFil, _ := os.Create(thumbnailcachedir + "/.DirIcon")
 	dirIconRdr, err := ai.Thumbnail()
 	if err != nil {
+		if *verbosePtr {
+			log.Print("Could not find .DirIcon, trying to find the desktop file's specified icon")
+		}
 		dirIconRdr, _, err = ai.Icon()
 		if err != nil {
 			goto genericIcon
 		}
 	}
 	_, err = io.Copy(dirIconFil, dirIconRdr)
-	//TODO: I could probably dump it directly to the buffer below
 	dirIconRdr.Close()
+	if err != nil {
+		helpers.LogError("thumbnail", err)
+	}
+	//TODO: I could probably dump it directly to the buffer below
 	// if err != nil {
 	// Too verbose
 	// sendErrorDesktopNotification(ai.niceName+" may be defective", "Could not read .DirIcon")
