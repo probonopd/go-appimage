@@ -13,16 +13,15 @@ import (
 	"strconv"
 	"syscall"
 
+	"debug/elf"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-)
-import "debug/elf"
-import "github.com/probonopd/go-appimage/internal/helpers"
-import "github.com/CalebQ42/copy"
 
-//go:generate go run genexclude.go
+	"github.com/otiai10/copy"
+	"github.com/probonopd/go-appimage/internal/helpers"
+)
 
 type QMLImport struct {
 	Classname    string `json:"classname,omitempty"`

@@ -55,7 +55,7 @@ func checkPrerequisites() {
 	_, gcEnvIsThere := os.LookupEnv("GOCACHE")
 	if aiEnvIsThere == false {
 		// log.Println(os.Environ())
-		log.Println("Running from AppImage type", thisai.imagetype)
+		log.Println("Running from AppImage type", thisai.Type())
 		if gcEnvIsThere == false {
 			log.Println("Not running from within an AppImage, exiting")
 			os.Exit(1)
@@ -157,9 +157,8 @@ func checkIfSystemdServiceRunning(servicenames []string) bool {
 
 	if len(units) > 0 {
 		return true
-	} else {
-		return false
 	}
+	return false
 
 }
 
@@ -489,14 +488,14 @@ func installServiceFileInHome() {
 		}
 	}
 
-	log.Println("thisai.path:", thisai.path)
+	log.Println("thisai.path:", thisai.Path)
 	d1 := []byte(`[Unit]
 Description=AppImage system integration daemon
 After=syslog.target network.target
 
 [Service]
 Type=simple
-ExecStart=` + thisai.path + `
+ExecStart=` + thisai.Path + `
 
 LimitNOFILE=65536
 

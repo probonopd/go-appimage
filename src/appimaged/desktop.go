@@ -40,46 +40,39 @@ func writeDesktopFile(ai AppImage) {
 		log.Printf("desktop: %v", err)
 	}
 	// log.Println(xdg.RuntimeDir)
-
-	// TODO: Instead of starting with an empty file, start with reading the original one
-	// cfg, err := ini.Load("my.ini")
-	// if err != nil {
-	// 	fmt.Printf("Fail to read file: %v", err)
-	// 	os.Exit(1)
-	// }
-	// BLOCKED: To do this in a halfway decent way, we need to improve
-	// ai.ExtractFile() so that it resolves symlinks!
-
-	cfg := ini.Empty()
-
+	var cfg *ini.File
 	ini.PrettyFormat = false
+	startingPoint := false //An easy way to tell if extracting the desktop file worked.
+	arg0abs, err := filepath.Abs(os.Args[0])
 
 	// FIXME: KDE seems to have a problem when the AppImage is on a partition of which the disklabel contains "_"?
 	// Then the desktop file won't run the application
-	
-	arg0abs, err := filepath.Abs(os.Args[0])
 	if err != nil {
 		log.Println(err)
 	}
-
-	cfg.Section("Desktop Entry").Key("Exec").SetValue(arg0abs + " wrap \"" + ai.path + "\"")  // Resolve to a full path
-	cfg.Section("Desktop Entry").Key(ExecLocationKey).SetValue(ai.path)
-	cfg.Section("Desktop Entry").Key("TryExec").SetValue(arg0abs) // Resolve to a full path
-	cfg.Section("Desktop Entry").Key("Type").SetValue("Application")
+	if ai.Desktop != nil {
+		startingPoint = true
+		cfg = ai.Desktop
+		//TODO: check if the thumbnail is already present and only extract it and set it's value if it isn't
+	}
+	if !startingPoint {
+		cfg = ini.Empty()
+		cfg.Section("Desktop Entry").Key("Type").SetValue("Application")
+		cfg.Section("Desktop Entry").Key("Name").SetValue(ai.Name)
+	}
+	thumbnail := ThumbnailsDirNormal + ai.md5 + ".png"
+	cfg.Section("Desktop Entry").Key("Icon").SetValue(thumbnail)
 	// Construct the Name entry based on the actual filename
 	// so that renaming the file in the file manager results in a changed name in the menu
-
-	cfg.Section("Desktop Entry").Key("Name").SetValue(ai.niceName)
-
-	thumbnail := ThumbnailsDirNormal + ai.md5 + ".png"
 	// FIXME: If the thumbnail is not generated here but by another external thumbnailer, it may not be fast enough
 	time.Sleep(1 * time.Second)
+	cfg.Section("Desktop Entry").Key("Exec").SetValue(arg0abs + " wrap \"" + ai.Path + "\"") // Resolve to a full path
+	cfg.Section("Desktop Entry").Key(ExecLocationKey).SetValue(ai.Path)
+	cfg.Section("Desktop Entry").Key("TryExec").SetValue(arg0abs) // Resolve to a full path
 	// For icons, use absolute paths. This way icons start working
 	// without having to restart the desktop, and possibly
 	// we can even get around messing around with the XDG icon spec
 	// that expects different sizes of icons in different directories
-
-	cfg.Section("Desktop Entry").Key("Icon").SetValue(thumbnail)
 	/*
 		if _, err := os.Stat(thumbnail); err == nil {
 			// Thumbnail exists, then we use it as the Icon in the desktop file
@@ -93,7 +86,7 @@ func writeDesktopFile(ai AppImage) {
 
 		}
 	*/
-	cfg.Section("Desktop Entry").Key("Comment").SetValue(ai.path)
+	cfg.Section("Desktop Entry").Key("Comment").SetValue(ai.Path)
 	cfg.Section("Desktop Entry").Key("X-AppImage-Identifier").SetValue(ai.md5)
 	ui := ai.updateinformation
 	if ui != "" {
@@ -103,7 +96,7 @@ func writeDesktopFile(ai AppImage) {
 
 	var actions []string
 
-	if isWritable(ai.path) {
+	if isWritable(ai.Path) {
 		// Add "Move to Trash" action
 		// if the AppImage is writeable (= the user can remove it)
 		//
@@ -119,24 +112,24 @@ func writeDesktopFile(ai AppImage) {
 		cfg.Section("Desktop Action Trash").Key("Name").SetValue("Move to Trash")
 		if helpers.IsCommandAvailable("gio") {
 			// A command line tool to move files to the Trash. However, GNOME-specific
-			cfg.Section("Desktop Action Trash").Key("Exec").SetValue("gio trash \"" + ai.path + "\"")
+			cfg.Section("Desktop Action Trash").Key("Exec").SetValue("gio trash \"" + ai.Path + "\"")
 		} else if helpers.IsCommandAvailable("kioclient") {
 			// Of course KDE has its own facility for doing the exact same thing
-			cfg.Section("Desktop Action Trash").Key("Exec").SetValue("kioclient move \"" + ai.path + "\" trash:/")
+			cfg.Section("Desktop Action Trash").Key("Exec").SetValue("kioclient move \"" + ai.Path + "\" trash:/")
 		} else {
 			// Provide a fallback shell command to prevent parser errors on other desktops
-			cfg.Section("Desktop Action Trash").Key("Exec").SetValue("mv \"" + ai.path + "\" ~/.local/share/Trash/")
+			cfg.Section("Desktop Action Trash").Key("Exec").SetValue("mv \"" + ai.Path + "\" ~/.local/share/Trash/")
 		}
 
 		// Add OpenPortableHome action
 		actions = append(actions, "OpenPortableHome")
 		cfg.Section("Desktop Action OpenPortableHome").Key("Name").SetValue("Open Portable Home in File Manager")
-		cfg.Section("Desktop Action OpenPortableHome").Key("Exec").SetValue("xdg-open \"" + ai.path + ".home\"")
+		cfg.Section("Desktop Action OpenPortableHome").Key("Exec").SetValue("xdg-open \"" + ai.Path + ".home\"")
 
 		// Add CreatePortableHome action
 		actions = append(actions, "CreatePortableHome")
 		cfg.Section("Desktop Action CreatePortableHome").Key("Name").SetValue("Create Portable Home")
-		cfg.Section("Desktop Action CreatePortableHome").Key("Exec").SetValue("mkdir -p \"" + ai.path + ".home\"")
+		cfg.Section("Desktop Action CreatePortableHome").Key("Exec").SetValue("mkdir -p \"" + ai.Path + ".home\"")
 
 	}
 
@@ -150,13 +143,13 @@ func writeDesktopFile(ai AppImage) {
 	// TODO: Actually, we could do the extraction ourselves since we have the extraction logic on board anyways
 	// then we could have a better name for the extracted location, and could handle type-1 as well
 	// TODO: Maybe have a dbus action for extracting AppImages that could be invoked?
-	if ai.imagetype > 1 {
+	if ai.Type() > 1 {
 		actions = append(actions, "Extract")
 		cfg.Section("Desktop Action Extract").Key("Name").SetValue("Extract to AppDir")
-		if isWritable(ai.path) {
-			cfg.Section("Desktop Action Extract").Key("Exec").SetValue("bash -c \"cd '" + filepath.Clean(ai.path+"/../") + "' && '" + ai.path + "' --appimage-extract" + " && xdg-open '" + filepath.Clean(ai.path+"/../squashfs-root") + "'\"")
+		if isWritable(ai.Path) {
+			cfg.Section("Desktop Action Extract").Key("Exec").SetValue("bash -c \"cd '" + filepath.Clean(ai.Path+"/../") + "' && '" + ai.Path + "' --appimage-extract" + " && xdg-open '" + filepath.Clean(ai.Path+"/../squashfs-root") + "'\"")
 		} else {
-			cfg.Section("Desktop Action Extract").Key("Exec").SetValue("bash -c \"cd ~ && '" + ai.path + "' --appimage-extract" + " && xdg-open ~/squashfs-root\"")
+			cfg.Section("Desktop Action Extract").Key("Exec").SetValue("bash -c \"cd ~ && '" + ai.Path + "' --appimage-extract" + " && xdg-open ~/squashfs-root\"")
 		}
 	}
 
@@ -166,14 +159,14 @@ func writeDesktopFile(ai AppImage) {
 	if ai.updateinformation != "" {
 		actions = append(actions, "Update")
 		cfg.Section("Desktop Action Update").Key("Name").SetValue("Update")
-		cfg.Section("Desktop Action Update").Key("Exec").SetValue(os.Args[0] + " update \"" + ai.path + "\"")
+		cfg.Section("Desktop Action Update").Key("Exec").SetValue(os.Args[0] + " update \"" + ai.Path + "\"")
 	}
 
 	// Add "Open Containing Folder" action
 	if helpers.IsCommandAvailable("xdg-open") {
 		actions = append(actions, "Show")
 		cfg.Section("Desktop Action Show").Key("Name").SetValue("Open Containing Folder")
-		cfg.Section("Desktop Action Show").Key("Exec").SetValue("xdg-open \"" + filepath.Clean(ai.path+"/../") + "\"")
+		cfg.Section("Desktop Action Show").Key("Exec").SetValue("xdg-open \"" + filepath.Clean(ai.Path+"/../") + "\"")
 	}
 
 	/*
@@ -195,19 +188,19 @@ func writeDesktopFile(ai AppImage) {
 	if helpers.IsCommandAvailable("firejail") {
 		actions = append(actions, "Firejail")
 		cfg.Section("Desktop Action Firejail").Key("Name").SetValue("Run in Firejail")
-		cfg.Section("Desktop Action Firejail").Key("Exec").SetValue("firejail --env=DESKTOPINTEGRATION=appimaged --noprofile --appimage \"" + ai.path + "\"")
+		cfg.Section("Desktop Action Firejail").Key("Exec").SetValue("firejail --env=DESKTOPINTEGRATION=appimaged --noprofile --appimage \"" + ai.Path + "\"")
 
 		actions = append(actions, "FirejailNoNetwork")
 		cfg.Section("Desktop Action FirejailNoNetwork").Key("Name").SetValue("Run in Firejail Without Network Access")
-		cfg.Section("Desktop Action FirejailNoNetwork").Key("Exec").SetValue("firejail --env=DESKTOPINTEGRATION=appimaged --noprofile --net=none --appimage \"" + ai.path + "\"")
+		cfg.Section("Desktop Action FirejailNoNetwork").Key("Exec").SetValue("firejail --env=DESKTOPINTEGRATION=appimaged --noprofile --net=none --appimage \"" + ai.Path + "\"")
 
 		actions = append(actions, "FirejailPrivate")
 		cfg.Section("Desktop Action FirejailPrivate").Key("Name").SetValue("Run in Private Firejail Sandbox")
-		cfg.Section("Desktop Action FirejailPrivate").Key("Exec").SetValue("firejail --env=DESKTOPINTEGRATION=appimaged --noprofile --private --appimage \"" + ai.path + "\"")
+		cfg.Section("Desktop Action FirejailPrivate").Key("Exec").SetValue("firejail --env=DESKTOPINTEGRATION=appimaged --noprofile --private --appimage \"" + ai.Path + "\"")
 
 		actions = append(actions, "FirejailOverlayTmpfs")
 		cfg.Section("Desktop Action FirejailOverlayTmpfs").Key("Name").SetValue("Run in Firejail with Temporary Overlay Filesystem")
-		cfg.Section("Desktop Action FirejailOverlayTmpfs").Key("Exec").SetValue("firejail --env=DESKTOPINTEGRATION=appimaged --noprofile --overlay-tmpfs --appimage \"" + ai.path + "\"")
+		cfg.Section("Desktop Action FirejailOverlayTmpfs").Key("Exec").SetValue("firejail --env=DESKTOPINTEGRATION=appimaged --noprofile --overlay-tmpfs --appimage \"" + ai.Path + "\"")
 	}
 
 	as := ""
@@ -247,7 +240,11 @@ func fixDesktopFile(path string) error {
 	if bytes.Contains(input, []byte("=`")) {
 		output = bytes.Replace(input, []byte("=`"), []byte("="), -1)
 		output = bytes.Replace(output, []byte("`\n"), []byte("\n"), -1)
+		//some issues that appear now that we're using the original .desktop file
+		output = bytes.Replace(output, []byte("\n;\n"), []byte("\n"), -1)
+		output = bytes.Replace(output, []byte("\n; \n"), []byte("\n"), -1)
 	}
+
 	if err = ioutil.WriteFile(path, output, 0755); err != nil {
 		return err
 	}
