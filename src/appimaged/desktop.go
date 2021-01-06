@@ -241,7 +241,7 @@ func fixDesktopFile(path string) error {
 		output = bytes.Replace(input, []byte("=`"), []byte("="), -1)
 		output = bytes.Replace(output, []byte("`\n"), []byte("\n"), -1)
 	}
-	output = bytes.ReplaceAll(output, []byte(","), []byte(";"))
+	output = bytes.ReplaceAll(output, []byte("；"), []byte(";"))
 
 	if err = ioutil.WriteFile(path, output, 0755); err != nil {
 		return err

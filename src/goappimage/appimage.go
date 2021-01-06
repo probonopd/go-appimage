@@ -77,7 +77,7 @@ func NewAppImage(path string) (*AppImage, error) {
 		var line string
 		line, err = buf.ReadString('\n')
 		if strings.Contains(line, ";") {
-			line = strings.ReplaceAll(line, ";", ",")
+			line = strings.ReplaceAll(line, ";", "；") //replacing it with a fullwidth semicolon (unicode FF1B)
 		}
 		desktop = append(desktop, line...)
 	}
