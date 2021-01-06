@@ -209,7 +209,7 @@ func (r *type2Reader) FileReader(filepath string) (io.ReadCloser, error) {
 		if fil.IsDir() {
 			return nil, errors.New("Path is a directory: " + filepath)
 		}
-		return fil, nil
+		return ioutil.NopCloser(fil), nil
 	}
 	filepath, err := r.cleanPath(filepath)
 	filepath = r.SymlinkPathRecursive(filepath)

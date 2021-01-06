@@ -240,10 +240,8 @@ func fixDesktopFile(path string) error {
 	if bytes.Contains(input, []byte("=`")) {
 		output = bytes.Replace(input, []byte("=`"), []byte("="), -1)
 		output = bytes.Replace(output, []byte("`\n"), []byte("\n"), -1)
-		//some issues that appear now that we're using the original .desktop file
-		output = bytes.Replace(output, []byte("\n;\n"), []byte("\n"), -1)
-		output = bytes.Replace(output, []byte("\n; \n"), []byte("\n"), -1)
 	}
+	output = bytes.ReplaceAll(output, []byte("；"), []byte(";"))
 
 	if err = ioutil.WriteFile(path, output, 0755); err != nil {
 		return err

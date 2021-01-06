@@ -1,6 +1,7 @@
 package goappimage
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"io"
@@ -68,7 +69,20 @@ func NewAppImage(path string) (*AppImage, error) {
 	if err != nil {
 		return nil, err
 	}
-	ai.Desktop, err = ini.Load(desktopFil)
+
+	//cleaning the desktop file so it can be parsed properly
+	var desktop []byte
+	buf := bufio.NewReader(desktopFil)
+	for err == nil {
+		var line string
+		line, err = buf.ReadString('\n')
+		if strings.Contains(line, ";") {
+			line = strings.ReplaceAll(line, ";", "；") //replacing it with a fullwidth semicolon (unicode FF1B)
+		}
+		desktop = append(desktop, line...)
+	}
+
+	ai.Desktop, err = ini.Load(desktop)
 	if err == nil {
 		ai.Name = ai.Desktop.Section("Desktop Entry").Key("Name").Value()
 	}
