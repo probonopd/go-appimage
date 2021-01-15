@@ -54,7 +54,11 @@ func NewAppImage(path string) (ai *AppImage, err error) {
 	ai.desktopfilename = "appimagekit_" + ai.md5 + ".desktop"
 	ai.desktopfilepath = xdg.DataHome + "/applications/" + "appimagekit_" + ai.md5 + ".desktop"
 	ai.thumbnailfilename = ai.md5 + ".png"
-	ai.thumbnailfilepath = ThumbnailsDirNormal + "/" + ai.thumbnailfilename
+	if strings.HasSuffix(ThumbnailsDirNormal, "/") {
+		ai.thumbnailfilepath = ThumbnailsDirNormal + ai.thumbnailfilename
+	} else {
+		ai.thumbnailfilepath = ThumbnailsDirNormal + "/" + ai.thumbnailfilename
+	}
 	ui, err := ai.ReadUpdateInformation()
 	if err == nil && ui != "" {
 		ai.updateinformation = ui

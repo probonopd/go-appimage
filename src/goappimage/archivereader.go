@@ -86,7 +86,7 @@ func newType2Reader(ai *AppImage, fallbackAllowed, forceFallback bool) (*type2Re
 			out := &type2Reader{
 				forceFallback: true,
 			}
-			err := out.setupCommandFallback(ai)
+			err = out.setupCommandFallback(ai)
 			if err != nil {
 				return nil, err
 			}

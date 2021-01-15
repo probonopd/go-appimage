@@ -5,11 +5,13 @@ package main
 // but eventually may be rewritten to do things natively in Go.
 
 import (
+	"bufio"
 	"bytes"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -51,14 +53,39 @@ func writeDesktopFile(ai AppImage) {
 		log.Println(err)
 	}
 	if ai.Desktop != nil {
-		startingPoint = true
-		cfg = ai.Desktop
+		//Start with a fresh copy of the desktop file so we don't make edits to ai.Desktop
+
+		desktopRdr, _ := ai.ExtractFileReader("*.desktop")
+		defer desktopRdr.Close()
+		//cleaning the desktop file so it can be parsed properly
+		var desktop []byte
+		buf := bufio.NewReader(desktopRdr)
+		for err == nil {
+			var line string
+			line, err = buf.ReadString('\n')
+			if strings.Contains(line, ";") {
+				line = strings.ReplaceAll(line, ";", "；") //replacing it with a fullwidth semicolon (unicode FF1B)
+			}
+			desktop = append(desktop, line...)
+		}
+		cfg, err = ini.Load(desktop)
+		if err == nil {
+			startingPoint = true
+		}
 		//TODO: check if the thumbnail is already present and only extract it and set it's value if it isn't
 	}
+
 	if !startingPoint {
 		cfg = ini.Empty()
 		cfg.Section("Desktop Entry").Key("Type").SetValue("Application")
 		cfg.Section("Desktop Entry").Key("Name").SetValue(ai.Name)
+	} else {
+		if !cfg.Section("Desktop Entry").HasKey("Name") {
+			cfg.Section("Desktop Entry").Key("Name").SetValue(ai.Name)
+		}
+		if !cfg.Section("Desktop Entry").HasKey("Type") {
+			cfg.Section("Desktop Entry").Key("Type").SetValue("Application")
+		}
 	}
 	thumbnail := ThumbnailsDirNormal + ai.md5 + ".png"
 	cfg.Section("Desktop Entry").Key("Icon").SetValue(thumbnail)
