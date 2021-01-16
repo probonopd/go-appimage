@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -173,14 +172,28 @@ func (ai AppImage) Icon() (io.ReadCloser, string, error) {
 	if icon == "" {
 		return nil, "", errors.New("Desktop file doesn't specify an icon")
 	}
+	if strings.HasSuffix(icon, ".png") || strings.HasSuffix(icon, ".svg") {
+		rdr, err := ai.reader.FileReader(icon)
+		if err == nil {
+			return rdr, icon, nil
+		}
+	}
 	rootFils := ai.reader.ListFiles("/")
 	for _, fil := range rootFils {
-		if match, _ := path.Match(icon+"*", fil); match {
-			reader, err := ai.reader.FileReader(fil)
-			if err != nil {
-				return nil, "", err
+		if strings.HasPrefix(fil, icon) {
+			if fil == icon+".png" {
+				rdr, err := ai.reader.FileReader(fil)
+				if err != nil {
+					continue
+				}
+				return rdr, fil, nil
+			} else if fil == icon+".svg" {
+				rdr, err := ai.reader.FileReader(fil)
+				if err != nil {
+					continue
+				}
+				return rdr, fil, nil
 			}
-			return reader, fil, nil
 		}
 	}
 	return nil, "", errors.New("Cannot find the AppImage's icon: " + icon)

@@ -48,7 +48,7 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	// }
 
 	//this will try to extract the thumbnail, or goes back to command based extraction if it fails.
-	dirIconFil, _ := os.Create(thumbnailcachedir + "/.DirIcon")
+	var dirIconFil *os.File
 	dirIconRdr, err := ai.Thumbnail()
 	if err != nil {
 		if *verbosePtr {
@@ -59,8 +59,10 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 			goto genericIcon
 		}
 	}
+	dirIconFil, _ = os.Create(thumbnailcachedir + "/.DirIcon")
 	_, err = io.Copy(dirIconFil, dirIconRdr)
 	dirIconRdr.Close()
+	dirIconFil.Close()
 	if err != nil {
 		helpers.LogError("thumbnail", err)
 	}
