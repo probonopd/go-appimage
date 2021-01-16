@@ -105,7 +105,7 @@ func (r *type2Reader) setupCommandFallback(ai *AppImage) error {
 	r.folders = make([]string, 0)
 	r.offset = int(ai.offset)
 	r.path = ai.Path
-	cmd := exec.Command("unsquashfs", "-o", strconv.FormatInt(ai.offset, 10), "-l", ai.Path)
+	cmd := exec.Command("unsquashfs", "-no-xattrs", "-o", strconv.FormatInt(ai.offset, 10), "-l", ai.Path)
 	out, err := runCommand(cmd)
 	if err != nil {
 		return err
@@ -282,7 +282,7 @@ func (r *type2Reader) SymlinkPath(filepath string) string {
 	if err != nil {
 		return filepath
 	}
-	cmd := exec.Command("unsquashfs", "-ll", "-o", strconv.Itoa(r.offset), r.path, filepath)
+	cmd := exec.Command("unsquashfs", "-no-xattrs", "-ll", "-o", strconv.Itoa(r.offset), r.path, filepath)
 	out, err := runCommand(cmd)
 	if err != nil {
 		return filepath
@@ -410,7 +410,7 @@ func (r *type2Reader) ExtractTo(filepath, destination string, resolveSymlinks bo
 		}
 	}
 	defer os.RemoveAll(tmp)
-	cmd := exec.Command("unsquashfs", "-o", strconv.Itoa(r.offset), "-d", tmp, r.path, filepath)
+	cmd := exec.Command("unsquashfs", "-no-xattrs", "-o", strconv.Itoa(r.offset), "-d", tmp, r.path, filepath)
 	err = cmd.Run()
 	if err != nil {
 		return err

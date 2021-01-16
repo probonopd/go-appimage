@@ -3,6 +3,10 @@ github.com/CalebQ42/GoAppImage v0.5.0 h1:znoKNXtliH754tS9sYwyOIg/0wFDjFN5Twc7PAh
 github.com/CalebQ42/GoAppImage v0.5.0/go.mod h1:qHudJKAn/dlkNWNnH4h1YKXp29EZ7Bppsn7sNP2HuvU=
 github.com/CalebQ42/squashfs v0.3.10 h1:z+7kuChxFldZ5H0XEpcSIHfCkLtfkmaw8uW0hUAR3Wc=
 github.com/CalebQ42/squashfs v0.3.10/go.mod h1:22ZohlGL+45C3gQIdqBlReydHz94fwkJKW9njDEdLvc=
+github.com/CalebQ42/squashfs v0.3.11 h1:KsCi7+7XRdJkVD4hwdLkw1rM6jSVnuzC+x+6SXSoHkQ=
+github.com/CalebQ42/squashfs v0.3.11/go.mod h1:22ZohlGL+45C3gQIdqBlReydHz94fwkJKW9njDEdLvc=
+github.com/CalebQ42/squashfs v0.3.12 h1:cLtCGN0zsQtEKxodZULU3SqG6/hB7SYSCmT42/YRcyo=
+github.com/CalebQ42/squashfs v0.3.12/go.mod h1:22ZohlGL+45C3gQIdqBlReydHz94fwkJKW9njDEdLvc=
 github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d h1:G0m3OIz70MZUWq3EgK3CesDbo8upS2Vm9/P3FtgI+Jk=
 github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d/go.mod h1:3eOhrUMpNV+6aFIbp5/iudMxNCF27Vw2OZgy4xEx0Fg=
 github.com/acobaugh/osrelease v0.0.0-20181218015638-a93a0a55a249 h1:fMi9ZZ/it4orHj3xWrM6cLkVFcCbkXQALFUiNtHtCPs=
