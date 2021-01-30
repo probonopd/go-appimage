@@ -73,7 +73,7 @@ func checkPrerequisites() {
 	// Stop any other AppImage system integration daemon
 	// so that they won't interfere with each other
 	if checkIfSystemdServiceRunning([]string{"appimagelauncher*"}) == true {
-		sendErrorDesktopNotification("Other AppImage integration daemon running", "Please uninstall appimagelauncher first, then try again")
+		sendErrorDesktopNotification("Other AppImage integration daemon detected", "Please uninstall appimagelauncher first, then try again")
 		os.Exit(1)
 		// log.Println("Trying to stop interfering AppImage system integration daemons")
 		// stopSystemdService("appimagelauncherd")
