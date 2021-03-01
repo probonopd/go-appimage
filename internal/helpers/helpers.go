@@ -152,10 +152,16 @@ func FilesWithPrefixInDirectory(directory string, prefix string) []string {
 // Returns true if it does, false otherwise.
 func CheckIfFileExists(filepath string) bool {
 	info, err := os.Stat(filepath)
+	if err == nil {
+		return true
+	}
 	if os.IsNotExist(err) || info.IsDir() {
 		return false
 	}
-	return true
+	// anything else is not good
+	// https://stackoverflow.com/q/12518876
+	// Schrodinger: file may or may not exist. See err for details.
+	panic(err)
 }
 
 // CheckIfFileOrFolderExists checks if a file exists and is not a directory before we
