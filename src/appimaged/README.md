@@ -18,7 +18,7 @@ rm "$HOME"/.local/share/applications/appimage*
 
 # Download
 wget -c https://github.com/$(wget -q https://github.com/probonopd/go-appimage/releases -O - | grep "appimaged-.*-x86_64.AppImage" | head -n 1 | cut -d '"' -f 2)
-chmod +x "appimaged-*.AppImage
+chmod +x appimaged-*.AppImage
 
 # Launch
 ./appimaged-*.AppImage
