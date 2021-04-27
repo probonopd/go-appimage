@@ -410,7 +410,7 @@ func deployElf(lib string, appdir helpers.AppDir, err error) {
 		}
 	}
 
-	log.Println("Working on", lib, "(TODO: Remove this message)")
+	log.Println("Working on", lib)
 	if strings.HasPrefix(lib, appdir.Path) == false { // Do not copy if it is already in the AppDir
 		libTargetPath := appdir.Path + "/" + lib
 		if options.libAppRunHooks && checkWhetherPartOfLibc(lib) == true {
@@ -422,7 +422,7 @@ func deployElf(lib string, appdir helpers.AppDir, err error) {
 			log.Println(lib, "is part of libc; copy to", LibcDir, "subdirectory")
 			libTargetPath = appdir.Path + "/" + LibcDir + "/" + lib // If libapprun_hooks is used
 		}
-		log.Println("Copying to libTargetPath:", libTargetPath, "(TODO: Remove this message)")
+		log.Println("Copying to libTargetPath:", libTargetPath)
 
 		err = helpers.CopyFile(lib, libTargetPath) // If libapprun_hooks is not used
 
