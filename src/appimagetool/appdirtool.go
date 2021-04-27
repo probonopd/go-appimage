@@ -336,7 +336,7 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 		}
 
 	}
-	if options.libAppRunHooks {
+	if options.standalone {
 		var err error
 		// ld-linux might be a symlink; hence we first need to resolve it
 		src, err := filepath.EvalSymlinks(ldLinux)
