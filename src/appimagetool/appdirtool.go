@@ -394,6 +394,13 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 			helpers.PrintError("Could not deploy the interpreter", err)
 			os.Exit(1)
 		}
+		
+		// Make ld-linux executable
+		err = os.Chmod(ldTargetPath, 0755)
+		if err != nil {
+			helpers.PrintError("Could not set permissions on the interpreter", err)
+			os.Exit(1)
+		}
 	} else {
 		log.Println("Not deploying", ldLinux, "because it was not requested or it is not needed")
 	}
