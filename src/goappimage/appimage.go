@@ -98,6 +98,8 @@ func (ai AppImage) calculateNiceName() string {
 	niceName = strings.Replace(niceName, "-x86_64", "", -1)
 	niceName = strings.Replace(niceName, "-i386", "", -1)
 	niceName = strings.Replace(niceName, "-i686", "", -1)
+	niceName = strings.Replace(niceName, "-aarch64", "", -1)
+	niceName = strings.Replace(niceName, "-armhf", "", -1)
 	niceName = strings.Replace(niceName, "-", " ", -1)
 	niceName = strings.Replace(niceName, "_", " ", -1)
 	return niceName
