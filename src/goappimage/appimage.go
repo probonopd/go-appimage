@@ -32,6 +32,7 @@ type AppImage struct {
 	Path    string
 	// updateInformation string TODO: add update stuff
 	Name      string
+	Version   string
 	offset    int64
 	imageType int
 }
@@ -84,9 +85,14 @@ func NewAppImage(path string) (*AppImage, error) {
 	ai.Desktop, err = ini.Load(desktop)
 	if err == nil {
 		ai.Name = ai.Desktop.Section("Desktop Entry").Key("Name").Value()
+		ai.Version = ai.Desktop.Section("Desktop Entry").Key("X-AppImage-Version").Value()
 	}
 	if ai.Name == "" {
 		ai.Name = ai.calculateNiceName()
+	}
+	//If key "X-AppImage-Version" not set (likely), resort to just setting it to 1
+	if ai.Version == "" {
+		ai.Version = "1.0"
 	}
 	return &ai, nil
 }
