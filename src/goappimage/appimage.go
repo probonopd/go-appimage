@@ -90,11 +90,7 @@ func NewAppImage(path string) (*AppImage, error) {
 	if ai.Name == "" {
 		ai.Name = ai.calculateNiceName()
 	}
-	// If key "X-AppImage-Version" not set (likely), use "Version", which unfortunately is commonly set wrong
-	if ai.Version == "" {
-		ai.Version = ai.Desktop.Section("Desktop Entry").Key("Version").Value()
-	}
-	// Finally, if somehow the desktop file got through without that being specified, resort to just setting it to 1
+	//If key "X-AppImage-Version" not set (likely), resort to just setting it to 1
 	if ai.Version == "" {
 		ai.Version = "1.0"
 	}
