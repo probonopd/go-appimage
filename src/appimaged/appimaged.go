@@ -82,8 +82,8 @@ var candidateDirectories = []string{
 	home + "/.local/bin",
 	home + "/bin",
 	home + "/Applications",
-	home + "/opt",
-	home + "/usr/local/bin",
+	"/opt",
+	"/usr/local/bin",
 }
 
 func main() {

@@ -8,9 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/probonopd/go-appimage/internal/helpers"
-	"github.com/probonopd/go-zsyncmake/zsync"
-	"gopkg.in/ini.v1"
 	"io/ioutil"
 	"log"
 	"os"
@@ -19,6 +16,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/probonopd/go-appimage/internal/helpers"
+	"github.com/probonopd/go-zsyncmake/zsync"
+	"gopkg.in/ini.v1"
 )
 
 // ============================
@@ -32,8 +33,6 @@ var commit string
 
 // path to libc
 var LibcDir = "libc"
-
-
 
 // checkRunningWithinDocker  checks if the tool is running within a Docker container
 // and warn the user of passing Environment variables to the container
@@ -54,9 +53,6 @@ func checkRunningWithinDocker() bool {
 	return false
 
 }
-
-
-
 
 // constructMQTTPayload TODO: Add documentation
 func constructMQTTPayload(name string, version string, FSTime time.Time) (string, error) {
@@ -87,7 +83,6 @@ func constructMQTTPayload(name string, version string, FSTime time.Time) (string
 
 	return string(jsonData), nil
 }
-
 
 // GenerateAppImage converts an AppDir into an AppImage
 func GenerateAppImage(
@@ -283,7 +278,7 @@ func GenerateAppImage(
 	// Check if AppStream upstream metadata is present in source AppDir
 	// If yes, use ximion's appstreamcli to make sure that desktop file and appdata match together and are valid
 	appstreamfile := appdir + "/usr/share/metainfo/" + strings.Replace(filepath.Base(desktopfile), ".desktop", ".appdata.xml", -1)
-	if ! checkAppStreamMetadata {
+	if !checkAppStreamMetadata {
 		log.Println("WARNING: Skipping AppStream metadata check...")
 	} else if helpers.CheckIfFileExists(appstreamfile) == false {
 		log.Println("WARNING: AppStream upstream metadata is missing, please consider creating it in")
@@ -612,4 +607,3 @@ func GenerateAppImage(
 	fmt.Println("central directory of available AppImages, by opening a pull request")
 	fmt.Println("at https://github.com/AppImage/appimage.github.io")
 }
-
