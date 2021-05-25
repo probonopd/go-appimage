@@ -279,7 +279,7 @@ cat > mkappimage.AppDir/mkappimage.desktop <<\EOF
 Type=Application
 Name=mkappimage
 Exec=mkappimage
-Comment=Optional daemon that integrates AppImages into the system
+Comment=Core AppImage creation tool
 Icon=appimage
 Categories=Utility;
 Terminal=true
