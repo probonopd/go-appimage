@@ -167,7 +167,7 @@ func sendDesktopNotification(title string, body string, durationms int32) {
 		log.Println("xxxxxxxxxxxxxxxxxxxx ERROR: notification:", call.Err)
 		// Sometimes we get here: "read unix @->/run/user/999/bus: EOF"
 		// means that we are not using PrivateConnection?
-		os.Exit(111)
+		return
 	}
 
 }
