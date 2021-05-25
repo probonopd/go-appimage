@@ -13,16 +13,15 @@ import (
 	"strconv"
 	"syscall"
 
+	"debug/elf"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-)
-import "debug/elf"
-import "github.com/probonopd/go-appimage/internal/helpers"
-import "github.com/otiai10/copy"
 
-//go:generate go run genexclude.go
+	"github.com/otiai10/copy"
+	"github.com/probonopd/go-appimage/internal/helpers"
+)
 
 type QMLImport struct {
 	Classname    string `json:"classname,omitempty"`
@@ -337,7 +336,7 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 		}
 
 	}
-	if options.libAppRunHooks {
+	if options.standalone {
 		var err error
 		// ld-linux might be a symlink; hence we first need to resolve it
 		src, err := filepath.EvalSymlinks(ldLinux)
@@ -395,6 +394,13 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 			helpers.PrintError("Could not deploy the interpreter", err)
 			os.Exit(1)
 		}
+		
+		// Make ld-linux executable
+		err = os.Chmod(ldTargetPath, 0755)
+		if err != nil {
+			helpers.PrintError("Could not set permissions on the interpreter", err)
+			os.Exit(1)
+		}
 	} else {
 		log.Println("Not deploying", ldLinux, "because it was not requested or it is not needed")
 	}
@@ -411,7 +417,7 @@ func deployElf(lib string, appdir helpers.AppDir, err error) {
 		}
 	}
 
-	log.Println("Working on", lib, "(TODO: Remove this message)")
+	log.Println("Working on", lib)
 	if strings.HasPrefix(lib, appdir.Path) == false { // Do not copy if it is already in the AppDir
 		libTargetPath := appdir.Path + "/" + lib
 		if options.libAppRunHooks && checkWhetherPartOfLibc(lib) == true {
@@ -423,7 +429,7 @@ func deployElf(lib string, appdir helpers.AppDir, err error) {
 			log.Println(lib, "is part of libc; copy to", LibcDir, "subdirectory")
 			libTargetPath = appdir.Path + "/" + LibcDir + "/" + lib // If libapprun_hooks is used
 		}
-		log.Println("Copying to libTargetPath:", libTargetPath, "(TODO: Remove this message)")
+		log.Println("Copying to libTargetPath:", libTargetPath)
 
 		err = helpers.CopyFile(lib, libTargetPath) // If libapprun_hooks is not used
 

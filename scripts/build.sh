@@ -19,9 +19,11 @@ set -x
 ##############################################################
 
 # Disregard any other Go environment that may be on the system (e.g., on Travis CI)
-unset GOARCH GOBIN GOEXE GOHOSTARCH GOHOSTOS GOOS GORACE GOROOT GOPATH GOTOOLDIR CC GOGCCFLAGS CGO_ENABLED GO111MODULE
-export GOPATH=/tmp/go
-mkdir -p $GOPATH/src
+unset GOARCH GOBIN GOEXE GOHOSTARCH GOHOSTOS GOOS GORACE GOROOT GOTOOLDIR CC GOGCCFLAGS CGO_ENABLED GO111MODULE
+if [ -z $GOPATH ] ; then
+  export GOPATH=$PWD/gopath
+fi
+mkdir -p $GOPATH/src || true
 
 # Export version and build number
 if [ ! -z "$TRAVIS_BUILD_NUMBER" ] ; then
@@ -35,9 +37,10 @@ fi
 # Get pinned version of Go directly from upstream
 if [ "aarch64" == "$TRAVIS_ARCH" ] ; then export ARCH=arm64 ; fi
 if [ "amd64" == "$TRAVIS_ARCH" ] ; then export ARCH=amd64 ; fi
-wget -c -nv https://dl.google.com/go/go1.13.4.linux-$ARCH.tar.gz
-sudo tar -C /usr/local -xzf go*.tar.gz
-export PATH=/usr/local/go/bin:$PATH
+wget -c -nv https://dl.google.com/go/go1.15.6.linux-$ARCH.tar.gz
+mkdir path || true
+tar -C $PWD/path -xzf go*.tar.gz
+export PATH=$PWD/path/go/bin:$PATH
 
 # Get dependencies needed for CGo # FIXME: Get rid of the need for CGo and, in return, those dependencies
 sudo apt-get -q update
@@ -45,40 +48,28 @@ if [ $(go env GOHOSTARCH) == "amd64" ] ; then sudo apt-get -y install gcc-multil
 if [ $(go env GOHOSTARCH) == "arm64" ] ; then sudo apt-get -y install gcc-arm-linux-gnueabi autoconf ; fi
 
 ##############################################################
-# Build appimagetool
+# Build appimagetool and appimaged
 ##############################################################
 
-cd $GOPATH/src
-go get -d -v github.com/probonopd/go-appimage/...
+cd $TRAVIS_BUILD_DIR
+go get -d -v ./...
+# Download it to the normal location for later, but it'll probably fail, so we allow it
+# TODO: Fix it so we don't need this step
 
 # 64-bit
-go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimagetool
-mv ./appimagetool appimagetool-$(go env GOHOSTARCH)
+go build -o $GOPATH/src -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" ./src/...
+mv $GOPATH/src/appimaged $GOPATH/src/appimaged-$(go env GOHOSTARCH)
+mv $GOPATH/src/appimagetool $GOPATH/src/appimagetool-$(go env GOHOSTARCH)
 
 # 32-bit
 if [ $(go env GOHOSTARCH) == "amd64" ] ; then 
-  env CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimagetool
-  mv ./appimagetool appimagetool-386
-elif [ $(go env GOHOSTARCH) == "arm64" ] ; then 
-  env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=6 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimagetool
-  mv ./appimagetool appimagetool-arm
-fi
-
-##############################################################
-# Build appimaged
-##############################################################
-
-# 64-bit
-go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimaged
-mv ./appimaged appimaged-$(go env GOHOSTARCH)
-
-# 32-bit
-if [ $(go env GOHOSTARCH) == "amd64" ] ; then 
-  env CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimaged
-  mv ./appimaged appimaged-386
+  env CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -o $GOPATH/src -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" ./src/...
+  mv $GOPATH/src/appimaged $GOPATH/src/appimaged-386
+  mv $GOPATH/src/appimagetool $GOPATH/src/appimagetool-386
 elif [ $(go env GOHOSTARCH) == "arm64" ] ; then
-  env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=6 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/appimaged
-  mv ./appimaged appimaged-arm
+  env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=6 go build -o $GOPATH/src -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" ./src/...
+  mv $GOPATH/src/appimaged $GOPATH/src/appimaged-arm
+  mv $GOPATH/src/appimagetool $GOPATH/src/appimagetool-arm
 fi
 
 ##############################################################
@@ -104,6 +95,8 @@ fi
 # and upload AppImages
 ##############################################################
 
+cd $GOPATH/src
+
 unset ARCH # It contains "amd64" which we cannot use since we need "x86_64"
 
 # For some weird reason, no one seems to agree on what architectures
@@ -125,7 +118,7 @@ mkdir -p appimagetool.AppDir/usr/bin
 chmod +x appimagetool.AppDir/usr/bin/*
 cp appimagetool-$(go env GOHOSTARCH) appimagetool.AppDir/usr/bin/appimagetool
 ( cd appimagetool.AppDir/ ; ln -s usr/bin/appimagetool AppRun)
-cp $GOPATH/src/github.com/probonopd/go-appimage/data/appimage.png appimagetool.AppDir/
+cp $TRAVIS_BUILD_DIR/data/appimage.png appimagetool.AppDir/
 cat > appimagetool.AppDir/appimagetool.desktop <<\EOF
 [Desktop Entry]
 Type=Application
@@ -146,7 +139,7 @@ mkdir -p appimaged.AppDir/usr/bin
 chmod +x appimaged.AppDir/usr/bin/*
 cp appimaged-$(go env GOHOSTARCH) appimaged.AppDir/usr/bin/appimaged
 ( cd appimaged.AppDir/ ; ln -s usr/bin/appimaged AppRun)
-cp $GOPATH/src/github.com/probonopd/go-appimage/data/appimage.png appimaged.AppDir/
+cp $TRAVIS_BUILD_DIR/data/appimage.png appimaged.AppDir/
 cat > appimaged.AppDir/appimaged.desktop <<\EOF
 [Desktop Entry]
 Type=Application
@@ -225,7 +218,7 @@ fi
 
 cp appimagetool-$USEARCH appimagetool.AppDir/usr/bin/appimagetool
 ( cd appimagetool.AppDir/ ; ln -s usr/bin/appimagetool AppRun)
-cp $GOPATH/src/github.com/probonopd/go-appimage/data/appimage.png appimagetool.AppDir/
+cp $TRAVIS_BUILD_DIR/data/appimage.png appimagetool.AppDir/
 cat > appimagetool.AppDir/appimagetool.desktop <<\EOF
 [Desktop Entry]
 Type=Application
@@ -246,7 +239,7 @@ mkdir -p appimaged.AppDir/usr/bin
 chmod +x appimaged.AppDir/usr/bin/*
 cp appimaged-$USEARCH appimaged.AppDir/usr/bin/appimaged
 ( cd appimaged.AppDir/ ; ln -s usr/bin/appimaged AppRun)
-cp $GOPATH/src/github.com/probonopd/go-appimage/data/appimage.png appimaged.AppDir/
+cp $TRAVIS_BUILD_DIR/data/appimage.png appimaged.AppDir/
 cat > appimaged.AppDir/appimaged.desktop <<\EOF
 [Desktop Entry]
 Type=Application

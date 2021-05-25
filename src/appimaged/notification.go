@@ -18,7 +18,7 @@ import (
 // sendUpdateDesktopNotification sends a desktop notification for an update.
 // Use this with "go" prefixed to it so that it runs in the background, because it waits
 // until the user clicks on "Update" or the timeout occurs
-func sendUpdateDesktopNotification(ai AppImage, version string, changelog string) {
+func sendUpdateDesktopNotification(ai *AppImage, version string, changelog string) {
 
 	wg := &sync.WaitGroup{}
 
@@ -47,11 +47,11 @@ func sendUpdateDesktopNotification(ai AppImage, version string, changelog string
 	// Create a Notification to send
 	iconName := "software-update-available"
 	n := notify.Notification{
-		AppName:       ai.niceName,
+		AppName:       ai.Name,
 		ReplacesID:    uint32(0),
 		AppIcon:       iconName,
 		Summary:       "Update available",
-		Body:          ai.niceName + " can be updated to version " + version + ". \nchangelog",
+		Body:          ai.Name + " can be updated to version " + version + ". \nchangelog",
 		Actions:       []string{"update", "Update"}, // tuples of (action_key, label)
 		Hints:         map[string]dbus.Variant{},
 		ExpireTimeout: int32(120000),
@@ -89,8 +89,8 @@ func sendUpdateDesktopNotification(ai AppImage, version string, changelog string
 			// Only act on notifications with "our" action ID
 			// https://github.com/esiqveland/notify/issues/8#issuecomment-584881627
 			if action.ActionKey == "update" && &n == memory[action.ID] {
-				log.Println("runUpdate", ai.path)
-				runUpdate(ai.path)
+				log.Println("runUpdate", ai.Path)
+				runUpdate(ai.Path)
 			}
 		}
 		wg.Done()

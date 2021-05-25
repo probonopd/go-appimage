@@ -102,7 +102,7 @@ func AddHereToPath() {
 // FilesWithSuffixInDirectoryRecursive returns the files in a given directory with the given filename extension, and err
 func FilesWithSuffixInDirectoryRecursive(directory string, extension string) []string {
 	var foundfiles []string
-	err := filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(directory, func(path string, info os.FileInfo, _ error) error {
 		if strings.HasSuffix(info.Name(), extension) {
 			foundfiles = append(foundfiles, path)
 		}
@@ -158,13 +158,12 @@ func CheckIfFileExists(filepath string) bool {
 	return true
 }
 
-
 // CheckIfFileOrFolderExists checks if a file exists and is not a directory before we
 // try using it to prevent further errors.
 // Returns true if it does, false otherwise.
 func CheckIfFileOrFolderExists(filepath string) bool {
 	_, err := os.Stat(filepath)
-	if os.IsNotExist(err){
+	if os.IsNotExist(err) {
 		return false
 	}
 	return true

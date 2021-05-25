@@ -53,10 +53,9 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 	if helpers.SliceContains(subscribedMQTTTopics, updateinformation) == true {
 		// We have already subscribed to this; so nothing to do here
 		return
-	} else {
-		// Need to do this immediately here, otherwise it comes too late
-		subscribedMQTTTopics = helpers.AppendIfMissing(subscribedMQTTTopics, updateinformation)
 	}
+	// Need to do this immediately here, otherwise it comes too late
+	subscribedMQTTTopics = helpers.AppendIfMissing(subscribedMQTTTopics, updateinformation)
 	time.Sleep(time.Second * 10) // We get retained messages immediately when we subscribe;
 	// at this point our AppImage may not be integrated yet...
 	// Also it's better user experience not to be bombarded with updates immediately at startup.
@@ -107,9 +106,9 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 			}
 
 			mostRecent := FindMostRecentAppImageWithMatchingUpdateInformation(unescapedui)
-			ai := NewAppImage(mostRecent)
+			ai, _ := NewAppImage(mostRecent)
 
-			fstime := ai.getFSTime()
+			fstime := ai.ModTime()
 			log.Println("mqtt:", updateinformation, "reports version", version, "with FSTime", data.FSTime.Unix(), "- we have", mostRecent, "with FSTime", fstime.Unix())
 
 			// FIXME: Only notify if the version is newer than what we already have.
@@ -140,7 +139,7 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 					}
 				}
 			} else {
-				log.Println("mqtt: Not taking action on", ai.niceName, "because FStime is identical")
+				log.Println("mqtt: Not taking action on", ai.Name, "because FStime is identical")
 
 			}
 		}
