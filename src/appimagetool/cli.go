@@ -2,14 +2,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/probonopd/go-appimage/internal/helpers"
-	"github.com/urfave/cli/v2"
 	"log"
 	"os"
 	"path/filepath"
 	"time"
-)
 
+	"github.com/probonopd/go-appimage/internal/helpers"
+	"github.com/urfave/cli/v2"
+)
 
 // array of string, Sections contains
 // * update information
@@ -37,7 +37,6 @@ func bootstrapAppImageDeploy(c *cli.Context) error {
 	return nil
 }
 
-
 // bootstrapValidateAppImage wrapper function to validate a AppImage
 // 		Args: c: cli.Context
 func bootstrapValidateAppImage(c *cli.Context) error {
@@ -51,7 +50,7 @@ func bootstrapValidateAppImage(c *cli.Context) error {
 	filePathToValidate := c.Args().Get(0)
 
 	// does the file exist? if not early-exit
-	if ! helpers.CheckIfFileExists(filePathToValidate) {
+	if !helpers.CheckIfFileExists(filePathToValidate) {
 		log.Fatal("The specified file could not be found")
 	}
 
@@ -78,14 +77,12 @@ func bootstrapValidateAppImage(c *cli.Context) error {
 	return nil
 }
 
-
 // bootstrapSetupSigning wrapper function to setup signing in
 // the current Git repository
 // 		Args: c: cli.Context
 func bootstrapSetupSigning(c *cli.Context) error {
 	return setupSigning(c.Bool("overwrite"))
 }
-
 
 // bootstrapAppImageSections is a function which converts cli.Context to
 // string based arguments. Wrapper function to show the sections of the AppImage
@@ -100,7 +97,7 @@ func bootstrapAppImageSections(c *cli.Context) error {
 	fileToAppImage := c.Args().Get(0)
 
 	// does the file exist? if not early-exit
-	if ! helpers.CheckIfFileExists(fileToAppImage) {
+	if !helpers.CheckIfFileExists(fileToAppImage) {
 		log.Fatal("The specified file could not be found")
 	}
 
@@ -132,7 +129,6 @@ func bootstrapAppImageSections(c *cli.Context) error {
 	return nil
 }
 
-
 // bootstrapAppImageBuild is a function which converts cli.Context to
 // string based arguments, checks if all the files
 // provided as arguments exists. If yes add the current path to PATH,
@@ -151,13 +147,12 @@ func bootstrapAppImageBuild(c *cli.Context) error {
 	fileToAppDir := c.Args().Get(0)
 
 	// does the file exist? if not early-exit
-	if ! helpers.CheckIfFileOrFolderExists(fileToAppDir) {
+	if !helpers.CheckIfFileOrFolderExists(fileToAppDir) {
 		log.Fatal("The specified directory does not exist")
 	}
 
 	// Add the location of the executable to the $PATH
 	helpers.AddHereToPath()
-
 
 	// Check for needed files on $PATH
 	tools := []string{"file", "mksquashfs", "desktop-file-validate", "uploadtool", "patchelf", "desktop-file-validate", "patchelf"} // "sh", "strings", "grep" no longer needed?; "curl" is needed for uploading only, "glib-compile-schemas" is needed in some cases only
@@ -199,7 +194,6 @@ func bootstrapAppImageBuild(c *cli.Context) error {
 	return nil
 }
 
-
 // main Command Line Entrypoint. Defines the command line structure
 // and assign each subcommand and option to the appropriate function
 // which should be triggered when the subcommand is used
@@ -224,17 +218,16 @@ func main() {
 
 	// basic information
 	app := &cli.App{
-		Name:                   "appimagetool",
-		Authors: 				[]*cli.Author{{Name: "AppImage Project"}},
-		Version:                version,
-		Usage:            		"An automatic tool to create AppImages",
-		EnableBashCompletion:   false,
-		HideHelp:               false,
-		HideVersion:            false,
-		Compiled:               time.Time{},
-		Copyright:              "MIT License",
-		Action: 				bootstrapAppImageBuild,
-
+		Name:                 "appimagetool",
+		Authors:              []*cli.Author{{Name: "Simon Peter"}},
+		Version:              version,
+		Usage:                "An automatic tool to create AppImages",
+		EnableBashCompletion: false,
+		HideHelp:             false,
+		HideVersion:          false,
+		Compiled:             time.Time{},
+		Copyright:            "MIT License",
+		Action:               bootstrapAppImageBuild,
 	}
 
 	// define subcommands, like 'deploy', 'validate', ...
@@ -255,28 +248,28 @@ func main() {
 			Action: bootstrapSetupSigning,
 		},
 		{
-			Name: 	"sections",
-			Usage: 	"",
-			Action:	bootstrapAppImageSections,
+			Name:   "sections",
+			Usage:  "",
+			Action: bootstrapAppImageSections,
 		},
 	}
 
 	// define flags, such as --libapprun_hooks, --standalone here ...
 	app.Flags = []cli.Flag{
 		&cli.BoolFlag{
-			Name: "libapprun_hooks",
+			Name:    "libapprun_hooks",
 			Aliases: []string{"l"},
-			Usage: "Use libapprun_hooks",
+			Usage:   "Use libapprun_hooks",
 		},
 		&cli.BoolFlag{
-			Name: "overwrite",
+			Name:    "overwrite",
 			Aliases: []string{"o"},
-			Usage: "Overwrite existing files",
+			Usage:   "Overwrite existing files",
 		},
 		&cli.BoolFlag{
-			Name: "standalone",
+			Name:    "standalone",
 			Aliases: []string{"s"},
-			Usage: "Make standalone self-contained bundle",
+			Usage:   "Make standalone self-contained bundle",
 		},
 	}
 

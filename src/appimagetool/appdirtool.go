@@ -166,16 +166,14 @@ var packagesContainingFiles = make(map[string]string) // Need to use 'make', oth
       /usr/lib64.)  If the binary was linked with the -z nodeflib linker option, this step is skipped.
 */
 
-
 type DeployOptions struct {
-	standalone bool
+	standalone     bool
 	libAppRunHooks bool
 }
 
 // this is the public options instance
 // which need to be set before the function is called
 var options DeployOptions
-
 
 func AppDirDeploy(path string) {
 	appdir, err := helpers.NewAppDir(path)
@@ -407,12 +405,12 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 // if it is not on the exclude list and it is not yet at the target location
 func deployElf(lib string, appdir helpers.AppDir, err error) {
 	for _, excludePrefix := range ExcludedLibraries {
-		if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true && ! options.standalone {
+		if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true && !options.standalone {
 			log.Println("Skipping", lib, "because it is on the excludelist")
 			return
 		}
 	}
-	
+
 	log.Println("Working on", lib, "(TODO: Remove this message)")
 	if strings.HasPrefix(lib, appdir.Path) == false { // Do not copy if it is already in the AppDir
 		libTargetPath := appdir.Path + "/" + lib
@@ -796,7 +794,7 @@ func deployGtkDirectory(appdir helpers.AppDir, gtkVersion int) {
 func appendLib(path string) {
 
 	for _, excludedlib := range ExcludedLibraries {
-		if filepath.Base(path) == excludedlib && ! options.standalone {
+		if filepath.Base(path) == excludedlib && !options.standalone {
 			// log.Println("Skipping", excludedlib, "because it is on the excludelist")
 			return
 		}
@@ -1435,7 +1433,7 @@ func checkWhetherPartOfLibc(thisfile string) bool {
 
 	for _, prefix := range prefixes {
 		if strings.HasPrefix(filepath.Base(thisfile), prefix+"-") || strings.HasPrefix(filepath.Base(thisfile), prefix+".") || strings.HasPrefix(filepath.Base(thisfile), prefix+"_") {
-		return true
+			return true
 		}
 	}
 
