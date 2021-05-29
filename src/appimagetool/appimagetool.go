@@ -93,6 +93,12 @@ func GenerateAppImage(
 	checkAppStreamMetadata bool,
 	updateInformation string,
 ) {
+
+	// does the file exist? if not early-exit
+	if !helpers.CheckIfFileOrFolderExists(appdir) {
+		log.Fatal("The specified directory does not exist")
+	}
+
 	if _, err := os.Stat(appdir + "/AppRun"); os.IsNotExist(err) {
 		_, _ = os.Stderr.WriteString("AppRun is missing \n")
 		os.Exit(1)
@@ -242,13 +248,38 @@ func GenerateAppImage(
 	helpers.PrintError("Save desktop file", err)
 
 	// Construct target AppImage filename
-	target := ""
-	if destination == "" {
+	// make sure the output directory exists before continuing
+	target := destination
+	if target == "" {
+		// no destination directory was specified.
+		// write the file to the current directory
 		target = nameWithUnderscores + "-" + version + "-" + arch + ".AppImage"
-	} else if info, _ := os.Stat(destination); info.IsDir() {
-		target = filepath.Join(destination, nameWithUnderscores+"-"+version+"-"+arch+".AppImage")
 	} else {
-		target = destination
+		targetFileInfo, err := os.Stat(target)
+		if os.IsNotExist(err) {
+			// the file does not exist.
+			// check the parent directory exists
+			targetDir := filepath.Dir(destination)
+			if !helpers.CheckIfFolderExists(targetDir) {
+				log.Fatal(fmt.Sprintf("%s does not exist", targetDir))
+				return
+			}
+			// the parent directory exists. Make a fullpath to the destination appimage
+			// with the basename filename following appimage conventions
+			target = filepath.Join(targetDir, nameWithUnderscores+"-"+version+"-"+arch+".AppImage")
+		} else if err != nil {
+			// we faced some other random error. Possibly messing around with symlinks or permissionError
+			// log it and quit.
+			log.Fatal(err)
+			return
+		} else {
+			// the file or folder exists
+			// check if its a file or a folder.
+			if targetFileInfo.IsDir() {
+				// the user provided path is a directory
+				target = filepath.Join(destination, nameWithUnderscores+"-"+version+"-"+arch+".AppImage")
+			}
+		}
 	}
 
 	log.Println("Target AppImage filename:", target)
