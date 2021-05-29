@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/probonopd/go-appimage/internal/helpers"
 	"github.com/urfave/cli/v2"
 	"log"
@@ -53,13 +54,22 @@ func bootstrapMkAppImage(c *cli.Context) error {
 	}
 
 	// make sure the output directory exists before continuing
-	outputDirectory := fileToAppImageOutput
-	if strings.HasSuffix(fileToAppImageOutput, ".AppImage") {
-		outputDirectory = filepath.Base(fileToAppImageOutput)
+	outputDestination := fileToAppImageOutput
+	if _, err := os.Stat(outputDestination); os.IsNotExist(err) {
+		// the file does not exist.
+		// check the parent directory exists
+		outputDestination = filepath.Base(fileToAppImageOutput)
+		fmt.Printf(outputDestination)
+		if !helpers.CheckIfFolderExists(outputDestination) {
+			log.Fatal(fmt.Sprintf("%s does not exist", fileToAppImageOutput))
+		}
 	}
-	if !helpers.CheckIfFolderExists(outputDirectory) {
+	if strings.HasSuffix(fileToAppImageOutput, ".AppImage") {
+		outputDestination = filepath.Base(fileToAppImageOutput)
+	}
+	if !helpers.CheckIfFolderExists(outputDestination) {
 		log.Fatal("The specified output directory does not exist")
-    }
+	}
 
 	// does the file exist? if not early-exit
 	if !helpers.CheckIfFileOrFolderExists(fileToAppDir) {

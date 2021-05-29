@@ -243,11 +243,14 @@ func GenerateAppImage(
 
 	// Construct target AppImage filename
 	target := ""
-	if strings.HasSuffix(destination, ".AppImage") {
-		target = destination
-	} else {
+	if destination == "" {
+		target = nameWithUnderscores + "-" + version + "-" + arch + ".AppImage"
+	} else if info, _ := os.Stat(destination); info.IsDir() {
 		target = filepath.Join(destination, nameWithUnderscores+"-"+version+"-"+arch+".AppImage")
+	} else {
+		target = destination
 	}
+
 	log.Println("Target AppImage filename:", target)
 
 	var iconfile string
