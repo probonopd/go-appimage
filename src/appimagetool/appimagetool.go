@@ -266,7 +266,6 @@ func GenerateAppImage(
 			}
 			// the parent directory exists. Make a fullpath to the destination appimage
 			// with the basename filename following appimage conventions
-			target = filepath.Join(targetDir, nameWithUnderscores+"-"+version+"-"+arch+".AppImage")
 		} else if err != nil {
 			// we faced some other random error. Possibly messing around with symlinks or permissionError
 			// log it and quit.
