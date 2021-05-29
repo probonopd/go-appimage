@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -49,6 +50,15 @@ func bootstrapMkAppImage(c *cli.Context) error {
 	fileToAppImageOutput := ""
 	if c.NArg() == 2 {
 		fileToAppImageOutput = c.Args().Get(1)
+	}
+
+	// make sure the output directory exists before continuing
+	outputDirectory := fileToAppImageOutput
+	if strings.HasSuffix(fileToAppImageOutput, ".AppImage") {
+		outputDirectory = filepath.Base(fileToAppImageOutput)
+	}
+	if !helpers.CheckIfFileOrFolderExists(outputDirectory) {
+		log.Fatal("The specified output directory does not exist")
 	}
 
 	// does the file exist? if not early-exit
