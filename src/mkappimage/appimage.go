@@ -152,7 +152,6 @@ func (ai AppImage) DetermineImageType() int {
 	return -1
 }
 
-
 // ReadUpdateInformation reads updateinformation from an AppImage
 // Returns updateinformation string and error
 func (ai AppImage) ReadUpdateInformation() (string, error) {
@@ -165,4 +164,3 @@ func (ai AppImage) ReadUpdateInformation() (string, error) {
 	// We have AppImage.Validate as its own function which we call less frequently than this.
 	return ui, nil
 }
-

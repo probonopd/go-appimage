@@ -9,7 +9,6 @@ import (
 	"time"
 )
 
-
 // listFilesInAppImage lists the files in the AppImage, similar to
 // the ls command in UNIX systems
 func listFilesInAppImage(path string) {
@@ -32,7 +31,6 @@ func listLongFilesInAppImage(path string) {
 
 }
 
-
 // bootstrapMkAppImage is a function which converts cli.Context to
 // string based arguments, checks if all the files
 // provided as arguments exists. If yes add the current path to PATH,
@@ -44,13 +42,17 @@ func bootstrapMkAppImage(c *cli.Context) error {
 
 	// check if the number of arguments are stictly 1, if not
 	// return
-	if c.NArg() < 1 {
+	if c.NArg() < 1 || c.NArg() > 3 {
 		log.Fatal("Please specify the path to the AppDir/AppImage which you would like to aid.")
 	}
 	fileToAppDir := c.Args().Get(0)
+	fileToAppImageOutput := ""
+	if c.NArg() == 2 {
+		fileToAppImageOutput = c.Args().Get(1)
+	}
 
 	// does the file exist? if not early-exit
-	if ! helpers.CheckIfFileOrFolderExists(fileToAppDir) {
+	if !helpers.CheckIfFileOrFolderExists(fileToAppDir) {
 		log.Fatal("The specified directory does not exist")
 	}
 
@@ -71,7 +73,6 @@ func bootstrapMkAppImage(c *cli.Context) error {
 	if osStatErr != nil {
 		log.Fatal("Failed to process the supplied directory / AppImage. Is it a valid directory / AppImage?")
 	}
-
 
 	if osStatInfo.IsDir() {
 		// check if the file provided is an AppDir Directory
@@ -110,8 +111,14 @@ func bootstrapMkAppImage(c *cli.Context) error {
 		}
 
 		// now generate the appimage
-		GenerateAppImage(fileToAppDir, shouldGuessUpdateInformation, compressionType, shouldValidateAppstream, receivedUpdateInformation)
-
+		GenerateAppImage(
+			fileToAppDir,
+			fileToAppImageOutput,
+			shouldGuessUpdateInformation,
+			compressionType,
+			shouldValidateAppstream,
+			receivedUpdateInformation,
+		)
 
 	} else {
 		if c.Bool("list") || c.Bool("listlong") {
@@ -134,7 +141,6 @@ func bootstrapMkAppImage(c *cli.Context) error {
 	}
 	return nil
 }
-
 
 // main Command Line Entrypoint. Defines the command line structure
 // and assign each subcommand and option to the appropriate function
@@ -160,66 +166,65 @@ func main() {
 
 	// basic information
 	app := &cli.App{
-		Name:                   "mkappimage",
-		Authors: 				[]*cli.Author{{Name: "AppImage Project"}},
-		Version:                version,
-		Usage:            		"Core tool to convert AppDir to AppImage (experimental)",
-		EnableBashCompletion:   false,
-		HideHelp:               false,
-		HideVersion:            false,
-		Compiled:               time.Time{},
-		Copyright:              "MIT License",
-		Action: 				bootstrapMkAppImage,
-
+		Name:                 "mkappimage",
+		Authors:              []*cli.Author{{Name: "AppImage Project"}},
+		Version:              version,
+		Usage:                "Core tool to convert AppDir to AppImage (experimental)",
+		EnableBashCompletion: false,
+		HideHelp:             false,
+		HideVersion:          false,
+		Compiled:             time.Time{},
+		Copyright:            "MIT License",
+		Action:               bootstrapMkAppImage,
 	}
 
 	// define flags, such as --libapprun_hooks, --standalone here ...
 	app.Flags = []cli.Flag{
 		&cli.BoolFlag{
-			Name: "libapprun_hooks",
+			Name:  "libapprun_hooks",
 			Usage: "Use libapprun_hooks",
 		},
 		&cli.BoolFlag{
-			Name: "overwrite",
+			Name:    "overwrite",
 			Aliases: []string{"o"},
-			Usage: "Overwrite existing files",
+			Usage:   "Overwrite existing files",
 		},
 		&cli.BoolFlag{
-			Name: "guess",
+			Name:    "guess",
 			Aliases: []string{"g"},
-			Usage: "Guess update information based on GitHub, Travis CI or GitLab environment variables",
+			Usage:   "Guess update information based on GitHub, Travis CI or GitLab environment variables",
 		},
 		&cli.BoolFlag{
-			Name: "standalone",
+			Name:    "standalone",
 			Aliases: []string{"s"},
-			Usage: "Make standalone self-contained bundle",
+			Usage:   "Make standalone self-contained bundle",
 		},
 		&cli.BoolFlag{
-			Name: "no-appstream",
+			Name:    "no-appstream",
 			Aliases: []string{"n"},
-			Usage: "Do not check AppStream metadata",
+			Usage:   "Do not check AppStream metadata",
 		},
 		&cli.StringFlag{
-			Name: "comp",
+			Name:  "comp",
 			Usage: "Squashfs compression",
 		},
 		&cli.StringFlag{
-			Name: "updateinformation",
+			Name:    "updateinformation",
 			Aliases: []string{"u", "updateinfo"},
-			Usage: "Embed update information STRING; if zsyncmake is installed, generate zsync file",
+			Usage:   "Embed update information STRING; if zsyncmake is installed, generate zsync file",
 		},
 		&cli.BoolFlag{
-			Name: "list",
+			Name:    "list",
 			Aliases: []string{"l"},
-			Usage: "List files in SOURCE AppImage",
+			Usage:   "List files in SOURCE AppImage",
 		},
 		&cli.BoolFlag{
-			Name: "listlong",
+			Name:    "listlong",
 			Aliases: []string{"ll"},
-			Usage: "List files in SOURCE AppImage (similar to ls -al)",
+			Usage:   "List files in SOURCE AppImage (similar to ls -al)",
 		},
 		&cli.BoolFlag{
-			Name: "verbose",
+			Name:  "verbose",
 			Usage: "Produce verbose output",
 		},
 	}

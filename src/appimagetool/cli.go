@@ -179,7 +179,7 @@ func bootstrapAppImageBuild(c *cli.Context) error {
 		//								scratch, and if we fail to guess it, then no update metadata for
 		// 								the appimage)
 		GenerateAppImage(
-			fileToAppDir,
+			fileToAppDir, "",
 			true,
 			"gzip",
 			true,

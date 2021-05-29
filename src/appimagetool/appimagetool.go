@@ -87,6 +87,7 @@ func constructMQTTPayload(name string, version string, FSTime time.Time) (string
 // GenerateAppImage converts an AppDir into an AppImage
 func GenerateAppImage(
 	appdir string,
+	destination string,
 	generateUpdateInformation bool,
 	squashfsCompressionType string,
 	checkAppStreamMetadata bool,
@@ -241,7 +242,12 @@ func GenerateAppImage(
 	helpers.PrintError("Save desktop file", err)
 
 	// Construct target AppImage filename
-	target := nameWithUnderscores + "-" + version + "-" + arch + ".AppImage"
+	target := ""
+	if strings.HasSuffix(destination, ".AppImage") {
+		target = destination
+	} else {
+		target = filepath.Join(destination, nameWithUnderscores+"-"+version+"-"+arch+".AppImage")
+	}
 	log.Println("Target AppImage filename:", target)
 
 	var iconfile string
