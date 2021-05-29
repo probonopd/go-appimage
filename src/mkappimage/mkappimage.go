@@ -195,11 +195,6 @@ func main() {
 			Usage: "Use libapprun_hooks",
 		},
 		&cli.BoolFlag{
-			Name:    "overwrite",
-			Aliases: []string{"o"},
-			Usage:   "Overwrite existing files",
-		},
-		&cli.BoolFlag{
 			Name:    "guess",
 			Aliases: []string{"g"},
 			Usage:   "Guess update information based on GitHub, Travis CI or GitLab environment variables",
