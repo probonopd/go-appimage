@@ -57,9 +57,9 @@ func bootstrapMkAppImage(c *cli.Context) error {
 	if strings.HasSuffix(fileToAppImageOutput, ".AppImage") {
 		outputDirectory = filepath.Base(fileToAppImageOutput)
 	}
-	if !helpers.CheckIfFileOrFolderExists(outputDirectory) {
+	if !helpers.CheckIfFolderExists(outputDirectory) {
 		log.Fatal("The specified output directory does not exist")
-	}
+    }
 
 	// does the file exist? if not early-exit
 	if !helpers.CheckIfFileOrFolderExists(fileToAppDir) {
