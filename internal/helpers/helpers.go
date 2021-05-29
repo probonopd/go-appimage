@@ -339,7 +339,7 @@ func CheckIfAllToolsArePresent(tools []string) {
 	for _, t := range tools {
 		_, err := exec.LookPath(t)
 		if err != nil {
-			log.Fatal("Required helper tool", t, "missing")
+			log.Fatal("Required helper tool '", t, "' missing")
 		}
 	}
 }
