@@ -84,7 +84,8 @@ func constructMQTTPayload(name string, version string, FSTime time.Time) (string
 	return string(jsonData), nil
 }
 
-func getVersion() string {
+// getMeta returns the version of the AppImage, and git repository, if any.
+func getMeta() (string, string) {
 	// TODO: Append 7-digit commit sha after the build number
 
 	var version string
@@ -131,7 +132,7 @@ func getVersion() string {
 		}
 	}
 
-	return version
+	return version, gitRoot
 }
 
 // GenerateAppImage converts an AppDir into an AppImage
@@ -238,7 +239,7 @@ func GenerateAppImage(
 	}
 	arch := archs[0]
 
-	version := getVersion()
+	version, gitRoot := getMeta()
 
 	// If no version found, exit
 	if version == "" && source != "mkappimage" {
