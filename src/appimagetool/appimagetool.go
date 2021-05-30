@@ -84,26 +84,7 @@ func constructMQTTPayload(name string, version string, FSTime time.Time) (string
 	return string(jsonData), nil
 }
 
-// GenerateAppImage converts an AppDir into an AppImage
-func GenerateAppImage(
-	appdir string,
-	destination string,
-	generateUpdateInformation bool,
-	squashfsCompressionType string,
-	checkAppStreamMetadata bool,
-	updateInformation string,
-) {
-
-	// does the file exist? if not early-exit
-	if !helpers.CheckIfFileOrFolderExists(appdir) {
-		log.Fatal("The specified directory does not exist")
-	}
-
-	if _, err := os.Stat(appdir + "/AppRun"); os.IsNotExist(err) {
-		_, _ = os.Stderr.WriteString("AppRun is missing \n")
-		os.Exit(1)
-	}
-
+func getVersion() string {
 	// TODO: Append 7-digit commit sha after the build number
 
 	var version string
@@ -150,9 +131,28 @@ func GenerateAppImage(
 		}
 	}
 
-	// If no version found, exit
-	if version == "" {
-		log.Fatal("Version not found, aborting. Set it with VERSION=... " + os.Args[0] + "\n")
+	return version
+}
+
+// GenerateAppImage converts an AppDir into an AppImage
+func GenerateAppImage(
+	appdir string,
+	destination string,
+	generateUpdateInformation bool,
+	squashfsCompressionType string,
+	checkAppStreamMetadata bool,
+	updateInformation string,
+	source string,
+) {
+
+	// does the file exist? if not early-exit
+	if !helpers.CheckIfFileOrFolderExists(appdir) {
+		log.Fatal("The specified directory does not exist")
+	}
+
+	if _, err := os.Stat(appdir + "/AppRun"); os.IsNotExist(err) {
+		_, _ = os.Stderr.WriteString("AppRun is missing \n")
+		os.Exit(1)
 	}
 
 	// If no desktop file found, exit
@@ -168,7 +168,7 @@ func GenerateAppImage(
 
 	desktopfile := helpers.FilesWithSuffixInDirectory(appdir, ".desktop")[0]
 
-	err = helpers.ValidateDesktopFile(desktopfile)
+	err := helpers.ValidateDesktopFile(desktopfile)
 	helpers.PrintError("ValidateDesktopFile", err)
 	if err != nil {
 		os.Exit(1)
@@ -238,14 +238,22 @@ func GenerateAppImage(
 	}
 	arch := archs[0]
 
-	// Set VERSION in desktop file and save it
-	d, err = ini.LoadSources(ini.LoadOptions{IgnoreInlineComment: true}, // Do not cripple lines hat contain ";"
-		desktopfile)
-	ini.PrettyFormat = false
-	helpers.PrintError("ini.load", err)
-	d.Section("Desktop Entry").Key("X-AppImage-Version").SetValue(version)
-	err = d.SaveTo(desktopfile)
-	helpers.PrintError("Save desktop file", err)
+	version := getVersion()
+
+	// If no version found, exit
+	if version == "" && source != "mkappimage" {
+		// version is not required for mkappimage
+		log.Fatal("Version not found, aborting. Set it with VERSION=... " + os.Args[0] + "\n")
+	} else if version != "" {
+		// Set VERSION in desktop file and save it
+		d, err = ini.LoadSources(ini.LoadOptions{IgnoreInlineComment: true}, // Do not cripple lines hat contain ";"
+			desktopfile)
+		ini.PrettyFormat = false
+		helpers.PrintError("ini.load", err)
+		d.Section("Desktop Entry").Key("X-AppImage-Version").SetValue(version)
+		err = d.SaveTo(desktopfile)
+		helpers.PrintError("Save desktop file", err)
+	}
 
 	// Construct target AppImage filename
 	// make sure the output directory exists before continuing

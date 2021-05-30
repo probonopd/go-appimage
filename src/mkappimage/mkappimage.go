@@ -1,12 +1,13 @@
 package main
 
 import (
-	"github.com/probonopd/go-appimage/internal/helpers"
-	"github.com/urfave/cli/v2"
 	"log"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/probonopd/go-appimage/internal/helpers"
+	"github.com/urfave/cli/v2"
 )
 
 // listFilesInAppImage lists the files in the AppImage, similar to
@@ -112,6 +113,7 @@ func bootstrapMkAppImage(c *cli.Context) error {
 			compressionType,
 			shouldValidateAppstream,
 			receivedUpdateInformation,
+			"mkappimage",
 		)
 
 	} else {

@@ -184,6 +184,7 @@ func bootstrapAppImageBuild(c *cli.Context) error {
 			"gzip",
 			true,
 			"",
+			"appimagetool"
 		)
 	} else {
 		// TODO: If it is a file, then check if it is an AppImage and if yes, extract it
