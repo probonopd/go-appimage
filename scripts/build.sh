@@ -73,6 +73,24 @@ elif [ $(go env GOHOSTARCH) == "arm64" ] ; then
 fi
 
 ##############################################################
+# Build mkappimage
+##############################################################
+
+# 64-bit
+go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/mkappimage
+mv ./mkappimage mkappimage-$(go env GOHOSTARCH)
+
+# 32-bit
+if [ $(go env GOHOSTARCH) == "amd64" ] ; then 
+  env CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/mkdappimage
+  mv ./mkappimage mkappimage-386
+elif [ $(go env GOHOSTARCH) == "arm64" ] ; then
+  env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=6 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/mkappimage
+  mv ./mkappimage mkappimage-arm
+fi
+
+
+##############################################################
 # Eat our own dogfood, use appimagetool to make 
 # and upload AppImages
 ##############################################################
@@ -134,6 +152,33 @@ Terminal=true
 NoDisplay=true
 EOF
 ./appimagetool-*-$ARCHITECTURE.AppImage ./appimaged.AppDir
+
+# Make mkappimage AppImage
+rm -rf mkappimage.AppDir
+mkdir -p mkappimage.AppDir/usr/bin
+( cd mkappimage.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/desktop-file-validate-$ARCHITECTURE -O desktop-file-validate )
+( cd mkappimage.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/mksquashfs-$ARCHITECTURE -O mksquashfs )
+( cd mkappimage.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/patchelf-$ARCHITECTURE -O patchelf )
+( cd mkappimage.AppDir/usr/bin/ ; wget -c https://github.com/AppImage/AppImageKit/releases/download/continuous/runtime-$ARCHITECTURE )
+( cd mkappimage.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh -O uploadtool )
+( cd mkappimage.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/bsdtar-$ARCHITECTURE -O bsdtar )
+( cd mkappimage.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/unsquashfs-$ARCHITECTURE -O unsquashfs )
+chmod +x mkappimage.AppDir/usr/bin/*
+cp mkappimage-$(go env GOHOSTARCH) mkappimage.AppDir/usr/bin/mkappimage
+( cd mkappimage.AppDir/ ; ln -s usr/bin/mkappimage AppRun)
+cp $GOPATH/src/github.com/probonopd/go-appimage/data/appimage.png mkappimage.AppDir/
+cat > mkappimage.AppDir/mkappimage.desktop <<\EOF
+[Desktop Entry]
+Type=Application
+Name=mkappimage
+Exec=mkappimage
+Comment=Core AppImage creation tool
+Icon=appimage
+Categories=Utility;
+Terminal=true
+NoDisplay=true
+EOF
+./appimagetool-*-$ARCHITECTURE.AppImage ./mkappimage.AppDir
 
 
 ### 32-bit
@@ -207,3 +252,30 @@ Terminal=true
 NoDisplay=true
 EOF
 ./appimagetool-*-$ARCHITECTURE.AppImage ./appimaged.AppDir
+
+# Make mkappimage AppImage
+rm -rf mkappimage.AppDir || true
+mkdir -p mkappimage.AppDir/usr/bin
+( cd mkappimage.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/desktop-file-validate-$ARCHITECTURE -O desktop-file-validate )
+( cd mkappimage.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/mksquashfs-$ARCHITECTURE -O mksquashfs )
+( cd mkappimage.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/patchelf-$ARCHITECTURE -O patchelf )
+( cd mkappimage.AppDir/usr/bin/ ; wget -c https://github.com/AppImage/AppImageKit/releases/download/continuous/runtime-$ARCHITECTURE )
+( cd mkappimage.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh -O uploadtool )
+( cd mkappimage.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/bsdtar-$ARCHITECTURE -O bsdtar )
+( cd mkappimage.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/unsquashfs-$ARCHITECTURE -O unsquashfs )
+chmod +x mkappimage.AppDir/usr/bin/*
+cp mkappimage-$USEARCH mkappimage.AppDir/usr/bin/mkappimage
+( cd mkappimage.AppDir/ ; ln -s usr/bin/mkappimage AppRun)
+cp $GOPATH/src/github.com/probonopd/go-appimage/data/appimage.png mkappimage.AppDir/
+cat > mkappimage.AppDir/mkappimage.desktop <<\EOF
+[Desktop Entry]
+Type=Application
+Name=mkappimage
+Exec=mkappimage
+Comment=Core AppImage creation tool
+Icon=appimage
+Categories=Utility;
+Terminal=true
+NoDisplay=true
+EOF
+./appimagetool-*-$ARCHITECTURE.AppImage ./mkappimage.AppDir

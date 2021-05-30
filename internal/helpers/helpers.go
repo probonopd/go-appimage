@@ -158,6 +158,18 @@ func CheckIfFileExists(filepath string) bool {
 	return true
 }
 
+// CheckIfFolderExists checks if a folder exists and is a directory before we
+// try using it to prevent further errors.
+// Returns true if it does, false otherwise.
+func CheckIfFolderExists(filepath string) bool {
+	info, err := os.Stat(filepath)
+	if os.IsNotExist(err) {
+		return false
+    }
+    return info.IsDir()
+}
+
+
 // CheckIfFileOrFolderExists checks if a file exists and is not a directory before we
 // try using it to prevent further errors.
 // Returns true if it does, false otherwise.
@@ -330,6 +342,18 @@ func CheckIfSquashfsVersionSufficient(toolname string) bool {
 		return false
 	}
 	return true
+}
+
+// CheckIfAllToolsArePresent checks if all the required tools, for example. mksquashfs, unsquashfs
+// are present using exec.LookPath. Function exits with exit code 1, if any tool is missing
+// and reports that particular missing tool to the user
+func CheckIfAllToolsArePresent(tools []string) {
+	for _, t := range tools {
+		_, err := exec.LookPath(t)
+		if err != nil {
+			log.Fatal("Required helper tool '", t, "' missing")
+		}
+	}
 }
 
 // WriteFileIntoOtherFileAtOffset writes the content of inputfile into outputfile at Offset, without truncating

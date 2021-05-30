@@ -1,0 +1,1 @@
+../appimagetool/appimagetool.go
