@@ -17,12 +17,43 @@ rm "$HOME"/.local/share/applications/appimage*
 # Optionally, install Firejail (if you want sandboxing functionality)
 
 # Download
-wget -c https://github.com/$(wget -q https://github.com/probonopd/go-appimage/releases -O - | grep "appimaged-.*-x86_64.AppImage" | head -n 1 | cut -d '"' -f 2)
-chmod +x appimaged-*.AppImage
+wget -c https://github.com/$(wget -q https://github.com/probonopd/go-appimage/releases -O - | grep "appimaged-.*-x86_64.AppImage" | head -n 1 | cut -d '"' -f 2) -P ~/Applications/
+chmod +x ~/Applications/appimaged-*.AppImage
 
 # Launch
-./appimaged-*.AppImage
+~/Applications/appimaged-*.AppImage
 ```
+
+## Uninstallation
+(Should remove local copy of appimaged*.AppImage or just stop and remove the service?)
+
+```
+systemctl --user stop appimaged.service || true
+sudo rm /etc/systemd/user/appimaged.service
+rm ~/.local/share/applications/appimagekit*.desktop
+rm ~/Applications/appimaged-646-x86_64.AppImage
+```
+
+## Notes
+Do not remove installed "~/Applications/appimaged*.AppImage". The service is running from this location (unless you want to do the Uninstallation process)
+
+The extension of AppImage files MUST be case-sensitive to be recognized by appimaged service.
+
+Folders being watched for AppImage files:
+* /usr/local/bin
+* /opt
+* ~/Applications
+* ~/.local/bin
+* /tmp/.mount_appimahvMxtu/usr/bin
+* /bin
+* /sbin
+* /usr/bin
+* /usr/sbin
+* /usr/local/bin
+* /usr/local/sbin
+* /usr/games
+* /usr/local/games
+* /snap/bin
 
 https://github.com/probonopd/go-appimage/releases/tag/continuous has builds for 32-bit Intel, 32-bit ARM (e.g., Raspberry Pi), and 64-bit ARM.
 
