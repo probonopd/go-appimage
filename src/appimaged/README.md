@@ -1,8 +1,8 @@
 # appimaged
 
-This is an experimental implementation of the optional AppImage daemon, `appimaged`, in Go, mainly to see what is possible.
+This is an experimental implementation of the optional AppImage daemon, `appimaged`, in Go.
 
-## Installation and usage
+## Initial setup
 
 Assuming you are using a 64-bit Intel machine (arm64, also known as x86_64), you can use our pre-compiled binaries. To try it out, boot a Ubuntu, Debian, Fedora, openSUSE, elementary OS, KDE neon,... Live ISO and run:
 
@@ -17,12 +17,34 @@ rm "$HOME"/.local/share/applications/appimage*
 # Optionally, install Firejail (if you want sandboxing functionality)
 
 # Download
-wget -c https://github.com/$(wget -q https://github.com/probonopd/go-appimage/releases -O - | grep "appimaged-.*-x86_64.AppImage" | head -n 1 | cut -d '"' -f 2)
-chmod +x appimaged-*.AppImage
+mkdir -p ~/Applications
+wget -c https://github.com/$(wget -q https://github.com/probonopd/go-appimage/releases -O - | grep "appimaged-.*-x86_64.AppImage" | head -n 1 | cut -d '"' -f 2) -P ~/Applications/
+chmod +x ~/Applications/appimaged-*.AppImage
 
 # Launch
-./appimaged-*.AppImage
+~/Applications/appimaged-*.AppImage
 ```
+
+## Removal
+
+```
+systemctl --user stop appimaged.service || true
+sudo rm /etc/systemd/user/appimaged.service
+rm ~/.local/share/applications/appimagekit*.desktop
+rm ~/Applications/appimaged-*-x86_64.AppImage
+```
+
+## Notes
+Do not remove "~/Applications/appimaged*.AppImage". The service is running from this location (unless you want to do the uninstallation process)
+
+The extension of AppImage files MUST be case-sensitive to be recognized by appimaged service.
+
+Folders being watched for AppImage files:
+* /usr/local/bin
+* /opt
+* ~/Applications
+* ~/.local/bin
+* $PATH, which frequently includes /bin, /sbin, /usr/bin, /usr/sbin, /usr/local/bin, /usr/local/sbin, and other locations
 
 https://github.com/probonopd/go-appimage/releases/tag/continuous has builds for 32-bit Intel, 32-bit ARM (e.g., Raspberry Pi), and 64-bit ARM.
 
