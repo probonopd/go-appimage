@@ -2,7 +2,7 @@
 
 This is an experimental implementation of the optional AppImage daemon, `appimaged`, in Go.
 
-## Installation and usage
+## Initial setup
 
 Assuming you are using a 64-bit Intel machine (arm64, also known as x86_64), you can use our pre-compiled binaries. To try it out, boot a Ubuntu, Debian, Fedora, openSUSE, elementary OS, KDE neon,... Live ISO and run:
 
@@ -25,7 +25,7 @@ chmod +x ~/Applications/appimaged-*.AppImage
 ~/Applications/appimaged-*.AppImage
 ```
 
-## Uninstallation
+## Removal
 
 ```
 systemctl --user stop appimaged.service || true
