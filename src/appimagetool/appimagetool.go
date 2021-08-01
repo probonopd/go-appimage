@@ -19,6 +19,7 @@ import (
 
 	"github.com/probonopd/go-appimage/internal/helpers"
 	"github.com/probonopd/go-zsyncmake/zsync"
+	"github.com/mgord9518/imgconv"
 	"gopkg.in/ini.v1"
 )
 
@@ -322,12 +323,22 @@ func GenerateAppImage(
 		_ = os.Remove(appdir + "/.DirIcon")
 	}
 
-	// "Copying .DirIcon in place based on information from desktop file"
-	err = helpers.CopyFile(iconfile, appdir+"/.DirIcon")
-	if err != nil {
-		helpers.PrintError("Copy .DirIcon", err)
-		os.Exit(1)
-	}
+    // If the icon is an svg, attempt to convert it to a png
+    // If that fails, just copy over the original icon
+    iconext := iconfile[len(iconfile)-3:]
+    if iconext == "svg" {
+        err = imgconv.ConvertFileWithAspect(iconfile, appdir+"/.DirIcon", 256, "png")
+        if err != nil {
+            err = helpers.CopyFile(iconfile, appdir+"/.DirIcon")
+        }
+    } else {
+        err = helpers.CopyFile(iconfile, appdir+"/.DirIcon")
+    }
+
+    if err != nil {
+        helpers.PrintError("Copy .DirIcon", err)
+        os.Exit(1)
+    }
 
 	// Check if AppStream upstream metadata is present in source AppDir
 	// If yes, use ximion's appstreamcli to make sure that desktop file and appdata match together and are valid
