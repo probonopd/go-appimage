@@ -50,7 +50,7 @@ func UnSubscribeMQTT(client mqtt.Client, updateinformation string) {
 // TODO: Keep track of what we have already subscribed, and don't subscribe again
 func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 
-	if helpers.SliceContains(subscribedMQTTTopics, updateinformation) == true {
+	if helpers.SliceContains(subscribedMQTTTopics, updateinformation) {
 		// We have already subscribed to this; so nothing to do here
 		return
 	}
@@ -66,12 +66,12 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 	}
 	topic := helpers.MQTTNamespace + "/" + queryEscapedUpdateInformation + "/#"
 
-	if *verbosePtr == true {
+	if *verbosePtr {
 		log.Println("mqtt: Waiting for messages on topic", helpers.MQTTNamespace+"/"+queryEscapedUpdateInformation+"/version")
 	} else {
 		log.Println("Subscribing to updates for", updateinformation)
 	}
-	client.Subscribe(topic, 0, func(client mqtt.Client, msg mqtt.Message) {
+	client.Subscribe(topic, 0, func(_ mqtt.Client, msg mqtt.Message) {
 		// log.Printf("* [%s] %s\n", msg.Topic(), string(msg.Payload()))
 		// log.Println(topic)
 		short := strings.Replace(msg.Topic(), helpers.MQTTNamespace+"/", "", -1)

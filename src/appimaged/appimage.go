@@ -11,7 +11,6 @@ import (
 
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -85,23 +84,23 @@ func (ai AppImage) calculateMD5filenamepart() string {
 // 	return niceName
 // }
 
-func runCommand(cmd *exec.Cmd) (bytes.Buffer, error) {
-	if *verbosePtr == true {
-		log.Printf("runCommand: %q\n", cmd)
-	}
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
-	// printError("runCommand", err)
-	// log.Println(cmd.Stdout)
-	return out, err
-}
+// func runCommand(cmd *exec.Cmd) (bytes.Buffer, error) {
+// 	if *verbosePtr {
+// 		log.Printf("runCommand: %q\n", cmd)
+// 	}
+// 	var out bytes.Buffer
+// 	cmd.Stdout = &out
+// 	err := cmd.Run()
+// 	// printError("runCommand", err)
+// 	// log.Println(cmd.Stdout)
+// 	return out, err
+// }
 
 func (ai AppImage) setExecBit() {
 
 	err := os.Chmod(ai.Path, 0755)
 	if err == nil {
-		if *verbosePtr == true {
+		if *verbosePtr {
 			log.Println("appimage: Set executable bit on", ai.Path)
 		}
 	}
@@ -111,7 +110,7 @@ func (ai AppImage) setExecBit() {
 // Validate checks the quality of an AppImage and sends desktop notification, returns error or nil
 // TODO: Add more checks and reuse this in appimagetool
 func (ai AppImage) Validate() error {
-	if *verbosePtr == true {
+	if *verbosePtr {
 		log.Println("Validating AppImage", ai.Path)
 	}
 	// Check validity of the updateinformation in this AppImage, if it contains some
@@ -134,7 +133,7 @@ func (ai AppImage) _integrate() {
 	// log.Println("integrate called on:", ai.path)
 
 	// Return immediately if the filename extension is not .AppImage or .app
-	if (strings.HasSuffix(strings.ToUpper(ai.Path), ".APPIMAGE") != true) && (strings.HasSuffix(strings.ToUpper(ai.Path), ".APP") != true) {
+	if !strings.HasSuffix(strings.ToUpper(ai.Path), ".APPIMAGE") && !strings.HasSuffix(strings.ToUpper(ai.Path), ".APP") {
 		// log.Println("No .AppImage suffix:", ai.path)
 		return
 	}
@@ -143,7 +142,7 @@ func (ai AppImage) _integrate() {
 
 	// For performance reasons, we stop working immediately
 	// in case a desktop file already exists at that location
-	if *overwritePtr == false {
+	if !*overwritePtr {
 		// Compare mtime of desktop file and AppImage, similar to
 		// https://specifications.freedesktop.org/thumbnail-spec/thumbnail-spec-latest.html#MODIFICATIONS
 		if desktopFileInfo, err := os.Stat(ai.desktopfilepath); err == nil {
@@ -152,7 +151,7 @@ func (ai AppImage) _integrate() {
 				if diff > (time.Duration(0) * time.Second) {
 					// Do nothing if the desktop file is already newer than the AppImage file
 					// but subscribe
-					if CheckIfConnectedToNetwork() == true {
+					if CheckIfConnectedToNetwork() {
 						go SubscribeMQTT(MQTTclient, ai.updateinformation)
 					}
 					return
@@ -172,7 +171,7 @@ func (ai AppImage) _integrate() {
 
 	// Subscribe to MQTT messages for this application
 	if ai.updateinformation != "" {
-		if CheckIfConnectedToNetwork() == true {
+		if CheckIfConnectedToNetwork() {
 			go SubscribeMQTT(MQTTclient, ai.updateinformation)
 		}
 	}
@@ -256,7 +255,7 @@ func LaunchMostRecentAppImage(updateinformation string, args []string) {
 	if updateinformation == "" {
 		return
 	}
-	if *quietPtr == false {
+	if !*quietPtr {
 		aipath := FindMostRecentAppImageWithMatchingUpdateInformation(updateinformation)
 		log.Println("Launching", aipath, args)
 		cmd := []string{aipath}

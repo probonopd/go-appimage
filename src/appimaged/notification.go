@@ -18,16 +18,19 @@ import (
 // sendUpdateDesktopNotification sends a desktop notification for an update.
 // Use this with "go" prefixed to it so that it runs in the background, because it waits
 // until the user clicks on "Update" or the timeout occurs
-func sendUpdateDesktopNotification(ai *AppImage, version string, changelog string) {
+func sendUpdateDesktopNotification(ai *AppImage, version string, _ string) {
 
 	wg := &sync.WaitGroup{}
 
 	conn, err := dbus.SessionBusPrivate() // When using SessionBusPrivate(), need to follow with Auth(nil) and Hello()
-	defer conn.Close()
 	if err != nil {
+		if conn != nil {
+			conn.Close()
+		}
 		helpers.PrintError("SessionBusPrivate", err)
 		return
 	}
+	defer conn.Close()
 	if conn == nil {
 		helpers.PrintError("No conn", err)
 		return
@@ -39,7 +42,6 @@ func sendUpdateDesktopNotification(ai *AppImage, version string, changelog strin
 	}
 
 	if err = conn.Hello(); err != nil {
-		conn.Close()
 		helpers.PrintError("Hello", err)
 		return
 	}
@@ -82,7 +84,6 @@ func sendUpdateDesktopNotification(ai *AppImage, version string, changelog strin
 
 	// Listen for actions invoked
 	onAction := func(action *notify.ActionInvokedSignal) {
-		log.Printf("ActionInvoked: %v Key: %v", action.ID, action.ActionKey)
 		if action != nil { // Without this if we get a crash if user just closes the notification w/o an action
 			log.Printf("ActionInvoked: %v Key: %v", action.ID, action.ActionKey)
 			// Check based on &n == memory[action.ID] whether this onAction belongs to the notification we sent,
@@ -130,11 +131,14 @@ func sendUpdateDesktopNotification(ai *AppImage, version string, changelog strin
 func sendDesktopNotification(title string, body string, durationms int32) {
 
 	conn, err := dbus.SessionBusPrivate() // When using SessionBusPrivate(), need to follow with Auth(nil) and Hello()
-	defer conn.Close()
 	if err != nil {
+		if conn != nil {
+			conn.Close()
+		}
 		helpers.PrintError("SessionBusPrivate", err)
 		return
 	}
+	defer conn.Close()
 	if conn == nil {
 		helpers.PrintError("No conn", err)
 		return
@@ -146,7 +150,6 @@ func sendDesktopNotification(title string, body string, durationms int32) {
 	}
 
 	if err = conn.Hello(); err != nil {
-		conn.Close()
 		helpers.PrintError("Hello", err)
 		return
 	}

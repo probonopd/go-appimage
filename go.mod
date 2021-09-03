@@ -11,12 +11,14 @@ require (
 	github.com/coreos/go-systemd/v22 v22.1.0
 	github.com/eclipse/paho.mqtt.golang v1.3.0
 	github.com/esiqveland/notify v0.9.1
+	github.com/gabriel-vasile/mimetype v1.3.1 // indirect
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/godbus/dbus/v5 v5.0.3
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/grandcat/zeroconf v1.0.0
 	github.com/h2non/go-is-svg v0.0.0-20160927212452-35e8c4b0612c
 	github.com/hashicorp/go-version v1.2.0
+	github.com/mgord9518/imgconv v0.0.0-20210819122414-c4b59a63004b
 	github.com/otiai10/copy v1.4.1
 	github.com/probonopd/go-zsyncmake v0.0.0-20181008012426-5db478ac2be7
 	github.com/prometheus/procfs v0.2.0
@@ -25,13 +27,14 @@ require (
 	github.com/sabhiram/pngr v0.0.0-20180419043407-2df49b015d4b // indirect
 	github.com/shirou/gopsutil v3.20.11+incompatible
 	github.com/shuheiktgw/go-travis v0.3.1
-	github.com/srwiley/oksvg v0.0.0-20200311192757-870daf9aa564
+	github.com/srwiley/oksvg v0.0.0-20210519022825-9fc0c575d5fe
 	github.com/srwiley/rasterx v0.0.0-20200120212402-85cb7272f5e9
 	github.com/urfave/cli/v2 v2.3.0
 	go.lsp.dev/uri v0.3.0
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
 	golang.org/x/image v0.0.0-20201208152932-35266b937fa6 // indirect
-	golang.org/x/sys v0.0.0-20201221093633-bc327ba9c2f0
+	golang.org/x/sys v0.0.0-20210823070655-63515b42dcdf
+	golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b // indirect
 	gopkg.in/ini.v1 v1.62.0
 	gopkg.in/src-d/go-git.v4 v4.13.1
 )
