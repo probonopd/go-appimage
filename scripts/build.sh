@@ -47,10 +47,6 @@ PATH=$PWD/path/go/bin:$PATH
 ##############################################################
 
 cd $TRAVIS_BUILD_DIR
-echo $(ls)
-# go get -d -v ./...
-# Download it to the normal location for later, but it'll probably fail, so we allow it
-# TODO: Fix it so we don't need this step
 
 # 64-bit
 go build -o $GOPATH/src -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" ./src/...
