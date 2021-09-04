@@ -3,8 +3,8 @@ name: Build
 on:
   push:
     paths-ignore:
-      - '.idea/***'
-      - 'docs/***'
+      - '.idea/**'
+      - 'docs/**'
 
   pull_request:
     paths-ignore:
