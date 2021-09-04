@@ -21,7 +21,7 @@ set -x
 # Disregard any other Go environment that may be on the system (e.g., on Travis CI)
 unset GOARCH GOBIN GOEXE GOHOSTARCH GOHOSTOS GOOS GORACE GOROOT GOTOOLDIR CC GOGCCFLAGS CGO_ENABLED GO111MODULE
 if [ -z $GOPATH ] ; then
-  GOPATH=$PWD/gopath
+  export GOPATH=$PWD/gopath
 fi
 mkdir -p $GOPATH/src || true
 
@@ -40,7 +40,7 @@ if [ "amd64" == "$TRAVIS_ARCH" ] ; then ARCH=amd64 ; fi
 wget -c -nv https://dl.google.com/go/go1.17.linux-$ARCH.tar.gz
 mkdir path || true
 tar -C $PWD/path -xzf go*.tar.gz
-PATH=$PWD/path/go/bin:$PATH
+export PATH=$PWD/path/go/bin:$PATH
 
 ##############################################################
 # Build appimagetool, appimaged, and mkappimage
