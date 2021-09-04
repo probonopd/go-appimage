@@ -21,17 +21,17 @@ set -x
 # Disregard any other Go environment that may be on the system (e.g., on Travis CI)
 unset GOARCH GOBIN GOEXE GOHOSTARCH GOHOSTOS GOOS GORACE GOROOT GOTOOLDIR CC GOGCCFLAGS CGO_ENABLED GO111MODULE
 if [ -z $GOPATH ] ; then
-  export GOPATH=$PWD/gopath
+  GOPATH=$PWD/gopath
 fi
 mkdir -p $GOPATH/src || true
 
 # Export version and build number
 if [ ! -z "$TRAVIS_BUILD_NUMBER" ] ; then
-  COMMIT="${TRAVIS_BUILD_NUMBER}" # "${TRAVIS_JOB_WEB_URL} on $(date +'%Y-%m-%d_%T')"
-  VERSION=$TRAVIS_BUILD_NUMBER
+  export COMMIT="${TRAVIS_BUILD_NUMBER}" # "${TRAVIS_JOB_WEB_URL} on $(date +'%Y-%m-%d_%T')"
+  export VERSION=$TRAVIS_BUILD_NUMBER
 else
-  COMMIT=$(date '+%Y-%m-%d_%H%M%S')
-  VERSION=$(date '+%Y-%m-%d_%H%M%S')
+  export COMMIT=$(date '+%Y-%m-%d_%H%M%S')
+  export VERSION=$(date '+%Y-%m-%d_%H%M%S')
 fi
 
 # Get pinned version of Go directly from upstream
@@ -40,14 +40,15 @@ if [ "amd64" == "$TRAVIS_ARCH" ] ; then ARCH=amd64 ; fi
 wget -c -nv https://dl.google.com/go/go1.17.linux-$ARCH.tar.gz
 mkdir path || true
 tar -C $PWD/path -xzf go*.tar.gz
-export PATH=$PWD/path/go/bin:$PATH
+PATH=$PWD/path/go/bin:$PATH
 
 ##############################################################
 # Build appimagetool, appimaged, and mkappimage
 ##############################################################
 
 cd $TRAVIS_BUILD_DIR
-go get -d -v ./...
+echo $(ls)
+# go get -d -v ./...
 # Download it to the normal location for later, but it'll probably fail, so we allow it
 # TODO: Fix it so we don't need this step
 
@@ -147,7 +148,7 @@ mkdir -p mkappimage.AppDir/usr/bin
 chmod +x mkappimage.AppDir/usr/bin/*
 cp mkappimage-$(go env GOHOSTARCH) mkappimage.AppDir/usr/bin/mkappimage
 ( cd mkappimage.AppDir/ ; ln -s usr/bin/mkappimage AppRun)
-cp $GOPATH/src/github.com/probonopd/go-appimage/data/appimage.png mkappimage.AppDir/
+cp $TRAVIS_BUILD_DIR/data/appimage.png mkappimage.AppDir/
 cat > mkappimage.AppDir/mkappimage.desktop <<\EOF
 [Desktop Entry]
 Type=Application
@@ -247,7 +248,7 @@ mkdir -p mkappimage.AppDir/usr/bin
 chmod +x mkappimage.AppDir/usr/bin/*
 cp mkappimage-$USEARCH mkappimage.AppDir/usr/bin/mkappimage
 ( cd mkappimage.AppDir/ ; ln -s usr/bin/mkappimage AppRun)
-cp $GOPATH/src/github.com/probonopd/go-appimage/data/appimage.png mkappimage.AppDir/
+cp $TRAVIS_BUILD_DIR/data/appimage.png mkappimage.AppDir/
 cat > mkappimage.AppDir/mkappimage.desktop <<\EOF
 [Desktop Entry]
 Type=Application
