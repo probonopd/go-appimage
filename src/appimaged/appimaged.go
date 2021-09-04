@@ -145,7 +145,7 @@ func main() {
 	// overwritePtr = &ptrue
 
 	// Connect to MQTT server and subscribe to the topic for ourselves
-	if CheckIfConnectedToNetwork() {
+	if CheckIfConnectedToNetwork() == true {
 		uri, err := url.Parse(helpers.MQTTServerURI)
 		if err != nil {
 			log.Fatal(err)
@@ -180,8 +180,8 @@ func main() {
 	// TODO: Also react to network interfaces and network connections coming and going,
 	// refer to the official NetworkManager dbus specification:
 	// https://developer.gnome.org/NetworkManager/1.16/spec.html
-	if !*noZeroconfPtr {
-		if CheckIfConnectedToNetwork() {
+	if *noZeroconfPtr == false {
+		if CheckIfConnectedToNetwork() == true {
 			go registerZeroconfService()
 			go browseZeroconfServices()
 		}
@@ -240,8 +240,8 @@ func main() {
 // This is recommended by MQTT servers since they can go
 // down for maintenance
 func checkMQTTConnected(MQTTclient mqtt.Client) {
-	if CheckIfConnectedToNetwork() {
-		if !MQTTclient.IsConnected() {
+	if CheckIfConnectedToNetwork() == true {
+		if MQTTclient.IsConnected() == false {
 			log.Println("MQTT client connected:", MQTTclient.IsConnected())
 			MQTTclient.Connect()
 			log.Println("MQTT client connected:", MQTTclient.IsConnected())
@@ -258,7 +258,7 @@ func checkMQTTConnected(MQTTclient mqtt.Client) {
 func moveDesktopFiles() {
 	// log.Println("main: Ticktock")
 
-	if *verbosePtr {
+	if *verbosePtr == true {
 		log.Println("ToBeIntegratedOrUnintegrated:", ToBeIntegratedOrUnintegrated)
 	}
 
@@ -313,7 +313,7 @@ func moveDesktopFiles() {
 	}
 
 	for _, file := range files {
-		if *verbosePtr {
+		if *verbosePtr == true {
 			log.Println("main: Moving", file.Name(), "to", xdg.DataHome+"/applications/")
 		}
 		err = os.Rename(desktopcachedir+"/"+file.Name(), xdg.DataHome+"/applications/"+file.Name())
@@ -322,7 +322,7 @@ func moveDesktopFiles() {
 
 	if len(files) != 0 {
 
-		if *verbosePtr {
+		if *verbosePtr == true {
 			log.Println("main: Moved", len(files), "desktop files to", xdg.DataHome+"/applications/")
 		} else {
 			log.Println("main: Moved", len(files), "desktop files to", xdg.DataHome+"/applications/; use -v to see details")
@@ -408,13 +408,13 @@ func watchDirectories() {
 	// FIXME: This breaks when the partition label has "-", see https://github.com/prometheus/procfs/issues/227
 
 	for _, mount := range mounts {
-		if *verbosePtr {
+		if *verbosePtr == true {
 			log.Println("main: MountPoint", mount.MountPoint)
 		}
-		if !strings.HasPrefix(mount.MountPoint, "/sys") && // Is /dev needed for openSUSE Live?
+		if strings.HasPrefix(mount.MountPoint, "/sys") == false && // Is /dev needed for openSUSE Live?
 			// strings.HasPrefix(mount.MountPoint, "/run") == false && // Manjaro mounts the device on which the Live ISO is in /run, so we cannot exclude that
-			!strings.HasPrefix(mount.MountPoint, "/tmp") &&
-			!strings.HasPrefix(mount.MountPoint, "/proc") {
+			strings.HasPrefix(mount.MountPoint, "/tmp") == false &&
+			strings.HasPrefix(mount.MountPoint, "/proc") == false {
 			fmt.Println(mount.SuperOptions)
 			if helpers.Exists(mount.MountPoint + "/Applications") {
 				if _, ok := mount.SuperOptions["showexec"]; ok {
@@ -450,11 +450,10 @@ func watchDirectoriesReally(watchedDirectories []string) {
 		for _, info := range infos {
 			if err != nil {
 				log.Printf("%v\n", err)
-			} else if info.IsDir() {
+			} else if info.IsDir() == true {
 				// go inotifyWatch(v + "/" + info.Name())
-			} else if !info.IsDir() {
-				var ai *AppImage
-				ai, err = NewAppImage(v + "/" + info.Name())
+			} else if info.IsDir() == false {
+				ai, err := NewAppImage(v + "/" + info.Name())
 				if err != nil {
 					continue
 				}

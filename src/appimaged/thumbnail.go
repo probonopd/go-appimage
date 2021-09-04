@@ -10,23 +10,18 @@ import (
 	"os"
 	"time"
 
-	_ "embed"
-
 	"github.com/adrg/xdg"
 	issvg "github.com/h2non/go-is-svg"
 	"github.com/probonopd/go-appimage/internal/helpers"
 	pngembed "github.com/sabhiram/png-embed" // For embedding metadata into PNG
-	"github.com/srwiley/oksvg"               // https://github.com/niemeyer/gopkg/issues/72
-	"github.com/srwiley/rasterx"
+	. "github.com/srwiley/oksvg"             // https://github.com/niemeyer/gopkg/issues/72
+	. "github.com/srwiley/rasterx"
 )
 
 /* The thumbnail cache directory is prefixed with $XDG_CACHE_DIR/ and the leading dot removed
 (since $XDG_CACHE_DIR is normally $HOME/.cache).
 The glib ChangeLog indicates the path for large sizes was "fixed" (Added $XDG_CACHE_DIR) starting with 2.35.3 */
 var ThumbnailsDirNormal = xdg.CacheHome + "/thumbnails/normal/"
-
-//go:embed embed/appimage.png
-var defaultIcon []byte
 
 func (ai AppImage) extractDirIconAsThumbnail() {
 	// log.Println("thumbnail: extract DirIcon as thumbnail")
@@ -79,12 +74,14 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 genericIcon:
 	buf, err := ioutil.ReadFile(thumbnailcachedir + "/.DirIcon")
 	if os.IsNotExist(err) {
-		if *verbosePtr {
+		if *verbosePtr == true {
 			log.Printf("Could not extract icon, use default icon instead: %s\n", thumbnailcachedir+"/.DirIcon")
 		}
+		data, err := Asset("data/appimage.png")
+		helpers.LogError("thumbnail", err)
 		err = os.MkdirAll(thumbnailcachedir, 0755)
 		helpers.LogError("thumbnail", err)
-		err = ioutil.WriteFile(thumbnailcachedir+"/.DirIcon", defaultIcon, 0644)
+		err = ioutil.WriteFile(thumbnailcachedir+"/.DirIcon", data, 0644)
 		helpers.LogError("thumbnail", err)
 	} else if err != nil {
 		log.Printf("Error: %s\n", err)
@@ -107,10 +104,10 @@ genericIcon:
 		return
 	}
 
-	f, _ := os.Open(thumbnailcachedir + "/.DirIcon")
+	f, err := os.Open(thumbnailcachedir + "/.DirIcon")
 	defer f.Close()
 
-	if !helpers.CheckMagicAtOffset(f, "504e47", 1) {
+	if helpers.CheckMagicAtOffset(f, "504e47", 1) == false {
 		log.Println("thumbnail: Not a PNG file, hence removing:", thumbnailcachedir+"/.DirIcon")
 		err = os.Remove(thumbnailcachedir + "/.DirIcon")
 		helpers.LogError("thumbnail", err)
@@ -127,7 +124,7 @@ genericIcon:
 
 	content, err := pngembed.ExtractFile(thumbnailcachedir + "/.DirIcon")
 
-	if *verbosePtr {
+	if *verbosePtr == true {
 		if _, ok := content["Thumb::URI"]; ok {
 			log.Println("thumbnail: FIXME: Remove pre-existing Thumb::URI in", ai.Path)
 			// log.Println(content["Thumb::URI"])
@@ -148,13 +145,13 @@ genericIcon:
 	than the thumbnail stored mtime, we won't recognize this modification.
 	If for some reason the thumbnail doesn't have the 'Thumb::MTime' key (although it's required)
 	it should be recreated in any case. */
-	if appImageInfo, e := os.Stat(ai.Path); e == nil {
-		_, e = pngembed.EmbedFile(thumbnailcachedir+"/.DirIcon", "Thumb::MTime", appImageInfo.ModTime())
-		helpers.LogError("thumbnail", e)
+	if appImageInfo, err := os.Stat(ai.Path); err == nil {
+		_, err := pngembed.EmbedFile(thumbnailcachedir+"/.DirIcon", "Thumb::MTime", appImageInfo.ModTime())
+		helpers.LogError("thumbnail", err)
 	}
 
 	if err == nil {
-		err = ioutil.WriteFile(thumbnailcachedir+"/.DirIcon", data, 0600)
+		err = ioutil.WriteFile(thumbnailcachedir+"/.DirIcon", data, 600)
 		helpers.LogError("thumbnail", err)
 	}
 
@@ -168,7 +165,7 @@ genericIcon:
 	err = os.MkdirAll(ThumbnailsDirNormal, os.ModePerm)
 	helpers.LogError("thumbnail", err)
 
-	if *verbosePtr {
+	if *verbosePtr == true {
 		log.Println("thumbnail: Moving", thumbnailcachedir+"/.DirIcon", "to", ai.thumbnailfilepath)
 	}
 
@@ -178,9 +175,9 @@ genericIcon:
 	/* Also set mtime of the thumbnail file to the mtime of the AppImage. Quite possibly this is not needed.
 	TODO: Perhaps we can remove it.
 	See https://specifications.freedesktop.org/thumbnail-spec/thumbnail-spec-latest.html#MODIFICATIONS  */
-	if appImageInfo, e := os.Stat(ai.Path); e == nil {
-		e = os.Chtimes(ai.thumbnailfilepath, time.Now().Local(), appImageInfo.ModTime())
-		helpers.LogError("thumbnail", e)
+	if appImageInfo, err := os.Stat(ai.Path); err == nil {
+		err := os.Chtimes(ai.thumbnailfilepath, time.Now().Local(), appImageInfo.ModTime())
+		helpers.LogError("thumbnail", err)
 	}
 
 	err = os.RemoveAll(thumbnailcachedir)
@@ -200,14 +197,14 @@ genericIcon:
 // Convert a given file into a PNG; its dependencies add about 2 MB to the executable
 func convertToPng(filePath string) error {
 	// Strange colors: https://github.com/srwiley/oksvg/issues/15
-	icon, err := oksvg.ReadIcon(filePath, oksvg.WarnErrorMode)
+	icon, err := ReadIcon(filePath, WarnErrorMode)
 	if err != nil {
 		return err
 	}
 	w, h := int(icon.ViewBox.W), int(icon.ViewBox.H)
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
-	scannerGV := rasterx.NewScannerGV(w, h, img, img.Bounds())
-	raster := rasterx.NewDasher(w, h, scannerGV)
+	scannerGV := NewScannerGV(w, h, img, img.Bounds())
+	raster := NewDasher(w, h, scannerGV)
 	icon.Draw(raster, 1.0)
 	err = saveToPngFile(filePath, img)
 	if err != nil {

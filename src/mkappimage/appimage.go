@@ -1,12 +1,18 @@
 package main
 
 import (
+	"C"
+	"bytes"
+	"crypto/md5"
+	"encoding/hex"
+	"github.com/adrg/xdg"
+	"github.com/probonopd/go-appimage/internal/helpers"
+	"go.lsp.dev/uri"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
-
-	"github.com/probonopd/go-appimage/internal/helpers"
 )
 
 // Handles AppImage files.
@@ -14,9 +20,15 @@ import (
 // but eventually may be rewritten to do things natively in Go
 
 type AppImage struct {
-	path      string
-	imagetype int
-	offset    int64
+	path              string
+	imagetype         int
+	uri               string
+	md5               string
+	desktopfilename   string
+	desktopfilepath   string
+	offset            int64
+	rawcontents       string
+	updateinformation string
 }
 
 // NewAppImage creates an AppImage object from the location defined by path.
@@ -39,6 +51,10 @@ func NewAppImage(path string) AppImage {
 		ai.imagetype = -1
 		return ai
 	}
+	ai.uri = strings.TrimSpace(string(uri.File(filepath.Clean(ai.path))))
+	ai.md5 = ai.CalculateMD5filenamepart() // Need this also for non-existing AppImages for removal
+	ai.desktopfilename = "appimagekit_" + ai.md5 + ".desktop"
+	ai.desktopfilepath = xdg.DataHome + "/applications/" + "appimagekit_" + ai.md5 + ".desktop"
 	ai.imagetype = ai.DetermineImageType()
 	// Don't waste more time if the file is not actually an AppImage
 	if ai.imagetype < 0 {
@@ -49,6 +65,10 @@ func NewAppImage(path string) AppImage {
 	}
 	if ai.imagetype > 1 {
 		ai.offset = helpers.CalculateElfSize(ai.path)
+	}
+	ui, err := ai.ReadUpdateInformation()
+	if err == nil && ui != "" {
+		ai.updateinformation = ui
 	}
 	// ai.discoverContents() // Only do when really needed since this is slow
 	// log.Println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX rawcontents:", ai.rawcontents)
@@ -84,6 +104,12 @@ func (ai AppImage) ShowContents(isLong bool) error {
 	return err
 }
 
+func (ai AppImage) CalculateMD5filenamepart() string {
+	hasher := md5.New()
+	hasher.Write([]byte(ai.uri))
+	return hex.EncodeToString(hasher.Sum(nil))
+}
+
 // Check whether we have an AppImage at all.
 // Return image type, or -1 if it is not an AppImage
 func (ai AppImage) DetermineImageType() int {
@@ -110,18 +136,31 @@ func (ai AppImage) DetermineImageType() int {
 		return -1
 	}
 
-	if helpers.CheckMagicAtOffset(f, "414902", 8) {
+	if helpers.CheckMagicAtOffset(f, "414902", 8) == true {
 		return 2
 	}
 
-	if helpers.CheckMagicAtOffset(f, "414901", 8) {
+	if helpers.CheckMagicAtOffset(f, "414901", 8) == true {
 		return 1
 	}
 
 	// ISO9660 files that are also ELF files
-	if helpers.CheckMagicAtOffset(f, "7f454c", 0) && helpers.CheckMagicAtOffset(f, "4344303031", 32769) {
+	if helpers.CheckMagicAtOffset(f, "7f454c", 0) == true && helpers.CheckMagicAtOffset(f, "4344303031", 32769) == true {
 		return 1
 	}
 
 	return -1
+}
+
+// ReadUpdateInformation reads updateinformation from an AppImage
+// Returns updateinformation string and error
+func (ai AppImage) ReadUpdateInformation() (string, error) {
+	aibytes, err := helpers.GetSectionData(ai.path, ".upd_info")
+	ui := strings.TrimSpace(string(bytes.Trim(aibytes, "\x00")))
+	if err != nil {
+		return "", err
+	}
+	// Don't validate here, we don't want to get warnings all the time.
+	// We have AppImage.Validate as its own function which we call less frequently than this.
+	return ui, nil
 }

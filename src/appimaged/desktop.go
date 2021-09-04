@@ -236,7 +236,7 @@ func writeDesktopFile(ai AppImage) {
 	}
 	cfg.Section("Desktop Entry").Key("Actions").SetValue(as)
 
-	if *verbosePtr {
+	if *verbosePtr == true {
 		log.Println("desktop: Saving to", desktopcachedir+"/"+filename)
 	}
 	err = cfg.SaveTo(desktopcachedir + "/" + filename)

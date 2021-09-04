@@ -76,14 +76,11 @@ need to "eavesdrop"), independent of whether the GNOME or the KDE or another des
 func monitorUdisks() {
 
 	conn, err := dbus.SessionBusPrivate() // When using SessionBusPrivate(), need to follow with Auth(nil) and Hello()
+	defer conn.Close()
 	if err != nil {
-		if conn != nil {
-			conn.Close()
-		}
 		helpers.PrintError("SessionBusPrivate", err)
 		return
 	}
-	defer conn.Close()
 	if conn == nil {
 		helpers.PrintError("No conn", err)
 		return
@@ -124,7 +121,7 @@ func monitorUdisks() {
 		satisfied = true
 	}
 
-	if !satisfied {
+	if satisfied == false {
 		sendErrorDesktopNotification("Cannot see volumes come and go", "Not implemented yet for this kind of system")
 		log.Println("ERROR: Don't know how to get notified about mounted and unmounted devices on this system", e)
 		log.Println("using dbus. Every system seems to do it differently.", e)
