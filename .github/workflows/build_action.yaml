@@ -15,7 +15,7 @@ jobs:
   build-x86:
     name: Build for x86
     runs-on: ubuntu-16.04
-    steps:d
+    steps:
     - uses: actions/checkout@v2.3.4
     - name: Set up Go
       uses: actions/setup-go@2.1.4
