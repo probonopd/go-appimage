@@ -48,7 +48,7 @@ func (ai *AppImage) populateReader(allowFallback, forceFallback bool) (err error
 		ai.reader, err = newType2Reader(ai, allowFallback, forceFallback)
 		return err
 	}
-	return errors.New("Invalid AppImage type")
+	return errors.New("invalid AppImage type")
 }
 
 //TODO: Implement command based fallback here.
@@ -110,7 +110,7 @@ func (r *type2Reader) setupCommandFallback(ai *AppImage) error {
 	if err != nil {
 		return err
 	}
-	allFiles := strings.Split(string(out.Bytes()), "\n")
+	allFiles := strings.Split(out.String(), "\n")
 	for _, filepath := range allFiles {
 		if filepath == "" {
 			continue
@@ -164,7 +164,7 @@ func (r *type2Reader) cleanPath(filepath string) (string, error) {
 		filepathDir = "/"
 	}
 	if filepathDir == "" {
-		return "", errors.New("File not found in the archive")
+		return "", errors.New("file not found in the archive")
 	}
 	filepathName := path.Base(filepath)
 	for _, fil := range r.structure[filepathDir] {
@@ -175,7 +175,7 @@ func (r *type2Reader) cleanPath(filepath string) (string, error) {
 		}
 	}
 	if filepathName == "" {
-		return "", errors.New("File not found in the archive")
+		return "", errors.New("file not found in the archive")
 	}
 	if filepathDir == "/" {
 		filepath = filepathName
@@ -212,6 +212,9 @@ func (r *type2Reader) FileReader(filepath string) (io.ReadCloser, error) {
 		return ioutil.NopCloser(fil), nil
 	}
 	filepath, err := r.cleanPath(filepath)
+	if err != nil {
+		return nil, err
+	}
 	filepath = r.SymlinkPathRecursive(filepath)
 	if filepath != r.SymlinkPath(filepath) {
 		return nil, errors.New("Can't resolve symlink at: " + filepath)
@@ -221,7 +224,7 @@ func (r *type2Reader) FileReader(filepath string) (io.ReadCloser, error) {
 	}
 	tmpDir, err := ioutil.TempDir("", filepath)
 	if err != nil {
-		return nil, errors.New("Cannot make the temp directory")
+		return nil, errors.New("cannot make the temp directory")
 	}
 	err = r.ExtractTo(filepath, tmpDir, true)
 	if err != nil {
@@ -287,7 +290,7 @@ func (r *type2Reader) SymlinkPath(filepath string) string {
 	if err != nil {
 		return filepath
 	}
-	tmpOutput := strings.Split(strings.TrimSuffix(string(out.Bytes()), "\n"), "\n")
+	tmpOutput := strings.Split(strings.TrimSuffix(out.String(), "\n"), "\n")
 	neededLine := tmpOutput[len(tmpOutput)-1]
 	if strings.Contains(neededLine, "->") {
 		neededLine = neededLine[strings.Index(neededLine, "->")+3:]
@@ -333,7 +336,7 @@ func (r *type2Reader) Contains(path string) bool {
 		fil := r.rdr.GetFileAtPath(path)
 		return fil != nil
 	}
-	path, err := r.cleanPath(path)
+	_, err := r.cleanPath(path)
 	return err == nil
 }
 
@@ -438,7 +441,7 @@ func newType1Reader(filepath string) (*type1Reader, error) {
 	if err != nil {
 		return nil, err
 	}
-	containedFiles := strings.Split(string(wrt.Bytes()), "\n")
+	containedFiles := strings.Split(wrt.String(), "\n")
 	var rdr type1Reader
 	rdr.path = filepath
 	rdr.structure = make(map[string][]string)
@@ -490,7 +493,7 @@ func (r *type1Reader) cleanPath(filepath string) (string, error) {
 		filepathDir = "/"
 	}
 	if filepathDir == "" {
-		return "", errors.New("File not found in the archive")
+		return "", errors.New("file not found in the archive")
 	}
 	filepathName := path.Base(filepath)
 	for _, fil := range r.structure[filepathDir] {
@@ -501,7 +504,7 @@ func (r *type1Reader) cleanPath(filepath string) (string, error) {
 		}
 	}
 	if filepathName == "" {
-		return "", errors.New("File not found in the archive")
+		return "", errors.New("file not found in the archive")
 	}
 	if filepathDir == "/" {
 		filepath = filepathName
@@ -546,7 +549,7 @@ func (r *type1Reader) SymlinkPath(filepath string) string {
 	if err != nil {
 		return filepath
 	}
-	output := strings.TrimSuffix(string(wrt.Bytes()), "\n")
+	output := strings.TrimSuffix(wrt.String(), "\n")
 	output = strings.Split(output, "\n")[0]                //Make sure we are only getting the first value that matches
 	if index := strings.Index(output, "->"); index != -1 { //signifies symlink
 		return output[index+3:]
@@ -564,7 +567,7 @@ func (r *type1Reader) SymlinkPathRecursive(filepath string) string {
 	if err != nil {
 		return filepath
 	}
-	output := strings.TrimSuffix(string(wrt.Bytes()), "\n")
+	output := strings.TrimSuffix(wrt.String(), "\n")
 	if index := strings.Index(output, "->"); index != -1 { //signifies symlink
 		symlinkedFile := output[index+3:]
 		if strings.HasPrefix(symlinkedFile, "/") {
