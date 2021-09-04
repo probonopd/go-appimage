@@ -1,0 +1,37 @@
+name: Build
+
+on:
+  push:
+    paths-ignore:
+      - '.idea/***'
+      - 'docs/***'
+
+  pull_request:
+    paths-ignore:
+      - '.idea/***'
+      - 'docs/***'
+
+jobs:
+  build-x86:
+    name: Build for x86
+    runs-on: ubuntu-16.04
+    steps:d
+    - uses: actions/checkout@v2.3.4
+    - name: Set up Go
+      uses: actions/setup-go@2.1.4
+      with:
+        go-version: 1.17
+    - name: Build
+      run: ./scripts/build.sh
+  build-aarch64:
+    name: Build for arm
+    runs-on: ubuntu-16.04
+    steps:
+    - uses: actions/checkout@2.3.4
+    - name: Building
+      uses: uraimo/run-on-arch-action@2.1.1
+      with:
+        arch: aarch64
+        distro: ubuntu16.04
+        run: |
+          ./scripts/build.sh
