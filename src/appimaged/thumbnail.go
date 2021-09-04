@@ -10,6 +10,8 @@ import (
 	"os"
 	"time"
 
+	_ "embed"
+
 	"github.com/adrg/xdg"
 	issvg "github.com/h2non/go-is-svg"
 	"github.com/probonopd/go-appimage/internal/helpers"
@@ -77,12 +79,11 @@ genericIcon:
 		if *verbosePtr {
 			log.Printf("Could not extract icon, use default icon instead: %s\n", thumbnailcachedir+"/.DirIcon")
 		}
-		var data []byte
-		data, err = Asset("data/appimage.png")
-		helpers.LogError("thumbnail", err)
+		//go:embed embed/appimage.png
+		var defaultIcon []byte
 		err = os.MkdirAll(thumbnailcachedir, 0755)
 		helpers.LogError("thumbnail", err)
-		err = ioutil.WriteFile(thumbnailcachedir+"/.DirIcon", data, 0644)
+		err = ioutil.WriteFile(thumbnailcachedir+"/.DirIcon", defaultIcon, 0644)
 		helpers.LogError("thumbnail", err)
 	} else if err != nil {
 		log.Printf("Error: %s\n", err)
