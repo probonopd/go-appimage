@@ -8,8 +8,8 @@ on:
 
   pull_request:
     paths-ignore:
-      - '.idea/***'
-      - 'docs/***'
+      - '.idea/**'
+      - 'docs/**'
 
 jobs:
   build-x86:
