@@ -21,34 +21,29 @@ set -x
 # Disregard any other Go environment that may be on the system (e.g., on Travis CI)
 unset GOARCH GOBIN GOEXE GOHOSTARCH GOHOSTOS GOOS GORACE GOROOT GOTOOLDIR CC GOGCCFLAGS CGO_ENABLED GO111MODULE
 if [ -z $GOPATH ] ; then
-  export GOPATH=$PWD/gopath
+  GOPATH=$PWD/gopath
 fi
 mkdir -p $GOPATH/src || true
 
 # Export version and build number
 if [ ! -z "$TRAVIS_BUILD_NUMBER" ] ; then
-  export COMMIT="${TRAVIS_BUILD_NUMBER}" # "${TRAVIS_JOB_WEB_URL} on $(date +'%Y-%m-%d_%T')"
-  export VERSION=$TRAVIS_BUILD_NUMBER
+  COMMIT="${TRAVIS_BUILD_NUMBER}" # "${TRAVIS_JOB_WEB_URL} on $(date +'%Y-%m-%d_%T')"
+  VERSION=$TRAVIS_BUILD_NUMBER
 else
-  export COMMIT=$(date '+%Y-%m-%d_%H%M%S')
-  export VERSION=$(date '+%Y-%m-%d_%H%M%S')
+  COMMIT=$(date '+%Y-%m-%d_%H%M%S')
+  VERSION=$(date '+%Y-%m-%d_%H%M%S')
 fi
 
 # Get pinned version of Go directly from upstream
-if [ "aarch64" == "$TRAVIS_ARCH" ] ; then export ARCH=arm64 ; fi
-if [ "amd64" == "$TRAVIS_ARCH" ] ; then export ARCH=amd64 ; fi
+if [ "aarch64" == "$TRAVIS_ARCH" ] ; then ARCH=arm64 ; fi
+if [ "amd64" == "$TRAVIS_ARCH" ] ; then ARCH=amd64 ; fi
 wget -c -nv https://dl.google.com/go/go1.17.linux-$ARCH.tar.gz
 mkdir path || true
 tar -C $PWD/path -xzf go*.tar.gz
-export PATH=$PWD/path/go/bin:$PATH
-
-# Get dependencies needed for CGo # FIXME: Get rid of the need for CGo and, in return, those dependencies
-sudo apt-get -q update
-if [ $(go env GOHOSTARCH) == "amd64" ] ; then sudo apt-get -y install gcc-multilib autoconf ; fi
-if [ $(go env GOHOSTARCH) == "arm64" ] ; then sudo apt-get -y install gcc-arm-linux-gnueabi autoconf ; fi
+PATH=$PWD/path/go/bin:$PATH
 
 ##############################################################
-# Build appimagetool and appimaged
+# Build appimagetool, appimaged, and mkappimage
 ##############################################################
 
 cd $TRAVIS_BUILD_DIR
@@ -60,33 +55,19 @@ go get -d -v ./...
 go build -o $GOPATH/src -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" ./src/...
 mv $GOPATH/src/appimaged $GOPATH/src/appimaged-$(go env GOHOSTARCH)
 mv $GOPATH/src/appimagetool $GOPATH/src/appimagetool-$(go env GOHOSTARCH)
+mv $GOPATH/src/mkappimage $GOPATH/src/mkappimage-$(go env GOHOSTARCH)
 
 # 32-bit
 if [ $(go env GOHOSTARCH) == "amd64" ] ; then 
-  env CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -o $GOPATH/src -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" ./src/...
+  env GOOS=linux GOARCH=386 go build -o $GOPATH/src -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" ./src/...
   mv $GOPATH/src/appimaged $GOPATH/src/appimaged-386
   mv $GOPATH/src/appimagetool $GOPATH/src/appimagetool-386
+  mv $GOPATH/src/mkappimage $GOPATH/src/mkappimage-386
 elif [ $(go env GOHOSTARCH) == "arm64" ] ; then
-  env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=6 go build -o $GOPATH/src -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" ./src/...
+  env CC=arm-linux-gnueabi-gcc GOOS=linux GOARCH=arm GOARM=6 go build -o $GOPATH/src -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" ./src/...
   mv $GOPATH/src/appimaged $GOPATH/src/appimaged-arm
   mv $GOPATH/src/appimagetool $GOPATH/src/appimagetool-arm
-fi
-
-##############################################################
-# Build mkappimage
-##############################################################
-
-# 64-bit
-go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/mkappimage
-mv ./mkappimage mkappimage-$(go env GOHOSTARCH)
-
-# 32-bit
-if [ $(go env GOHOSTARCH) == "amd64" ] ; then 
-  env CGO_ENABLED=1 GOOS=linux GOARCH=386 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/mkdappimage
-  mv ./mkappimage mkappimage-386
-elif [ $(go env GOHOSTARCH) == "arm64" ] ; then
-  env CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=6 go build -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" github.com/probonopd/go-appimage/src/mkappimage
-  mv ./mkappimage mkappimage-arm
+  mv $GOPATH/src/mkappimage $GOPATH/src/mkappimage-arm
 fi
 
 
@@ -102,9 +83,9 @@ unset ARCH # It contains "amd64" which we cannot use since we need "x86_64"
 # For some weird reason, no one seems to agree on what architectures
 # should be called... argh
 if [ "$TRAVIS_ARCH" == "aarch64" ] ; then
-  export ARCHITECTURE=aarch64
+  ARCHITECTURE=aarch64
 else
-  export ARCHITECTURE=x86_64
+  ARCHITECTURE=x86_64
 fi
 
 # Make appimagetool AppImage
