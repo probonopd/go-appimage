@@ -61,7 +61,7 @@ func appwrap() {
 				// If what we launched (and failed) was an AppImage, then use its nice (short) name
 				// to display the error message
 				var appname string
-				ai, err = NewAppImage(os.Args[2])
+				ai, err := NewAppImage(os.Args[2])
 				if err == nil {
 					appname = ai.Name
 				} else {
@@ -71,7 +71,7 @@ func appwrap() {
 				summary := "Cannot open " + appname
 				body := strings.TrimSpace(out.String())
 
-				if strings.Contains(out.String(), "cannot open shared object file: No such file or directory") {
+				if strings.Contains(out.String(), "cannot open shared object file: No such file or directory") == true {
 					parts := strings.Split(out.String(), ":")
 					body = "Missing library " + strings.TrimSpace(parts[2])
 					// summary = "Error: Missing library " + strings.TrimSpace(parts[2])
@@ -79,12 +79,12 @@ func appwrap() {
 				}
 
 				// https://github.com/AppImage/AppImageKit/issues/1004
-				if strings.Contains(out.String(), "execv error") && err == nil {
+				if strings.Contains(out.String(), "execv error") == true && err == nil {
 					body = filepath.Base(os.Args[2]) + " is defective, AppRun is missing. \nPlease ask the author to fix it."
 				}
 
 				// https://github.com/pinnaculum/galacteek/issues/6
-				if strings.Contains(out.String(), "Could not load the Qt platform plugin") && err == nil {
+				if strings.Contains(out.String(), "Could not load the Qt platform plugin") == true && err == nil {
 					body = filepath.Base(os.Args[2]) + " is defective, could not load the Qt platform plugin. \nPlease run on the command line with 'QT_DEBUG_PLUGINS=1' \nto see error messages and ask the author to fix it."
 				}
 
@@ -105,14 +105,11 @@ func sendErrorDesktopNotification(title string, body string) {
 	log.Println(body)
 
 	conn, err := dbus.SessionBusPrivate() // When using SessionBusPrivate(), need to follow with Auth(nil) and Hello()
+	defer conn.Close()
 	if err != nil {
-		if conn != nil {
-			conn.Close()
-		}
 		helpers.PrintError("SessionBusPrivate", err)
 		return
 	}
-	defer conn.Close()
 	if conn == nil {
 		helpers.PrintError("No conn", err)
 		return
@@ -124,6 +121,7 @@ func sendErrorDesktopNotification(title string, body string) {
 	}
 
 	if err = conn.Hello(); err != nil {
+		conn.Close()
 		helpers.PrintError("Hello", err)
 		return
 	}

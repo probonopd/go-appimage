@@ -50,12 +50,12 @@ func NewAppImage(path string) (*AppImage, error) {
 		strings.HasSuffix(path, ".partial") ||
 		strings.HasSuffix(path, ".zs-old") ||
 		strings.HasSuffix(path, ".crdownload") {
-		return &ai, errors.New("given path is a temporary file")
+		return &ai, errors.New("Given path is a temporary file")
 	}
 	ai.imageType = ai.determineImageType()
 	// Don't waste more time if the file is not actually an AppImage
 	if ai.imageType < 0 {
-		return &ai, errors.New("given path is NOT an AppImage")
+		return &ai, errors.New("Given path is NOT an AppImage")
 	}
 	if ai.imageType > 1 {
 		ai.offset = helpers.CalculateElfSize(ai.Path)
@@ -132,14 +132,14 @@ func (ai AppImage) determineImageType() int {
 	if info.Size() < 100*1024 {
 		return -1
 	}
-	if helpers.CheckMagicAtOffset(f, "414902", 8) {
+	if helpers.CheckMagicAtOffset(f, "414902", 8) == true {
 		return 2
 	}
-	if helpers.CheckMagicAtOffset(f, "414901", 8) {
+	if helpers.CheckMagicAtOffset(f, "414901", 8) == true {
 		return 1
 	}
 	// ISO9660 files that are also ELF files
-	if helpers.CheckMagicAtOffset(f, "7f454c", 0) && helpers.CheckMagicAtOffset(f, "4344303031", 32769) {
+	if helpers.CheckMagicAtOffset(f, "7f454c", 0) == true && helpers.CheckMagicAtOffset(f, "4344303031", 32769) == true {
 		return 1
 	}
 	return -1
@@ -174,11 +174,11 @@ func (ai AppImage) Thumbnail() (io.ReadCloser, error) {
 //Returns the ReadCloser and the file's name (which could be useful for decoding).
 func (ai AppImage) Icon() (io.ReadCloser, string, error) {
 	if ai.Desktop == nil {
-		return nil, "", errors.New("desktop file wasn't parsed")
+		return nil, "", errors.New("Desktop file wasn't parsed")
 	}
 	icon := ai.Desktop.Section("Desktop Entry").Key("Icon").Value()
 	if icon == "" {
-		return nil, "", errors.New("desktop file doesn't specify an icon")
+		return nil, "", errors.New("Desktop file doesn't specify an icon")
 	}
 	if strings.HasSuffix(icon, ".png") || strings.HasSuffix(icon, ".svg") {
 		rdr, err := ai.reader.FileReader(icon)

@@ -55,7 +55,7 @@ func bootstrapMkAppImage(c *cli.Context) error {
 	helpers.AddHereToPath()
 
 	// Check whether we have a sufficient version of mksquashfs for -offset
-	if !helpers.CheckIfSquashfsVersionSufficient("mksquashfs") {
+	if helpers.CheckIfSquashfsVersionSufficient("mksquashfs") == false {
 		os.Exit(1)
 	}
 
