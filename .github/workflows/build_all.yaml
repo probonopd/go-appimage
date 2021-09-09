@@ -43,11 +43,8 @@ jobs:
       - uses: actions/checkout@v2
       - uses: docker://multiarch/ubuntu-core:arm64-bionic
         with:
-          args: 'apt update'
-      - uses: docker://multiarch/ubuntu-core:arm64-bionic
-        with:
           args: >
             bash -c
             "apt update &&
-            apt install curl &&
+            apt install wget --yes &&
             ./scripts/build.sh -a arm64"
