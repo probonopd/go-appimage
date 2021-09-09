@@ -25,6 +25,9 @@ import (
 The glib ChangeLog indicates the path for large sizes was "fixed" (Added $XDG_CACHE_DIR) starting with 2.35.3 */
 var ThumbnailsDirNormal = xdg.CacheHome + "/thumbnails/normal/"
 
+//go:embed embed/appimage.png
+var defaultIcon []byte
+
 func (ai AppImage) extractDirIconAsThumbnail() {
 	// log.Println("thumbnail: extract DirIcon as thumbnail")
 	if ai.Type() <= 0 {
@@ -79,8 +82,6 @@ genericIcon:
 		if *verbosePtr {
 			log.Printf("Could not extract icon, use default icon instead: %s\n", thumbnailcachedir+"/.DirIcon")
 		}
-		//go:embed embed/appimage.png
-		var defaultIcon []byte
 		err = os.MkdirAll(thumbnailcachedir, 0755)
 		helpers.LogError("thumbnail", err)
 		err = ioutil.WriteFile(thumbnailcachedir+"/.DirIcon", defaultIcon, 0644)
