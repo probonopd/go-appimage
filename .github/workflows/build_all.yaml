@@ -12,8 +12,8 @@ on:
       - 'docs/**'
 
 jobs:
-  build:
-    name: Build
+  build-x86:
+    name: Build for x86
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v2
@@ -31,7 +31,8 @@ jobs:
           ${{ runner.os }}-go-
     - name: Run build script
       run: ./scripts/build.sh -a amd64,386
-    build:
+    build-arm:
+      name: Build for arm
       runs-on: ubuntu-latest
       steps:
       - run: |
