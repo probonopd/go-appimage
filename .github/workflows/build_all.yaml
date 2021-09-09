@@ -43,7 +43,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: docker://multiarch/ubuntu-core:arm64-bionic
         with:
-          args: 'sudo apt update && sudo apt install wget && ./scripts/build.sh -a arm64'
+          args: 'apt update && apt install wget && ./scripts/build.sh -a arm64'
       # - uses: docker://multiarch/ubuntu-core:arm64-bionic
       #   with:
       #     args: >
