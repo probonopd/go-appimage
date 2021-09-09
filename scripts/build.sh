@@ -30,7 +30,7 @@ help_message() {
   echo ""
   echo "-a"
   echo "  Optional comma seperated list of architectures to build for (as defined by GOARCH)."
-  echo "  If not given, all architectures are built. Supports amd64, arm64, 386, and arm"
+  echo "  If not given, only the host architecture is built."
   echo "  ex: build.sh -a amd64,386"
   echo ""
   echo "-o"
@@ -48,20 +48,16 @@ help_message() {
 set_arch_env () {
   local ARCH=$1
   if [ $ARCH == arm64 ]; then
-    export GOPATH=$HOME/go-arm64
     export GOARCH=arm64
     AIARCH=aarch64
   elif [ $ARCH == 386 ]; then
-    export GOPATH=$HOME/go-386
     export GOARCH=386
     AIARCH=i686
   elif [ $ARCH == arm ]; then
-    export GOPATH=$HOME/go-arm
     export GOARCH=arm
     export GOARM=6
     AIARCH=armhf
   elif [ $ARCH == amd64 ]; then
-    export GOPATH=$HOME/go
     export GOARCH=amd64
     AIARCH=x86_64
   else
@@ -103,7 +99,11 @@ EOF
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/desktop-file-validate-$AIARCH -O desktop-file-validate )
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/mksquashfs-$AIARCH -O mksquashfs )
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/patchelf-$AIARCH -O patchelf )
-    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/AppImage/AppImageKit/releases/download/continuous/runtime-$AIARCH -O runtime-$ARCH)
+    if [ $ARCH != arm64 ]; then
+      ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/AppImage/AppImageKit/releases/download/continuous/runtime-$AIARCH )
+    else
+      ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/AppImage/AppImageKit/releases/download/continuous/runtime-$AIARCH -O runtime-$ARCH)
+    fi
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh -O uploadtool )
     cat > $BUILDDIR/$PROG-$ARCH.AppDir/appimagetool.desktop <<\EOF
 [Desktop Entry]
@@ -136,14 +136,42 @@ NoDisplay=true
 EOF
   fi
   chmod +x $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/*
-  # if [ $ARCH == arm64 ]; then
-  #   qemu-aarch64 $BUILDDIR/appimagetool-$ARCH.AppDir/usr/bin/appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
-  # elif [ $ARCH == arm ]; then
-  #   qemu-arm $BUILDDIR/appimagetool-$ARCH.AppDir/usr/bin/appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
-  # else
   $BUILDDIR/appimagetool-$ARCH.AppDir/usr/bin/appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
-  # fi
 }
+
+#############################################################
+# Setup environment
+#############################################################
+
+# Export version and build number
+if [ ! -z "$GITHUB_RUN_NUMBER" ] ; then
+  export COMMIT="${GITHUB_RUN_NUMBER}"
+  export VERSION=$GITHUB_RUN_NUMBER
+else
+  export COMMIT=$(date '+%Y-%m-%d_%H%M%S')
+  export VERSION=$(date '+%Y-%m-%d_%H%M%S')
+fi
+
+# Setup go1.17 if it's not installed
+if [[ $(go version) != "go version go1.17"* ]]; then
+  ARCH=$(uname -m)
+  case $ARCH in
+    x86_64)
+      ARCH=amd64;;
+    aarch64)
+      ARCH=arm64;;
+    armv8)
+      ARCH=arm64;;
+    *)
+      echo "Building on an unsupported system architecture: $ARCH"
+      exit 1;;
+  esac
+  mkdir -p $GOPATH/src || true
+  wget -c -nv https://dl.google.com/go/go1.17.linux-$ARCH.tar.gz
+  mkdir path || true
+  tar -C $PWD/path -xzf go*.tar.gz
+  PATH=$PWD/path/go/bin:$PATH
+fi
 
 #############################################################
 # Parse arguments
@@ -179,70 +207,7 @@ if [ -z $BUILDTOOL ]; then
   BUILDTOOL=(appimaged appimagetool mkappimage)
 fi
 if [ -z $BUILDARCH ]; then
-  BUILDARCH=(amd64 386 arm64 arm)
-fi
-
-# Might need to add these at some point. We'll try without first though..
-
-# 32-bit
-# if [ $(go env GOHOSTARCH) == "amd64" ] ; then 
-#   USEARCH=386
-#   sudo dpkg --add-architecture i386
-#   sudo apt-get update
-#   sudo apt-get install libc6:i386 zlib1g:i386 libfuse2:i386
-# elif [ $(go env GOHOSTARCH) == "arm64" ] ; then
-#   USEARCH=arm
-#   sudo dpkg --add-architecture armhf
-#   sudo apt-get update
-#   sudo apt-get install libc6:armhf zlib1g:armhf zlib1g-dev:armhf libfuse2:armhf libc6-armel:armhf
-# fi
-
-# Check for necessary qemu versions
-# for arch in ${BUILDARCH[@]}; do
-#   if [ $arch == arm64 ]; then
-#     if [[ $(whereis qemu-aarch64) != "qemu-aarch64: /usr/bin/qemu-aarch64" ]]; then
-#       if [ $GITHUB_ACTIONS ]; then
-#         sudo apt update
-#         sudo apt install qemu-user
-#       else
-#         echo "qemu-aarch64 is missing. This is need to to build for arm64."
-#         exit 1
-#       fi
-#     fi
-#   fi
-#   if [ $arch == arm ]; then
-#     if [[ $(whereis qemu-arm) != "qemu-arm: /usr/bin/qemu-arm" ]]; then
-#       if [ $GITHUB_ACTIONS ]; then
-#         sudo apt update
-#         sudo apt install qemu-user
-#       else
-#         echo "qemu-arm is missing. This is need to to build for arm."
-#         exit 1
-#       fi
-#     fi
-#   fi
-# done
-
-#############################################################
-# Setup environment
-#############################################################
-
-# Export version and build number
-if [ ! -z "$GITHUB_RUN_NUMBER" ] ; then
-  export COMMIT="${GITHUB_RUN_NUMBER}"
-  export VERSION=$GITHUB_RUN_NUMBER
-else
-  export COMMIT=$(date '+%Y-%m-%d_%H%M%S')
-  export VERSION=$(date '+%Y-%m-%d_%H%M%S')
-fi
-
-# Setup go1.17 if it's not installed
-if [[ $(go version) != "go version go1.17"* ]]; then
-  mkdir -p $GOPATH/src || true
-  wget -c -nv https://dl.google.com/go/go1.17.linux-arm64.tar.gz
-  mkdir path || true
-  tar -C $PWD/path -xzf go*.tar.gz
-  PATH=$PWD/path/go/bin:$PATH
+  BUILDARCH=$(go env GOHOSTARCH)
 fi
 
 # Get the directories ready

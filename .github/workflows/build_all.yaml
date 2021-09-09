@@ -12,39 +12,43 @@ on:
       - 'docs/**'
 
 jobs:
-  # build:
-# Probable x86 build. I want to test purely arm right now
-#     name: Build
-#     runs-on: ubuntu-18.04
-#     steps:
-#     - uses: actions/checkout@v2
-#     - name: Set up Go
-#       uses: actions/setup-go@v2
-#       with:
-#         go-version: 1.17
-#     - uses: actions/cache@v2
-#       with:
-#         path: |
-#           ~/.cache/go-build
-#           ~/go/pkg/mod
-# #          ~/go-arm/pkg/mod
-#           ~/go-386/pkg/mod
-# #          ~/go-arm64/pkg/mod
-#         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-#         restore-keys: |
-#           ${{ runner.os }}-go-
-#     - name: Run build script
-#       run: ./scripts/build.sh -a amd64,386
+  build:
+    name: Build
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.17
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: Run build script
+      run: ./scripts/build.sh -a amd64,386
     build:
       runs-on: ubuntu-latest
       steps:
       - run: |
           docker run --rm --privileged multiarch/qemu-user-static:register --reset
       - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - uses: docker://multiarch/ubuntu-core:arm64-bionic
         with:
           args: >
             bash -c
             "apt update &&
             apt install wget gcc file --yes &&
-            ./scripts/build.sh -a arm64"
+            ./scripts/build.sh -a arm64,arm"
