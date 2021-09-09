@@ -12,7 +12,7 @@ on:
       - 'docs/**'
 
 jobs:
-  build:
+  # build:
 # Probable x86 build. I want to test purely arm right now
 #     name: Build
 #     runs-on: ubuntu-18.04
