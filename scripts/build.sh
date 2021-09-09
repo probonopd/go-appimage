@@ -136,13 +136,13 @@ NoDisplay=true
 EOF
   fi
   chmod +x $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/*
-  if [ $ARCH == arm64 ]; then
-    qemu-aarch64 $BUILDDIR/appimagetool-$ARCH.AppDir/usr/bin/appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
-  elif [ $ARCH == arm ]; then
-    qemu-arm $BUILDDIR/appimagetool-$ARCH.AppDir/usr/bin/appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
-  else
-    $BUILDDIR/appimagetool-$ARCH.AppDir/usr/bin/appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
-  fi
+  # if [ $ARCH == arm64 ]; then
+  #   qemu-aarch64 $BUILDDIR/appimagetool-$ARCH.AppDir/usr/bin/appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
+  # elif [ $ARCH == arm ]; then
+  #   qemu-arm $BUILDDIR/appimagetool-$ARCH.AppDir/usr/bin/appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
+  # else
+  $BUILDDIR/appimagetool-$ARCH.AppDir/usr/bin/appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
+  # fi
 }
 
 #############################################################
@@ -198,30 +198,30 @@ fi
 # fi
 
 # Check for necessary qemu versions
-for arch in ${BUILDARCH[@]}; do
-  if [ $arch == arm64 ]; then
-    if [[ $(whereis qemu-aarch64) != "qemu-aarch64: /usr/bin/qemu-aarch64" ]]; then
-      if [ $GITHUB_ACTIONS ]; then
-        sudo apt update
-        sudo apt install qemu-user
-      else
-        echo "qemu-aarch64 is missing. This is need to to build for arm64."
-        exit 1
-      fi
-    fi
-  fi
-  if [ $arch == arm ]; then
-    if [[ $(whereis qemu-arm) != "qemu-arm: /usr/bin/qemu-arm" ]]; then
-      if [ $GITHUB_ACTIONS ]; then
-        sudo apt update
-        sudo apt install qemu-user
-      else
-        echo "qemu-arm is missing. This is need to to build for arm."
-        exit 1
-      fi
-    fi
-  fi
-done
+# for arch in ${BUILDARCH[@]}; do
+#   if [ $arch == arm64 ]; then
+#     if [[ $(whereis qemu-aarch64) != "qemu-aarch64: /usr/bin/qemu-aarch64" ]]; then
+#       if [ $GITHUB_ACTIONS ]; then
+#         sudo apt update
+#         sudo apt install qemu-user
+#       else
+#         echo "qemu-aarch64 is missing. This is need to to build for arm64."
+#         exit 1
+#       fi
+#     fi
+#   fi
+#   if [ $arch == arm ]; then
+#     if [[ $(whereis qemu-arm) != "qemu-arm: /usr/bin/qemu-arm" ]]; then
+#       if [ $GITHUB_ACTIONS ]; then
+#         sudo apt update
+#         sudo apt install qemu-user
+#       else
+#         echo "qemu-arm is missing. This is need to to build for arm."
+#         exit 1
+#       fi
+#     fi
+#   fi
+# done
 
 #############################################################
 # Setup environment
@@ -239,7 +239,7 @@ fi
 # Setup go1.17 if it's not installed
 if [[ $(go version) != "go version go1.17"* ]]; then
   mkdir -p $GOPATH/src || true
-  wget -c -nv https://dl.google.com/go/go1.17.linux-amd64.tar.gz
+  wget -c -nv https://dl.google.com/go/go1.17.linux-arm64.tar.gz
   mkdir path || true
   tar -C $PWD/path -xzf go*.tar.gz
   PATH=$PWD/path/go/bin:$PATH
