@@ -48,5 +48,6 @@ jobs:
         with:
           args: >
             bash -c
-            "apt install wget &&
+            "apt update &&
+            apt install curl &&
             ./scripts/build.sh -a arm64"
