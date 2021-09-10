@@ -35,8 +35,6 @@ jobs:
     name: Build for arm
     runs-on: ubuntu-latest
     steps:
-    - run: |
-        docker run --rm --privileged multiarch/qemu-user-static:register --reset
     - uses: actions/checkout@v2
     - uses: actions/cache@v2
       with:
@@ -46,10 +44,19 @@ jobs:
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           ${{ runner.os }}-go-
+    - run: |
+        docker run --rm --privileged multiarch/qemu-user-static:register --reset
     - uses: docker://multiarch/ubuntu-core:arm64-bionic
       with:
         args: >
           bash -c
           "apt update &&
           apt install --yes sudo &&
-          ./scripts/build.sh -a arm,arm64"
+          ./scripts/build.sh -a arm64"
+    - uses: docker://multiarch/ubuntu-core:armhf-bionic
+      with:
+        args: >
+          bash -c
+          "apt update &&
+          apt install --yes sudo &&
+          ./scripts/build.sh -a arm"

@@ -188,17 +188,6 @@ fi
 if [ $GITHUB_ACTIONS ]; then
   sudo apt-get update
   sudo apt-get install --yes wget file gcc
-  for arch in ${BUILDARCH[@]}; do
-    if [ $arch == arm ]; then
-      sudo dpkg --add-architecture armhf
-      sudo apt-get update
-      sudo apt-get install --yes libc6:armhf zlib1g:armhf zlib1g-dev:armhf libfuse2:armhf libc6-armel:armhf
-    elif [ $arch == 386 ]; then
-      sudo dpkg --add-architecture i386
-      sudo apt-get update
-      sudo apt-get install --yes libc6:i386 zlib1g:i386 libfuse2:i386
-    fi
-  done
 fi
 
 # Setup go1.17 if it's not installed
