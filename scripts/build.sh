@@ -134,15 +134,10 @@ NoDisplay=true
 EOF
   fi
   chmod +x $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/*
-  if [ $PROG == appimagetool ]; then
-    if [ $ARCH == arm ]; then
-      bash -c $BUILDDIR/appimagetool-$ARCH.AppDir/usr/bin/appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
-    else
-      $BUILDDIR/appimagetool-$ARCH.AppDir/usr/bin/appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
-    fi
-  else
-    $BUILDDIR/appimagetool*.AppImage $BUILDDIR/$PROG-$ARCH.AppDir
+  if [ $PROG == appimagetool]; then
+    PATH=$BUILDDIR/$PROG-$ARCH.AppDir/usr/bin:$PATH
   fi
+  appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
 }
 #############################################################
 # Setup environment
