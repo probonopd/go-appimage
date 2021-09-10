@@ -46,14 +46,16 @@ jobs:
           ${{ runner.os }}-go-
     - run: |
         docker run --rm --privileged multiarch/qemu-user-static:register --reset
-    - uses: docker://multiarch/ubuntu-core:arm64-bionic
+    - name: Build arm64
+      uses: docker://multiarch/ubuntu-core:arm64-bionic
       with:
         args: >
           bash -c
           "apt update &&
           apt install --yes sudo &&
           ./scripts/build.sh -a arm64"
-    - uses: docker://multiarch/ubuntu-core:armhf-bionic
+    - name: Build arm
+      uses: docker://multiarch/ubuntu-core:armhf-bionic
       with:
         args: >
           bash -c

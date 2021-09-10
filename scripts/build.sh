@@ -200,9 +200,16 @@ if [[ $(go version) != "go version go1.17"* ]]; then
       ARCH=arm64;;
     armv8)
       ARCH=arm64;;
+    armv7l)
+      ARCH=arm;;
     *)
-      echo "Building on an unsupported system architecture: $ARCH"
-      exit 1;;
+      if [[ $ARCH == *"86" ]]; then
+        ARCH=386
+      else
+        echo "Building on an unsupported system architecture: $ARCH"
+        exit 1
+      fi
+      ;;
   esac
   mkdir -p $GOPATH/src || true
   wget -c -nv https://dl.google.com/go/go1.17.linux-$ARCH.tar.gz
