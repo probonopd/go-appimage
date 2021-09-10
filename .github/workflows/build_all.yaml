@@ -51,5 +51,4 @@ jobs:
         args: >
           bash -c
           "apt update &&
-          apt install wget gcc file --yes &&
           ./scripts/build.sh -a arm,arm64"

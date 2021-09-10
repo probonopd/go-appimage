@@ -30,7 +30,7 @@ help_message() {
   echo ""
   echo "-a"
   echo "  Optional comma seperated list of architectures to build for (as defined by GOARCH)."
-  echo "  If not given, only the host architecture is built."
+  echo "  If not given, only the host architecture is built. NOTE: building for arm on x86 and vice versa is NOT supported"
   echo "  ex: build.sh -a amd64,386"
   echo ""
   echo "-o"
@@ -139,39 +139,6 @@ EOF
   chmod +x $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/*
   $BUILDDIR/appimagetool-$ARCH.AppDir/usr/bin/appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
 }
-#############################################################
-# Setup environment
-#############################################################
-
-# Export version and build number
-if [ ! -z "$GITHUB_RUN_NUMBER" ] ; then
-  export COMMIT="${GITHUB_RUN_NUMBER}"
-  export VERSION=$GITHUB_RUN_NUMBER
-else
-  export COMMIT=$(date '+%Y-%m-%d_%H%M%S')
-  export VERSION=$(date '+%Y-%m-%d_%H%M%S')
-fi
-
-# Setup go1.17 if it's not installed
-if [[ $(go version) != "go version go1.17"* ]]; then
-  ARCH=$(uname -m)
-  case $ARCH in
-    x86_64)
-      ARCH=amd64;;
-    aarch64)
-      ARCH=arm64;;
-    armv8)
-      ARCH=arm64;;
-    *)
-      echo "Building on an unsupported system architecture: $ARCH"
-      exit 1;;
-  esac
-  mkdir -p $GOPATH/src || true
-  wget -c -nv https://dl.google.com/go/go1.17.linux-$ARCH.tar.gz
-  mkdir path || true
-  tar -C $PWD/path -xzf go*.tar.gz
-  PATH=$PWD/path/go/bin:$PATH
-fi
 
 #############################################################
 # Parse arguments
@@ -203,9 +170,61 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
+
+#############################################################
+# Setup environment
+#############################################################
+
+# Export version and build number
+if [ ! -z "$GITHUB_RUN_NUMBER" ] ; then
+  export COMMIT="${GITHUB_RUN_NUMBER}"
+  export VERSION=$GITHUB_RUN_NUMBER
+else
+  export COMMIT=$(date '+%Y-%m-%d_%H%M%S')
+  export VERSION=$(date '+%Y-%m-%d_%H%M%S')
+fi
+
+# Install dependencies if needed
+if [ $GITHUB_ACTIONS ]; then
+  sudo apt-get update
+  sudo apt-get install --yes wget file gcc
+  for arch in $BUILDARCH; do
+    if [ $ARCH == arm ]; then
+      sudo dpkg --add-architecture armhf
+      sudo apt-get update
+      sudo apt-get install libc6:armhf zlib1g:armhf zlib1g-dev:armhf libfuse2:armhf libc6-armel:armhf
+    elif [ $ARCH == 386 ]; then
+      sudo dpkg --add-architecture i386
+      sudo apt-get update
+      sudo apt-get install libc6:i386 zlib1g:i386 libfuse2:i386
+  done
+fi
+
+# Setup go1.17 if it's not installed
+if [[ $(go version) != "go version go1.17"* ]]; then
+  ARCH=$(uname -m)
+  case $ARCH in
+    x86_64)
+      ARCH=amd64;;
+    aarch64)
+      ARCH=arm64;;
+    armv8)
+      ARCH=arm64;;
+    *)
+      echo "Building on an unsupported system architecture: $ARCH"
+      exit 1;;
+  esac
+  mkdir -p $GOPATH/src || true
+  wget -c -nv https://dl.google.com/go/go1.17.linux-$ARCH.tar.gz
+  mkdir path || true
+  tar -C $PWD/path -xzf go*.tar.gz
+  PATH=$PWD/path/go/bin:$PATH
+fi
+
 if [ -z $BUILDTOOL ]; then
   BUILDTOOL=(appimaged appimagetool mkappimage)
 fi
+
 if [ -z $BUILDARCH ]; then
   BUILDARCH=$(go env GOHOSTARCH)
 fi
