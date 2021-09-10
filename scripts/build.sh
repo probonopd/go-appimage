@@ -71,15 +71,12 @@ build () {
   local ARCH=$1
   local PROG=$2
   CLEANUP+=($BUILDDIR/$PROG-$ARCH.AppDir)
-  CLEANUP+=($BUILDDIR/$PROG-$ARCH)
   set_arch_env $ARCH
   go build -o $BUILDDIR -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" $PROJECT/src/$PROG
-  mv $BUILDDIR/$PROG $BUILDDIR/$PROG-$ARCH
-  $BUILDDIR/$PROG-$ARCH --help
   # common appimage steps
   rm -rf $BUILDDIR/$PROG-$ARCH.AppDir || true
   mkdir -p $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin
-  cp $BUILDDIR/$PROG-$ARCH $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/$PROG
+  mv $BUILDDIR/$PROG $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/$PROG
   ( cd $BUILDDIR/$PROG-$ARCH.AppDir/ ; ln -s usr/bin/$PROG AppRun)
   cp $PROJECT/data/appimage.png $BUILDDIR/$PROG-$ARCH.AppDir/
   if [ $PROG == appimaged ]; then
@@ -100,7 +97,7 @@ EOF
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/desktop-file-validate-$AIARCH -O desktop-file-validate )
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/mksquashfs-$AIARCH -O mksquashfs )
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/patchelf-$AIARCH -O patchelf )
-    if [ $ARCH == "arm"* ]; then
+    if [ $ARCH == "arm" || $ARCH == "arm64" ]; then
       ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/AppImage/AppImageKit/releases/download/continuous/runtime-$AIARCH -O runtime-$ARCH)
     else
       ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/AppImage/AppImageKit/releases/download/continuous/runtime-$AIARCH )
