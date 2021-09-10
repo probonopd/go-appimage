@@ -215,6 +215,7 @@ if [[ $(go version) != "go version go1.17"* ]]; then
   wget -c -nv https://dl.google.com/go/go1.17.linux-$ARCH.tar.gz
   mkdir path || true
   tar -C $PWD/path -xzf go*.tar.gz
+  CLEANUP+=(go*.tar.gz)
   PATH=$PWD/path/go/bin:$PATH
 fi
 
