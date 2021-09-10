@@ -201,7 +201,7 @@ if [[ $(go version) != "go version go1.17"* ]]; then
     armv8)
       ARCH=arm64;;
     armv7l)
-      ARCH=arm;;
+      ARCH=armv6l;;
     *)
       if [[ $ARCH == *"86" ]]; then
         ARCH=386
