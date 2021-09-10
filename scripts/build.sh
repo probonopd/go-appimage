@@ -135,8 +135,11 @@ EOF
   fi
   chmod +x $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/*
   if [ $PROG == appimagetool ]; then
-    file $BUILDDIR/appimagetool-$ARCH.AppDir/usr/bin/appimagetool
-    $BUILDDIR/appimagetool-$ARCH.AppDir/usr/bin/appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
+    if [ $ARCH == arm ]; then
+      bash -c $BUILDDIR/appimagetool-$ARCH.AppDir/usr/bin/appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
+    else
+      $BUILDDIR/appimagetool-$ARCH.AppDir/usr/bin/appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
+    fi
   else
     $BUILDDIR/appimagetool*.AppImage $BUILDDIR/$PROG-$ARCH.AppDir
   fi
