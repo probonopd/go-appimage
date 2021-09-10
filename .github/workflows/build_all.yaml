@@ -51,4 +51,5 @@ jobs:
         args: >
           bash -c
           "apt update &&
+          apt install --yes sudo &&
           ./scripts/build.sh -a arm,arm64"
