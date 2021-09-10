@@ -188,7 +188,7 @@ fi
 if [ $GITHUB_ACTIONS ]; then
   sudo apt-get update
   sudo apt-get install --yes wget file gcc
-  for arch in $BUILDARCH; do
+  for arch in ${BUILDARCH[@]}; do
     if [ $ARCH == arm ]; then
       sudo dpkg --add-architecture armhf
       sudo apt-get update
