@@ -134,7 +134,7 @@ NoDisplay=true
 EOF
   fi
   chmod +x $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/*
-  if [ $PROG == appimagetool]; then
+  if [ $PROG == appimagetool ]; then
     PATH=$BUILDDIR/$PROG-$ARCH.AppDir/usr/bin:$PATH
   fi
   appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
