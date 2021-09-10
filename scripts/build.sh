@@ -135,8 +135,8 @@ EOF
   fi
   chmod +x $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/*
   if [ $PROG == appimagetool ]; then
-    mkdir $BUILDIR/tmp || true
-    cp $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/* $BUILDIR/tmp
+    mkdir $BUILDDIR/tmp || true
+    cp $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/* $BUILDDIR/tmp
     PATH=$BUILDDIR/tmp:$PATH
   fi
   appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
