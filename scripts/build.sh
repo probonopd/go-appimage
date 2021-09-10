@@ -74,11 +74,9 @@ build () {
   CLEANUP+=($BUILDDIR/$PROG-$ARCH)
   set_arch_env $ARCH
   go build -o $BUILDDIR -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" $PROJECT/src/$PROG
-  mv $BUILDDIR/$PROG $BUILDDIR/$PROG-$ARCH
-  # common appimage steps
   rm -rf $BUILDDIR/$PROG-$ARCH.AppDir || true
   mkdir -p $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin
-  cp $BUILDDIR/$PROG-$ARCH $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/$PROG
+  mv $BUILDDIR/$PROG $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/$PROG
   ( cd $BUILDDIR/$PROG-$ARCH.AppDir/ ; ln -s usr/bin/$PROG AppRun)
   cp $PROJECT/data/appimage.png $BUILDDIR/$PROG-$ARCH.AppDir/
   if [ $PROG == appimaged ]; then
@@ -136,8 +134,12 @@ NoDisplay=true
 EOF
   fi
   chmod +x $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/*
-  file $BUILDDIR/appimagetool-$ARCH.AppDir/usr/bin/appimagetool
-  # $BUILDDIR/appimagetool-$ARCH.AppDir/usr/bin/appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
+  if [ $PROG == appimagetool ]; then
+    file $BUILDDIR/appimagetool-$ARCH.AppDir/usr/bin/appimagetool
+    $BUILDDIR/appimagetool-$ARCH.AppDir/usr/bin/appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
+  else
+    $BUILDDIR/appimagetool*.AppImage $BUILDDIR/$PROG-$ARCH.AppDir
+  fi
 }
 #############################################################
 # Setup environment
@@ -247,7 +249,6 @@ done
 
 if [ ! $DONTCLEAN ]; then
   for file in ${CLEANUP[@]}; do
-    echo $file
     rm -rf $file || true
   done
 fi
