@@ -136,8 +136,8 @@ NoDisplay=true
 EOF
   fi
   chmod +x $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/*
-  ls $BUILDDIR/appimagetool-$ARCH.AppDir/usr/bin/
-  $BUILDDIR/appimagetool-$ARCH.AppDir/usr/bin/appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
+  file $BUILDDIR/appimagetool-$ARCH.AppDir/usr/bin/appimagetool
+  # $BUILDDIR/appimagetool-$ARCH.AppDir/usr/bin/appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
 }
 #############################################################
 # Setup environment
