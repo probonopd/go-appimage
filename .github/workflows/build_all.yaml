@@ -12,8 +12,8 @@ on:
       - 'docs/**'
 
 jobs:
-  build-x86:
-    name: Build for x86
+  build-all:
+    name: Build for all architectures
     runs-on: ubuntu-18.04
     steps:
     - uses: actions/checkout@v2
@@ -30,35 +30,4 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
     - name: Run build script
-      run: ./scripts/build.sh -a amd64,386
-  build-arm:
-    name: Build for arm
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
-    - run: |
-        docker run --rm --privileged multiarch/qemu-user-static:register --reset
-    - name: Build arm
-      uses: docker://multiarch/ubuntu-core:armhf-bionic
-      with:
-        args: >
-          bash -c
-          "apt update &&
-          apt install --yes sudo &&
-          ./scripts/build.sh -a arm"
-    - name: Build arm64
-      uses: docker://multiarch/ubuntu-core:arm64-bionic
-      with:
-        args: >
-          bash -c
-          "apt update &&
-          apt install --yes sudo &&
-          ./scripts/build.sh -a arm64"
+      run: ./scripts/build.sh -a amd64,386,arm64,arm

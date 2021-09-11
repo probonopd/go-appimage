@@ -30,7 +30,7 @@ help_message() {
   echo ""
   echo "-a"
   echo "  Optional comma seperated list of architectures to build for (as defined by GOARCH)."
-  echo "  If not given, only the host architecture is built. NOTE: building for arm on x86 and vice versa is NOT supported"
+  echo "  If not given, only the host architecture is built."
   echo "  ex: build.sh -a amd64,386"
   echo ""
   echo "-o"
@@ -68,10 +68,15 @@ set_arch_env () {
 
 # Build the given program at the given architecture. Used via build $arch $program
 build () {
-  local ARCH=$1
+  set_arch_env $1
+  case $1 in
+    amd64) local ARCH=x86_64;;
+    386) local ARCH=i686;;
+    arm64) local ARCH=aarch64;;
+    arm) local ARCH=armhf;;
+  esac
   local PROG=$2
   CLEANUP+=($BUILDDIR/$PROG-$ARCH.AppDir)
-  set_arch_env $ARCH
   go build -o $BUILDDIR -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" $PROJECT/src/$PROG
   # common appimage steps
   rm -rf $BUILDDIR/$PROG-$ARCH.AppDir || true
@@ -97,11 +102,10 @@ EOF
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/desktop-file-validate-$AIARCH -O desktop-file-validate )
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/mksquashfs-$AIARCH -O mksquashfs )
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/patchelf-$AIARCH -O patchelf )
-    if [ $ARCH == "arm" ] || [ $ARCH == "arm64" ]; then
-      ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/AppImage/AppImageKit/releases/download/continuous/runtime-$AIARCH -O runtime-$ARCH)
-    else
-      ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/AppImage/AppImageKit/releases/download/continuous/runtime-$AIARCH )
-    fi
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/AppImage/AppImageKit/releases/download/continuous/runtime-aarch64)
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/AppImage/AppImageKit/releases/download/continuous/runtime-armhf)
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/AppImage/AppImageKit/releases/download/continuous/runtime-i686)
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/AppImage/AppImageKit/releases/download/continuous/runtime-x86_64)
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh -O uploadtool )
     cat > $BUILDDIR/$PROG-$ARCH.AppDir/appimagetool.desktop <<\EOF
 [Desktop Entry]
@@ -134,7 +138,7 @@ NoDisplay=true
 EOF
   fi
   chmod +x $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/*
-  $BUILDDIR/appimagetool-$ARCH.AppDir/usr/bin/appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
+  $BUILDDIR/appimagetool-x86_64.AppDir/usr/bin/appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
 }
 
 #############################################################
@@ -187,35 +191,6 @@ if [ $GITHUB_ACTIONS ]; then
   sudo apt-get install --yes wget file gcc
 fi
 
-# Setup go1.17 if it's not installed
-if [[ $(go version) != "go version go1.17"* ]]; then
-  ARCH=$(uname -m)
-  case $ARCH in
-    x86_64)
-      ARCH=amd64;;
-    aarch64)
-      ARCH=arm64;;
-    armv8)
-      ARCH=arm64;;
-    armv7l)
-      ARCH=armv6l;;
-    *)
-      if [[ $ARCH == *"86" ]]; then
-        ARCH=386
-      else
-        echo "Building on an unsupported system architecture: $ARCH"
-        exit 1
-      fi
-      ;;
-  esac
-  mkdir -p $GOPATH/src || true
-  wget -c -nv https://dl.google.com/go/go1.17.linux-$ARCH.tar.gz
-  mkdir path || true
-  tar -C $PWD/path -xzf go1.17.linux-$ARCH.tar.gz
-  CLEANUP+=(go1.17.linux-$ARCH.tar.gz)
-  PATH=$PWD/path/go/bin:$PATH
-fi
-
 if [ -z $BUILDTOOL ]; then
   BUILDTOOL=(appimaged appimagetool mkappimage)
 fi
@@ -238,26 +213,23 @@ cd $BUILDDIR
 
 BUILDINGAPPIMAGETOOL=false
 
-for tool in ${BUILDTOOL[@]}; do
-  if [ $tool == appimagetool ]; then
-    BUILDINGAPPIMAGETOOL=true
-    break
-  fi
-done
+# We always want the amd64 appimagetool built first so that other AppImages can be built.
+# If this isn't wanted, we clean it up afterwards
+build amd64 appimagetool
 
 for arch in ${BUILDARCH[@]}; do
-  # We need to make sure appimagetool is available. If we don't want it built, we mark it for deletion.
-  build $arch appimagetool
-
-  if [ ! $BUILDINGAPPIMAGETOOL ]; then
-    CLEANUP+=($BUILDDIR/appimagetool*.AppImage)
-  fi
   for tool in ${BUILDTOOL[@]}; do
-    if [ tool != appimagetool ]; then
+    if [ $arch == amd64 ] && [ tool == appimagetool ]; then
+      BUILDINGAPPIMAGETOOL=true
+    else
       build $arch $tool
     fi
   done
 done
+
+if [ ! $BUILDINGAPPIMAGETOOL ]; then
+  CLEANUP+=(appimagetool-*-x86_64.AppImage)
+fi
 
 if [ ! $DONTCLEAN ]; then
   for file in ${CLEANUP[@]}; do
