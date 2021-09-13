@@ -4,38 +4,38 @@ go 1.17
 
 require (
 	github.com/CalebQ42/squashfs v0.5.0
-	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
+	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/acobaugh/osrelease v0.0.0-20181218015638-a93a0a55a249
-	github.com/adrg/xdg v0.3.3
+	github.com/adrg/xdg v0.3.4
 	github.com/alokmenghrajani/gpgeez v0.0.0-20161206084504-1a06f1c582f9
-	github.com/coreos/go-systemd/v22 v22.1.0
-	github.com/eclipse/paho.mqtt.golang v1.3.0
-	github.com/esiqveland/notify v0.9.1
+	github.com/coreos/go-systemd/v22 v22.3.2
+	github.com/eclipse/paho.mqtt.golang v1.3.5
+	github.com/esiqveland/notify v0.11.0
 	github.com/gabriel-vasile/mimetype v1.3.1 // indirect
-	github.com/go-ole/go-ole v1.2.4 // indirect
-	github.com/godbus/dbus/v5 v5.0.3
+	github.com/go-ole/go-ole v1.2.5 // indirect
+	github.com/godbus/dbus/v5 v5.0.5
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/grandcat/zeroconf v1.0.0
 	github.com/h2non/go-is-svg v0.0.0-20160927212452-35e8c4b0612c
-	github.com/hashicorp/go-version v1.2.0
+	github.com/hashicorp/go-version v1.3.0
 	github.com/mgord9518/imgconv v0.0.0-20210819122414-c4b59a63004b
-	github.com/otiai10/copy v1.4.1
+	github.com/otiai10/copy v1.6.0
 	github.com/probonopd/go-zsyncmake v0.0.0-20181008012426-5db478ac2be7
-	github.com/prometheus/procfs v0.2.0
+	github.com/prometheus/procfs v0.7.3
 	github.com/rjeczalik/notify v0.9.2
 	github.com/sabhiram/png-embed v0.0.0-20180421025336-149afe9a3ccb
 	github.com/sabhiram/pngr v0.0.0-20180419043407-2df49b015d4b // indirect
-	github.com/shirou/gopsutil v3.20.11+incompatible
+	github.com/shirou/gopsutil v3.21.8+incompatible
 	github.com/shuheiktgw/go-travis v0.3.1
 	github.com/srwiley/oksvg v0.0.0-20210519022825-9fc0c575d5fe
-	github.com/srwiley/rasterx v0.0.0-20200120212402-85cb7272f5e9
+	github.com/srwiley/rasterx v0.0.0-20210519020934-456a8d69b780
 	github.com/urfave/cli/v2 v2.3.0
 	go.lsp.dev/uri v0.3.0
-	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
-	golang.org/x/image v0.0.0-20201208152932-35266b937fa6 // indirect
-	golang.org/x/sys v0.0.0-20210823070655-63515b42dcdf
+	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
+	golang.org/x/image v0.0.0-20210628002857-a66eb6448b8d // indirect
+	golang.org/x/sys v0.0.0-20210910150752-751e447fb3d0
 	golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b // indirect
-	gopkg.in/ini.v1 v1.62.0
+	gopkg.in/ini.v1 v1.63.0
 	gopkg.in/src-d/go-git.v4 v4.13.1
 )
 
@@ -59,8 +59,11 @@ require (
 	github.com/rustyoz/svg v0.0.0-20200706102315-fe1aeca2ba20 // indirect
 	github.com/sergi/go-diff v1.0.0 // indirect
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
+	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/src-d/gcfg v1.4.0 // indirect
 	github.com/therootcompany/xz v1.0.1 // indirect
+	github.com/tklauser/go-sysconf v0.3.9 // indirect
+	github.com/tklauser/numcpus v0.3.0 // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
 	github.com/xanzy/ssh-agent v0.2.1 // indirect
 	golang.org/x/net v0.0.0-20210505024714-0287a6fb4125 // indirect
