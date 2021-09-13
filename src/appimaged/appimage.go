@@ -62,7 +62,6 @@ func NewAppImage(path string) (ai *AppImage, err error) {
 	if err == nil && ui != "" {
 		ai.updateinformation = ui
 	}
-
 	return ai, nil
 }
 
@@ -72,32 +71,7 @@ func (ai AppImage) calculateMD5filenamepart() string {
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
-// func (ai AppImage) calculateNiceName() string {
-// 	niceName := filepath.Base(ai.Path())
-// 	niceName = strings.Replace(niceName, ".AppImage", "", -1)
-// 	niceName = strings.Replace(niceName, ".appimage", "", -1)
-// 	niceName = strings.Replace(niceName, "-x86_64", "", -1)
-// 	niceName = strings.Replace(niceName, "-i386", "", -1)
-// 	niceName = strings.Replace(niceName, "-i686", "", -1)
-// 	niceName = strings.Replace(niceName, "-", " ", -1)
-// 	niceName = strings.Replace(niceName, "_", " ", -1)
-// 	return niceName
-// }
-
-// func runCommand(cmd *exec.Cmd) (bytes.Buffer, error) {
-// 	if *verbosePtr {
-// 		log.Printf("runCommand: %q\n", cmd)
-// 	}
-// 	var out bytes.Buffer
-// 	cmd.Stdout = &out
-// 	err := cmd.Run()
-// 	// printError("runCommand", err)
-// 	// log.Println(cmd.Stdout)
-// 	return out, err
-// }
-
 func (ai AppImage) setExecBit() {
-
 	err := os.Chmod(ai.Path, 0755)
 	if err == nil {
 		if *verbosePtr {
