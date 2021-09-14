@@ -3,15 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/adrg/xdg"
@@ -48,7 +45,7 @@ var cleanPtr = flag.Bool("c", true, "Clean pre-existing desktop files")
 var quietPtr = flag.Bool("q", false, "Do not send desktop notifications")
 var noZeroconfPtr = flag.Bool("nz", false, "Do not announce this service on the network using Zeroconf")
 
-var ToBeIntegratedOrUnintegrated []string
+var integrationChannel chan *AppImage = make(chan *AppImage, 50)
 
 var thisai *AppImage // A reference to myself
 
@@ -216,17 +213,12 @@ func main() {
 		}
 	}()
 
-	// Ticker to periodically move desktop files into system
-	ticker := time.NewTicker(2 * time.Second)
 	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				moveDesktopFiles()
-
-			case <-quit:
-				ticker.Stop()
-				return
+		for app, open := <-integrationChannel; open; app, open = <-integrationChannel {
+			log.Println("Integrating or unintegrating:", app.Name)
+			err := moveDesktopFiles(app)
+			if err != nil {
+				helpers.LogError("integrate", err)
 			}
 		}
 	}()
@@ -255,135 +247,73 @@ func checkMQTTConnected(MQTTclient mqtt.Client) {
 
 // Periodically move desktop files from their temporary location
 // into the menu, so that the menu does not get rebuilt all the time
-func moveDesktopFiles() {
-	// log.Println("main: Ticktock")
-
-	if *verbosePtr {
-		log.Println("ToBeIntegratedOrUnintegrated:", ToBeIntegratedOrUnintegrated)
+func moveDesktopFiles(ai *AppImage) error {
+	integrate := ai.IntegrateOrUnintegrate()
+	if !integrate {
+		return nil
 	}
-
-	// log.Println("Subscriptions:", subscribedMQTTTopics)
-
-	// log.Println(watchedDirectories)
-	// for _, w := range watchedDirectories {
-	// 	log.Println(w.Path)
-	// }
-
-	/*
-		We want to know that all go routines have been completed,
-		nd only then move in all desktop files at once
-		To use sync.WaitGroup we:
-		    Create a new instance of a sync.WaitGroup (we’ll call it wg)
-		    Call wg.Add(n) where n is the number of goroutines to wait for (we can also call wg.Add(1) n times)
-		    Execute defer wg.Done() in each goroutine to indicate that goroutine is finished executing to the WaitGroup (see defer)
-		    Call wg.Wait() where we want to block
-			https://nathanleclaire.com/blog/2014/02/15/how-to-wait-for-all-goroutines-to-finish-executing-before-continuing/
-	*/
-	var wg sync.WaitGroup
-
-	// We limit the number of concurrent go routines
-	// sem is a channel that will allow up to 8 concurrent operations, a "Bounded channel"
-	// so that we won't get "too many files open" errors
-	var sem = make(chan int, 1024)
-
-	for _, path := range ToBeIntegratedOrUnintegrated {
-		ai, err := NewAppImage(path)
-		if err != nil {
-			continue
-		}
-		sem <- 1
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			ai.IntegrateOrUnintegrate()
-			ToBeIntegratedOrUnintegrated = RemoveFromSlice(ToBeIntegratedOrUnintegrated, ai.Path)
-		}()
-		<-sem
-	}
-
-	wg.Wait() // Wait until all go functions have completed
-
-	// If this wait is too short, then we may be running into race conditions which can lead to crashes?
-
 	desktopcachedir := xdg.CacheHome + "/applications/" // FIXME: Do not hardcode here and in other places
 
-	files, err := ioutil.ReadDir(desktopcachedir)
+	err := os.Rename(desktopcachedir+"/appimagekit_"+ai.md5+".desktop", ai.desktopfilepath)
 	if err != nil {
-		log.Fatal(err)
+		return err
+	}
+	if *verbosePtr {
+		log.Println("main: Moved ", desktopcachedir+"/appimagekit_"+ai.md5+".desktop to", xdg.DataHome+"/applications/")
 	}
 
-	for _, file := range files {
-		if *verbosePtr {
-			log.Println("main: Moving", file.Name(), "to", xdg.DataHome+"/applications/")
-		}
-		err = os.Rename(desktopcachedir+"/"+file.Name(), xdg.DataHome+"/applications/"+file.Name())
-		helpers.LogError("main", err)
+	if !ai.startup {
+		// If one single application has been integrated, then the user probably cares about it
+		// e.g., has downloaded it.
+		// TODO: Find out which application was added, and show its icon, make the notification clickable
+		// to open the application
+		sendDesktopNotification("Added "+ai.Name, "", 5000)
 	}
 
-	if len(files) != 0 {
-
-		if *verbosePtr {
-			log.Println("main: Moved", len(files), "desktop files to", xdg.DataHome+"/applications/")
-		} else {
-			log.Println("main: Moved", len(files), "desktop files to", xdg.DataHome+"/applications/; use -v to see details")
-		}
-
-		if len(files) == 1 {
-			// If one single application has been integrated, then the user probably cares about it
-			// e.g., has downloaded it.
-			// TODO: Find out which application was added, and show its icon, make the notification clickable
-			// to open the application
-			sendDesktopNotification("Added application", "", 5000)
-		} else {
-			// If more than one has been integrated, then let's just display the number (or even nothing?)
-			sendDesktopNotification("Added "+strconv.Itoa(len(files))+" applications", "", 5000)
-		}
-
-		// Run the various tools that make sure that the added desktop files really show up in the menu.
-		// Of course, almost no 2 systems are similar.
-		updateMenuCommands := []string{
-			"update-menus", // Needed on Ubuntu MATE so that the menu gets populated
-		}
-		for _, updateMenuCommand := range updateMenuCommands {
-			if helpers.IsCommandAvailable(updateMenuCommand) {
-				cmd := exec.Command(updateMenuCommand)
-				err := cmd.Run()
-				if err == nil {
-					log.Println("Ran", updateMenuCommand, "command")
-				} else {
-					helpers.LogError("main: "+updateMenuCommand, err)
-				}
-			}
-
-		}
-
-		// Run update-desktop-database
-		// "Build cache database of MIME types handled by desktop files."
-		if helpers.IsCommandAvailable("update-desktop-database") {
-			cmd := exec.Command("update-desktop-database", xdg.DataHome+"/applications/")
+	// Run the various tools that make sure that the added desktop files really show up in the menu.
+	// Of course, almost no 2 systems are similar.
+	updateMenuCommands := []string{
+		"update-menus", // Needed on Ubuntu MATE so that the menu gets populated
+	}
+	for _, updateMenuCommand := range updateMenuCommands {
+		if helpers.IsCommandAvailable(updateMenuCommand) {
+			cmd := exec.Command(updateMenuCommand)
 			err := cmd.Run()
 			if err == nil {
-				log.Println("Ran", "update-desktop-database "+xdg.DataHome+"/applications/")
+				log.Println("Ran", updateMenuCommand, "command")
 			} else {
-				helpers.LogError("main", err)
+				helpers.LogError("main: "+updateMenuCommand, err)
 			}
 		}
 
-		/*
-			// Run xdg-desktop-menu forceupdate
-			// It probably doesn't hurt, although it may not really be needed.
-			if isCommandAvailable("xdg-desktop-menu") {
-				cmd := exec.Command("xdg-desktop-menu", "forceupdate")
-				err := cmd.Run()
-				if err == nil {
-					log.Println("Ran", "xdg-desktop-menu forceupdate")
-				} else {
-					printError("main", err)
-				}
-			}
-		*/
-
 	}
+
+	// Run update-desktop-database
+	// "Build cache database of MIME types handled by desktop files."
+	if helpers.IsCommandAvailable("update-desktop-database") {
+		cmd := exec.Command("update-desktop-database", xdg.DataHome+"/applications/")
+		err := cmd.Run()
+		if err == nil {
+			log.Println("Ran", "update-desktop-database "+xdg.DataHome+"/applications/")
+		} else {
+			helpers.LogError("main", err)
+		}
+	}
+
+	/*
+		// Run xdg-desktop-menu forceupdate
+		// It probably doesn't hurt, although it may not really be needed.
+		if isCommandAvailable("xdg-desktop-menu") {
+			cmd := exec.Command("xdg-desktop-menu", "forceupdate")
+			err := cmd.Run()
+			if err == nil {
+				log.Println("Ran", "xdg-desktop-menu forceupdate")
+			} else {
+				printError("main", err)
+			}
+		}
+	*/
+	return nil
 }
 
 func watchDirectories() {
@@ -442,15 +372,13 @@ func watchDirectoriesReally(watchedDirectories []string) {
 		// For now we don't walk subdirectories.
 		// filepath.Walk scans subfolders too,
 		// ioutil.ReadDir does not.
-		infos, err := ioutil.ReadDir(v)
+		infos, err := os.ReadDir(v)
 		if err != nil {
 			helpers.PrintError("watchDirectoriesReally", err)
 			continue
 		}
 		for _, info := range infos {
-			if err != nil {
-				log.Printf("%v\n", err)
-			} else if info.IsDir() {
+			if info.IsDir() {
 				// go inotifyWatch(v + "/" + info.Name())
 			} else if !info.IsDir() {
 				var ai *AppImage
@@ -458,18 +386,10 @@ func watchDirectoriesReally(watchedDirectories []string) {
 				if err != nil {
 					continue
 				}
-				ToBeIntegratedOrUnintegrated = helpers.AppendIfMissing(ToBeIntegratedOrUnintegrated, ai.Path)
+				ai.startup = true
+				integrationChannel <- ai
 			}
 		}
 		helpers.LogError("main: watchDirectoriesReally", err)
 	}
-}
-
-func RemoveFromSlice(s []string, r string) []string {
-	for i, v := range s {
-		if v == r {
-			return append(s[:i], s[i+1:]...)
-		}
-	}
-	return s
 }

@@ -22,9 +22,9 @@ package main
 // us Unix specific and not cross-platform. Therefore, we are using https://github.com/rjeczalik/notify
 
 import (
-	"github.com/probonopd/go-appimage/internal/helpers"
-	"github.com/rjeczalik/notify"
 	"log"
+
+	"github.com/rjeczalik/notify"
 )
 
 // Can we watch files with a certain file name extension only
@@ -50,11 +50,19 @@ func inotifyWatch(path string) {
 		switch ei := <-c; ei.Event() {
 		case notify.InDeleteSelf:
 			log.Println("TODO:", ei.Path(), "was deleted, un-integrate all AppImages that were conteined herein")
-			ToBeIntegratedOrUnintegrated = helpers.AppendIfMissing(ToBeIntegratedOrUnintegrated, ei.Path())
+			fallthrough
 			// log.Println("ToBeIntegratedOrUnintegrated now contains:", ToBeIntegratedOrUnintegrated)
+		case notify.InMovedFrom:
+			ai, _ := NewAppImage(ei.Path())
+			ai.startup = false
+			integrationChannel <- ai
 		default:
 			log.Println("inotifyWatch:", ei.Path(), ei.Event())
-			ToBeIntegratedOrUnintegrated = helpers.AppendIfMissing(ToBeIntegratedOrUnintegrated, ei.Path())
+			ai, err := NewAppImage(ei.Path())
+			if err == nil {
+				ai.startup = false
+				integrationChannel <- ai
+			}
 			// log.Println("ToBeIntegratedOrUnintegrated now contains:", ToBeIntegratedOrUnintegrated)
 		}
 	}

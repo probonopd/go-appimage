@@ -31,6 +31,7 @@ type AppImage struct {
 	thumbnailfilename string
 	thumbnailfilepath string
 	updateinformation string
+	startup           bool //used so we don't notify applications being added on startup
 	// offset            int64
 	// rawcontents       string
 	// niceName          string
@@ -44,10 +45,6 @@ type AppImage struct {
 func NewAppImage(path string) (ai *AppImage, err error) {
 	ai = new(AppImage)
 	ai.AppImage, err = goappimage.NewAppImage(path)
-	if err != nil {
-		return ai, err
-	}
-
 	ai.uri = strings.TrimSpace(string(uri.File(filepath.Clean(ai.Path))))
 	ai.md5 = ai.calculateMD5filenamepart() // Need this also for non-existing AppImages for removal
 	ai.desktopfilename = "appimagekit_" + ai.md5 + ".desktop"
@@ -58,11 +55,13 @@ func NewAppImage(path string) (ai *AppImage, err error) {
 	} else {
 		ai.thumbnailfilepath = ThumbnailsDirNormal + "/" + ai.thumbnailfilename
 	}
+	if err != nil {
+		return ai, err
+	}
 	ui, err := ai.ReadUpdateInformation()
 	if err == nil && ui != "" {
 		ai.updateinformation = ui
 	}
-
 	return ai, nil
 }
 
@@ -72,32 +71,7 @@ func (ai AppImage) calculateMD5filenamepart() string {
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
-// func (ai AppImage) calculateNiceName() string {
-// 	niceName := filepath.Base(ai.Path())
-// 	niceName = strings.Replace(niceName, ".AppImage", "", -1)
-// 	niceName = strings.Replace(niceName, ".appimage", "", -1)
-// 	niceName = strings.Replace(niceName, "-x86_64", "", -1)
-// 	niceName = strings.Replace(niceName, "-i386", "", -1)
-// 	niceName = strings.Replace(niceName, "-i686", "", -1)
-// 	niceName = strings.Replace(niceName, "-", " ", -1)
-// 	niceName = strings.Replace(niceName, "_", " ", -1)
-// 	return niceName
-// }
-
-// func runCommand(cmd *exec.Cmd) (bytes.Buffer, error) {
-// 	if *verbosePtr {
-// 		log.Printf("runCommand: %q\n", cmd)
-// 	}
-// 	var out bytes.Buffer
-// 	cmd.Stdout = &out
-// 	err := cmd.Run()
-// 	// printError("runCommand", err)
-// 	// log.Println(cmd.Stdout)
-// 	return out, err
-// }
-
 func (ai AppImage) setExecBit() {
-
 	err := os.Chmod(ai.Path, 0755)
 	if err == nil {
 		if *verbosePtr {
@@ -217,7 +191,8 @@ func (ai AppImage) _removeIntegration() {
 	if err == nil {
 		log.Println("appimage: Deleted", ai.desktopfilepath)
 		sendDesktopNotification("Removed", ai.Path, 3000)
-
+	} else {
+		log.Println("appimage:", err, ai.desktopfilename)
 	}
 }
 
@@ -226,12 +201,14 @@ func (ai AppImage) _removeIntegration() {
 // depending on whether the file exists on disk. NEVER call this directly,
 // ONLY have this called from a function that limits parallelism and ensures
 // uniqueness of the AppImages to be processed
-func (ai AppImage) IntegrateOrUnintegrate() {
+func (ai AppImage) IntegrateOrUnintegrate() bool {
 	if _, err := os.Stat(ai.Path); os.IsNotExist(err) {
 		ai._removeIntegration()
 	} else {
 		ai._integrate()
+		return true
 	}
+	return false
 }
 
 // ReadUpdateInformation reads updateinformation from an AppImage

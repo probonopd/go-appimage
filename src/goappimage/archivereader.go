@@ -9,11 +9,9 @@ import (
 	"os/exec"
 	"path"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/CalebQ42/squashfs"
-	ioutilextra "gopkg.in/src-d/go-git.v4/utils/ioutil"
 )
 
 type archiveReader interface {
@@ -24,15 +22,6 @@ type archiveReader interface {
 	FileReader(path string) (io.ReadCloser, error)
 	//IsDir returns if the given path points to a directory.
 	IsDir(path string) bool
-	//SymlinkPath returns where the symlink at path is pointing.
-	//If the given path is not a symlink, just returns the given path.
-	SymlinkPath(path string) string
-	//SymlinkPath is similiar to SymlinkPath, but will recursively try
-	//to get the symlink's path. If the location is outside the archive,
-	//the initial path is returned.
-	SymlinkPathRecursive(path string) string
-	//Contains returns if the given path is contained in the archive.
-	Contains(path string) bool
 	//ListFiles returns a list of filenames at the given directory.
 	//Returns nil if the given path is a symlink, file, or isn't contained.
 	ListFiles(path string) []string
@@ -45,34 +34,18 @@ func (ai *AppImage) populateReader(allowFallback, forceFallback bool) (err error
 		ai.reader, err = newType1Reader(ai.Path)
 		return err
 	} else if ai.imageType == 2 {
-		ai.reader, err = newType2Reader(ai, allowFallback, forceFallback)
+		ai.reader, err = newType2Reader(ai)
 		return err
 	}
-	return errors.New("Invalid AppImage type")
+	return errors.New("invalid AppImage type")
 }
 
 //TODO: Implement command based fallback here.
 type type2Reader struct {
-	rdr             *squashfs.Reader
-	structure       map[string][]string
-	path            string
-	folders         []string
-	offset          int
-	fallbackAllowed bool
-	forceFallback   bool
+	rdr *squashfs.Reader
 }
 
-func newType2Reader(ai *AppImage, fallbackAllowed, forceFallback bool) (*type2Reader, error) {
-	if forceFallback || ai == nil {
-		out := &type2Reader{
-			forceFallback: true,
-		}
-		err := out.setupCommandFallback(ai)
-		if err != nil {
-			return nil, err
-		}
-		return out, nil
-	}
+func newType2Reader(ai *AppImage) (*type2Reader, error) {
 	aiFil, err := os.Open(ai.Path)
 	if err != nil {
 		return nil, err
@@ -81,349 +54,90 @@ func newType2Reader(ai *AppImage, fallbackAllowed, forceFallback bool) (*type2Re
 	aiRdr := io.NewSectionReader(aiFil, ai.offset, stat.Size()-ai.offset)
 	squashRdr, err := squashfs.NewSquashfsReader(aiRdr)
 	if err != nil {
-		if fallbackAllowed {
-			//If there are errors, we force the use of unsquashfs.
-			out := &type2Reader{
-				forceFallback: true,
-			}
-			err = out.setupCommandFallback(ai)
-			if err != nil {
-				return nil, err
-			}
-			return out, nil
-		}
 		return nil, err
 	}
 	return &type2Reader{
-		rdr:             squashRdr,
-		fallbackAllowed: fallbackAllowed,
+		rdr: squashRdr,
 	}, nil
 }
 
-func (r *type2Reader) setupCommandFallback(ai *AppImage) error {
-	r.structure = make(map[string][]string)
-	r.folders = make([]string, 0)
-	r.offset = int(ai.offset)
-	r.path = ai.Path
-	cmd := exec.Command("unsquashfs", "-no-xattrs", "-o", strconv.FormatInt(ai.offset, 10), "-l", ai.Path)
-	out, err := runCommand(cmd)
-	if err != nil {
-		return err
-	}
-	allFiles := strings.Split(string(out.Bytes()), "\n")
-	for _, filepath := range allFiles {
-		if filepath == "" {
-			continue
-		}
-		filepath = path.Clean(strings.TrimPrefix(filepath, "squashfs-root/"))
-		if filepath == "." {
-			continue
-		}
-		dir := path.Dir(filepath)
-		name := path.Base(filepath)
-		if dir == "." {
-			dir = "/"
-		}
-		if r.structure[dir] == nil {
-			if dir != "/" {
-				r.folders = append(r.folders, dir)
-			}
-			r.structure[dir] = make([]string, 0)
-		}
-		r.structure[dir] = append(r.structure[dir], name)
-	}
-	sort.Strings(r.folders)
-	for dir := range r.structure {
-		sort.Strings(r.structure[dir])
-	}
-	return nil
-}
+// type anonymousCloser struct {
+// 	close func() error
+// }
 
-//makes sure that the path is nice and only points to ONE file, which is needed if there are wildcards.
-//If you were to search for *.desktop, you will get both blender.desktop AND /usr/bin/blender.desktop.
-//This could cause issues, especially for FileReader
-//
-//Probably a bit spagetti and can be cleaned up. Maybe add a rawPaths variable to type1reader to make
-//it easier to find a match with wildcards.
-func (r *type2Reader) cleanPath(filepath string) (string, error) {
-	filepath = strings.TrimPrefix(filepath, "/")
-	filepath = path.Clean(filepath)
-	if filepath == "." {
-		return "/", nil
-	}
-	filepathDir := path.Dir(filepath)
-	if filepathDir != "." {
-		for _, dir := range r.folders {
-			match, _ := path.Match(filepathDir, dir)
-			if match {
-				filepathDir = dir
-				break
-			}
-		}
-	} else {
-		filepathDir = "/"
-	}
-	if filepathDir == "" {
-		return "", errors.New("File not found in the archive")
-	}
-	filepathName := path.Base(filepath)
-	for _, fil := range r.structure[filepathDir] {
-		match, _ := path.Match(filepathName, fil)
-		if match {
-			filepathName = fil
-			break
-		}
-	}
-	if filepathName == "" {
-		return "", errors.New("File not found in the archive")
-	}
-	if filepathDir == "/" {
-		filepath = filepathName
-	} else {
-		filepath = filepathDir + "/" + filepathName
-	}
-	return filepath, nil
-}
-
-type anonymousCloser struct {
-	close func() error
-}
-
-func (a anonymousCloser) Close() error {
-	return a.close()
-}
+// func (a anonymousCloser) Close() error {
+// 	return a.close()
+// }
 
 func (r *type2Reader) FileReader(filepath string) (io.ReadCloser, error) {
 	//TODO: command fallback
-	if !r.forceFallback {
-		fil := r.rdr.GetFileAtPath(filepath)
+	fsFil, err := r.rdr.Open(filepath)
+	if err != nil {
+		return nil, err
+	}
+	fil := fsFil.(*squashfs.File)
+	for fil.IsSymlink() {
+		fil = fil.GetSymlinkFile()
 		if fil == nil {
-			return nil, errors.New("Can't find file at: " + filepath)
+			return nil, errors.New("Can't resolve symlink at: " + filepath)
 		}
-		if fil.IsSymlink() {
-			fil = fil.GetSymlinkFileRecursive()
-			if fil == nil {
-				return nil, errors.New("Can't resolve symlink at: " + filepath)
-			}
-		}
-		if fil.IsDir() {
-			return nil, errors.New("Path is a directory: " + filepath)
-		}
-		return ioutil.NopCloser(fil), nil
 	}
-	filepath, err := r.cleanPath(filepath)
-	filepath = r.SymlinkPathRecursive(filepath)
-	if filepath != r.SymlinkPath(filepath) {
-		return nil, errors.New("Can't resolve symlink at: " + filepath)
-	}
-	if r.IsDir(filepath) {
+	if fil.IsDir() {
 		return nil, errors.New("Path is a directory: " + filepath)
 	}
-	tmpDir, err := ioutil.TempDir("", filepath)
-	if err != nil {
-		return nil, errors.New("Cannot make the temp directory")
-	}
-	err = r.ExtractTo(filepath, tmpDir, true)
-	if err != nil {
-		os.RemoveAll(tmpDir)
-		return nil, err
-	}
-	tmpFil, err := os.Open(tmpDir + "/" + path.Base(filepath))
-	if err != nil {
-		os.RemoveAll(tmpDir)
-		return nil, err
-	}
-	closer := anonymousCloser{
-		close: func() error {
-			tmpFil.Close()
-			return os.RemoveAll(tmpDir)
-		},
-	}
-	return ioutilextra.NewReadCloser(tmpFil, closer), nil
+	return fil, nil
 }
 
 func (r *type2Reader) IsDir(filepath string) bool {
-	if !r.forceFallback {
-		fil := r.rdr.GetFileAtPath(filepath)
-		if fil == nil {
-			//TODO: make squashfs differenciate between a not found file, and compression extraction issues.
-			return false
-		}
-		if fil.IsSymlink() {
-			fil = fil.GetSymlinkFileRecursive()
-			if fil == nil {
-				return false
-			}
-		}
-		return fil.IsDir()
-	}
-	// commandFallback: TODO: when i can differenciate the above errors
-	filepath, err := r.cleanPath(filepath)
+	fsFil, err := r.rdr.Open(filepath)
 	if err != nil {
 		return false
 	}
-	return r.structure[filepath] != nil
-}
-
-func (r *type2Reader) SymlinkPath(filepath string) string {
-	if !r.forceFallback {
-		fil := r.rdr.GetFileAtPath(filepath)
+	fil := fsFil.(*squashfs.File)
+	if fil.IsSymlink() {
+		fil = fil.GetSymlinkFile()
 		if fil == nil {
-			return filepath
+			return false
 		}
-		if fil.IsSymlink() {
-			return fil.SymlinkPath()
-		}
-		return filepath
 	}
-	//fallingback to commands.
-	//TODO: add a way fro the above to fallback down here.
-	filepath, err := r.cleanPath(filepath)
-	if err != nil {
-		return filepath
-	}
-	cmd := exec.Command("unsquashfs", "-no-xattrs", "-ll", "-o", strconv.Itoa(r.offset), r.path, filepath)
-	out, err := runCommand(cmd)
-	if err != nil {
-		return filepath
-	}
-	tmpOutput := strings.Split(strings.TrimSuffix(string(out.Bytes()), "\n"), "\n")
-	neededLine := tmpOutput[len(tmpOutput)-1]
-	if strings.Contains(neededLine, "->") {
-		neededLine = neededLine[strings.Index(neededLine, "->")+3:]
-		return path.Dir(filepath) + "/" + neededLine
-	}
-	return filepath
-}
-
-func (r *type2Reader) SymlinkPathRecursive(filepath string) string {
-	if !r.forceFallback {
-		fil := r.rdr.GetFileAtPath(filepath)
-		if fil == nil {
-			return filepath
-		}
-		tmp := fil.GetSymlinkFileRecursive()
-		if tmp == nil {
-			return filepath
-		}
-		return tmp.Path()
-	}
-	//Command fallback
-	//TODO: allow command fallback from above
-	filepath, err := r.cleanPath(filepath)
-	if err != nil {
-		return filepath
-	}
-	symlinkedFile := r.SymlinkPath(filepath)
-	if symlinkedFile == filepath {
-		return filepath
-	}
-	if strings.HasPrefix(symlinkedFile, "/") {
-		return filepath //we can't help with absolute symlinks...
-	}
-	tmp := r.SymlinkPathRecursive(path.Dir(filepath) + "/" + symlinkedFile)
-	if tmp != path.Dir(filepath)+"/"+symlinkedFile {
-		return tmp
-	}
-	return filepath
-}
-
-func (r *type2Reader) Contains(path string) bool {
-	if !r.forceFallback {
-		fil := r.rdr.GetFileAtPath(path)
-		return fil != nil
-	}
-	path, err := r.cleanPath(path)
-	return err == nil
+	return fil.IsDir()
 }
 
 func (r *type2Reader) ListFiles(path string) []string {
-	if !r.forceFallback {
-		fil := r.rdr.GetFileAtPath(path)
-		if fil == nil {
-			return nil
-		}
-		if fil.IsSymlink() {
-			fil = fil.GetSymlinkFileRecursive()
-			if fil == nil {
-				return nil
-			}
-		}
-		if !fil.IsDir() {
-			return nil
-		}
-		children, err := fil.GetChildren()
-		if err != nil {
-			return nil
-		}
-		out := make([]string, 0)
-		for _, child := range children {
-			out = append(out, child.Name())
-		}
-		return out
-	}
-	path, err := r.cleanPath(path)
+	fsFil, err := r.rdr.Open(path)
 	if err != nil {
 		return nil
 	}
-	return r.structure[path]
+	fil := fsFil.(*squashfs.File)
+	if fil.IsSymlink() {
+		fil = fil.GetSymlinkFile()
+		if fil == nil {
+			return nil
+		}
+	}
+	if !fil.IsDir() {
+		return nil
+	}
+	children, err := fil.ReadDir(0)
+	if err != nil {
+		return nil
+	}
+	out := make([]string, len(children))
+	for _, child := range children {
+		out = append(out, child.Name())
+	}
+	return out
 }
 
 func (r *type2Reader) ExtractTo(filepath, destination string, resolveSymlinks bool) error {
-	if !r.forceFallback {
-		fil := r.rdr.GetFileAtPath(filepath)
-		if fil == nil {
-			return nil
-		}
-		var errs []error
-		if resolveSymlinks {
-			errs = fil.ExtractSymlink(filepath)
-		} else {
-			errs = fil.ExtractTo(destination)
-		}
-		if len(errs) > 0 {
-			return errs[0]
-		}
-		return nil
-	}
-	filepath, err := r.cleanPath(filepath)
+	fsFil, err := r.rdr.Open(filepath)
 	if err != nil {
 		return err
 	}
-	var origName string
-	if resolveSymlinks {
-		origName = path.Base(filepath)
-		filepath = r.SymlinkPathRecursive(filepath)
-	}
-	var tmp string
-	for i := -1; ; i++ { //let's make sure we aren't going to coincidentally extracting to a directoyr that already has a temp directory in it...
-		if i == -1 {
-			tmp = destination + "/.tmp"
-		} else {
-			tmp = destination + "/.tmp" + strconv.Itoa(i)
-		}
-		_, err = os.Open(tmp)
-		if os.IsNotExist(err) {
-			break
-		} else if err != nil {
-			return err //make sure other issues aren't going to cause this loop to run forever.
-		}
-	}
-	defer os.RemoveAll(tmp)
-	cmd := exec.Command("unsquashfs", "-no-xattrs", "-o", strconv.Itoa(r.offset), "-d", tmp, r.path, filepath)
-	err = cmd.Run()
-	if err != nil {
-		return err
-	}
-	name := path.Base(filepath)
-	if origName != "" {
-		name = origName
-	}
-	err = os.Rename(tmp+"/"+filepath, destination+"/"+name)
-	if err != nil {
-		return err
-	}
-	return nil
+	options := squashfs.DefaultOptions()
+	options.DereferenceSymlink = true
+	err = fsFil.(*squashfs.File).ExtractWithOptions(destination, options)
+	return err
 }
 
 type type1Reader struct {
@@ -438,7 +152,7 @@ func newType1Reader(filepath string) (*type1Reader, error) {
 	if err != nil {
 		return nil, err
 	}
-	containedFiles := strings.Split(string(wrt.Bytes()), "\n")
+	containedFiles := strings.Split(wrt.String(), "\n")
 	var rdr type1Reader
 	rdr.path = filepath
 	rdr.structure = make(map[string][]string)
@@ -490,7 +204,7 @@ func (r *type1Reader) cleanPath(filepath string) (string, error) {
 		filepathDir = "/"
 	}
 	if filepathDir == "" {
-		return "", errors.New("File not found in the archive")
+		return "", errors.New("file not found in the archive")
 	}
 	filepathName := path.Base(filepath)
 	for _, fil := range r.structure[filepathDir] {
@@ -501,7 +215,7 @@ func (r *type1Reader) cleanPath(filepath string) (string, error) {
 		}
 	}
 	if filepathName == "" {
-		return "", errors.New("File not found in the archive")
+		return "", errors.New("file not found in the archive")
 	}
 	if filepathDir == "/" {
 		filepath = filepathName
@@ -546,7 +260,7 @@ func (r *type1Reader) SymlinkPath(filepath string) string {
 	if err != nil {
 		return filepath
 	}
-	output := strings.TrimSuffix(string(wrt.Bytes()), "\n")
+	output := strings.TrimSuffix(wrt.String(), "\n")
 	output = strings.Split(output, "\n")[0]                //Make sure we are only getting the first value that matches
 	if index := strings.Index(output, "->"); index != -1 { //signifies symlink
 		return output[index+3:]
@@ -564,7 +278,7 @@ func (r *type1Reader) SymlinkPathRecursive(filepath string) string {
 	if err != nil {
 		return filepath
 	}
-	output := strings.TrimSuffix(string(wrt.Bytes()), "\n")
+	output := strings.TrimSuffix(wrt.String(), "\n")
 	if index := strings.Index(output, "->"); index != -1 { //signifies symlink
 		symlinkedFile := output[index+3:]
 		if strings.HasPrefix(symlinkedFile, "/") {

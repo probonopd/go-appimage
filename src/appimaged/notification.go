@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/esiqveland/notify"
 	"github.com/godbus/dbus/v5"
@@ -54,11 +55,10 @@ func sendUpdateDesktopNotification(ai *AppImage, version string, _ string) {
 		AppIcon:       iconName,
 		Summary:       "Update available",
 		Body:          ai.Name + " can be updated to version " + version + ". \nchangelog",
-		Actions:       []string{"update", "Update"}, // tuples of (action_key, label)
+		Actions:       []notify.Action{{Key: "update", Label: "Update"}}, // tuples of (action_key, label)
 		Hints:         map[string]dbus.Variant{},
-		ExpireTimeout: int32(120000),
+		ExpireTimeout: time.Duration(time.Minute * 2),
 	}
-
 	// List server capabilities
 	caps, err := notify.GetCapabilities(conn)
 	if err != nil {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/acobaugh/osrelease"
@@ -135,7 +136,9 @@ func checkPrerequisites() {
 
 func checkIfSystemdServiceRunning(servicenames []string) bool {
 
-	conn, err := systemddbus.NewUserConnection()
+	cont := context.Background()
+
+	conn, err := systemddbus.NewUserConnectionContext(cont)
 	helpers.PrintError("pre: checkIfSystemdServiceRunning", err)
 	if err != nil {
 		if conn != nil {
@@ -149,7 +152,7 @@ func checkIfSystemdServiceRunning(servicenames []string) bool {
 		return false
 	}
 
-	units, err := conn.ListUnitsByPatterns([]string{}, servicenames)
+	units, err := conn.ListUnitsByPatternsContext(cont, []string{}, servicenames)
 	helpers.PrintError("pre: checkIfSystemdServiceRunning", err)
 	if err != nil {
 		return false

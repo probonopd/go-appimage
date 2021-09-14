@@ -623,11 +623,13 @@ func CheckMagicAtOffset(f *os.File, magic string, offset int64) bool {
 	n, err := f.Read(b)
 	LogError("CheckMagicAtOffset: "+f.Name(), err)
 	hexmagic := hex.EncodeToString(b[:n])
-	if hexmagic == magic {
-		// if *verbosePtr == true {
-		// 	log.Printf("CheckMagicAtOffset: %v: Magic 0x%x at offset %v\n", f.Name(), string(b[:n]), offset)
-		// }
-		return true
-	}
-	return false
+	return hexmagic == magic
+}
+
+// Return true if magic string (hex) is found at offset
+// TODO: Instead of magic string, could probably use something like []byte{'\r', '\n'} or []byte("AI")
+func CheckMagicAtOffsetBytes(byts []byte, magic string, offset int) bool {
+	b := byts[offset : offset+(len(magic)/2)]
+	hexmagic := hex.EncodeToString(b)
+	return hexmagic == magic
 }
