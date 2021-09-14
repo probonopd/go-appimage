@@ -34,4 +34,4 @@ jobs:
         prerelease: true
         title: "Continuous Build"
         files: |
-          ./build/*.AppImage
+          ./build/*

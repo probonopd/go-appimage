@@ -15,7 +15,7 @@
 !*.xml
 
 # Don't ignore Github Actions
-!.github/workflows/**
+!.github/workflows/*
 
 # Everything below this line is redundant
 # and may be removed once everything works as intended
