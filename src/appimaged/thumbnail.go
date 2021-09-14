@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"image"
 	"image/png"
 	"io"
@@ -27,6 +28,40 @@ var ThumbnailsDirNormal = xdg.CacheHome + "/thumbnails/normal/"
 //go:embed embed/appimage.png
 var defaultIcon []byte
 
+//Tries to get .DirIcon or the desktop's icon (in that order). If a failure, return generic icon.
+func (ai AppImage) getThumbnailOrIcon() (out []byte) {
+	fallback := defaultIcon
+	rdr, err := ai.Thumbnail()
+	if err != nil {
+		fmt.Println("Error getting thumbnail")
+		goto icon
+	}
+	out, err = io.ReadAll(rdr)
+	if err != nil {
+		fmt.Println("Error reading thumbnail")
+		goto icon
+	}
+	if issvg.Is(out) {
+		fmt.Println("Thumbnail is svg, checking desktop icon")
+		fallback = out
+		goto icon
+	}
+	return
+icon:
+	fmt.Println("Checking icon")
+	rdr, _, err = ai.Icon()
+	if err != nil {
+		fmt.Println("Error getting icon")
+		return fallback
+	}
+	out, err = io.ReadAll(rdr)
+	if err != nil {
+		fmt.Println("Error reading icon")
+		return fallback
+	}
+	return
+}
+
 //This reads the icon from the appimage then makes necessary changes or uses the default icon as necessary.
 //All this is now done in memory instead of constantly writing the changes to disk.
 func (ai AppImage) extractDirIconAsThumbnail() {
@@ -37,39 +72,15 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 
 	// TODO: Detect Modifications by reading the 'Thumb::MTime' key as per
 	// https://specifications.freedesktop.org/thumbnail-spec/thumbnail-spec-latest.html#MODIFICATIONS
-
-	var iconBuf []byte
-	dirIconRdr, err := ai.Thumbnail()
-	if err != nil {
-		if *verbosePtr {
-			log.Println("Could not find .DirIcon, trying to find the desktop file's specified icon")
-		}
-		dirIconRdr, _, err = ai.Icon()
-		if err != nil {
-			log.Println("Cound not find desktop file's icon, using generic icon")
-			dirIconRdr = nil //Make sure it's nil, just in case.
-		}
-	}
-	if dirIconRdr != nil {
-		iconBuf, err = io.ReadAll(dirIconRdr)
-		dirIconRdr.Close()
+	var err error
+	iconBuf := ai.getThumbnailOrIcon()
+	if issvg.Is(iconBuf) {
+		log.Println("thumbnail: .DirIcon in", ai.Path, "is an SVG, this is discouraged. Costly converting it now")
+		iconBuf, err = convertToPng(iconBuf)
 		if err != nil {
 			helpers.LogError("thumbnail", err)
 			iconBuf = defaultIcon
-		} else if len(iconBuf) == 0 {
-			log.Println("Icon is empty, using generic icon")
-			iconBuf = defaultIcon
 		}
-		if issvg.Is(iconBuf) {
-			log.Println("thumbnail: .DirIcon in", ai.Path, "is an SVG, this is discouraged. Costly converting it now")
-			iconBuf, err = convertToPng(iconBuf)
-			if err != nil {
-				helpers.LogError("thumbnail", err)
-				iconBuf = defaultIcon
-			}
-		}
-	} else {
-		iconBuf = defaultIcon
 	}
 
 	if !helpers.CheckMagicAtOffsetBytes(iconBuf, "504e47", 1) {
