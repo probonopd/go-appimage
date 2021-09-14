@@ -1,11 +1,6 @@
-name: Build all Architectures
+name: Build All Architectures for PR
 
 on:
-  push:
-    paths-ignore:
-      - '.idea/..'
-      - 'docs/**'
-
   pull_request:
     paths-ignore:
       - '.idea/..'

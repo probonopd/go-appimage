@@ -1,0 +1,37 @@
+name: Build And Release
+
+on:
+  push:
+    paths-ignore:
+      - '.idea/..'
+      - 'docs/**'
+
+jobs:
+  build-all:
+    name: Build for all architectures
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.17
+    - uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: Run build script
+      run: ./scripts/build.sh -a amd64,386,arm64,arm
+    - name: Upload tools
+      uses: "marvinpinto/action-automatic-releases@latest"
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        automatic_release_tag: "continuous"
+        prerelease: true
+        title: "Continuous Build"
+        files: |
+          ./build/*.AppImage
