@@ -191,7 +191,6 @@ func (ai AppImage) _removeIntegration() {
 	if err == nil {
 		log.Println("appimage: Deleted", ai.desktopfilepath)
 		sendDesktopNotification("Removed", ai.Path, 3000)
-
 	}
 }
 

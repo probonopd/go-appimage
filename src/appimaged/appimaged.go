@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/url"
 	"os"
@@ -11,7 +10,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/adrg/xdg"
@@ -48,7 +46,8 @@ var cleanPtr = flag.Bool("c", true, "Clean pre-existing desktop files")
 var quietPtr = flag.Bool("q", false, "Do not send desktop notifications")
 var noZeroconfPtr = flag.Bool("nz", false, "Do not announce this service on the network using Zeroconf")
 
-var ToBeIntegratedOrUnintegrated []string
+// var ToBeIntegratedOrUnintegrated []string
+var integrationChannel chan string = make(chan string, 50)
 
 var thisai *AppImage // A reference to myself
 
@@ -216,17 +215,13 @@ func main() {
 		}
 	}()
 
-	// Ticker to periodically move desktop files into system
-	ticker := time.NewTicker(2 * time.Second)
 	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				moveDesktopFiles()
-
-			case <-quit:
-				ticker.Stop()
-				return
+		for path, open := <-integrationChannel; open; path, open = <-integrationChannel {
+			log.Println("Integrating or unintegrating: ", path)
+			err := moveDesktopFiles(path)
+			if err != nil {
+				close(integrationChannel)
+				log.Fatal(err)
 			}
 		}
 	}()
@@ -255,61 +250,18 @@ func checkMQTTConnected(MQTTclient mqtt.Client) {
 
 // Periodically move desktop files from their temporary location
 // into the menu, so that the menu does not get rebuilt all the time
-func moveDesktopFiles() {
-	// log.Println("main: Ticktock")
-
-	if *verbosePtr {
-		log.Println("ToBeIntegratedOrUnintegrated:", ToBeIntegratedOrUnintegrated)
+func moveDesktopFiles(path string) error {
+	ai, err := NewAppImage(path)
+	if err != nil {
+		return err
 	}
-
-	// log.Println("Subscriptions:", subscribedMQTTTopics)
-
-	// log.Println(watchedDirectories)
-	// for _, w := range watchedDirectories {
-	// 	log.Println(w.Path)
-	// }
-
-	/*
-		We want to know that all go routines have been completed,
-		nd only then move in all desktop files at once
-		To use sync.WaitGroup we:
-		    Create a new instance of a sync.WaitGroup (we’ll call it wg)
-		    Call wg.Add(n) where n is the number of goroutines to wait for (we can also call wg.Add(1) n times)
-		    Execute defer wg.Done() in each goroutine to indicate that goroutine is finished executing to the WaitGroup (see defer)
-		    Call wg.Wait() where we want to block
-			https://nathanleclaire.com/blog/2014/02/15/how-to-wait-for-all-goroutines-to-finish-executing-before-continuing/
-	*/
-	var wg sync.WaitGroup
-
-	// We limit the number of concurrent go routines
-	// sem is a channel that will allow up to 8 concurrent operations, a "Bounded channel"
-	// so that we won't get "too many files open" errors
-	var sem = make(chan int, 1024)
-
-	for _, path := range ToBeIntegratedOrUnintegrated {
-		ai, err := NewAppImage(path)
-		if err != nil {
-			continue
-		}
-		sem <- 1
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			ai.IntegrateOrUnintegrate()
-			ToBeIntegratedOrUnintegrated = RemoveFromSlice(ToBeIntegratedOrUnintegrated, ai.Path)
-		}()
-		<-sem
-	}
-
-	wg.Wait() // Wait until all go functions have completed
-
-	// If this wait is too short, then we may be running into race conditions which can lead to crashes?
+	ai.IntegrateOrUnintegrate()
 
 	desktopcachedir := xdg.CacheHome + "/applications/" // FIXME: Do not hardcode here and in other places
 
-	files, err := ioutil.ReadDir(desktopcachedir)
+	files, err := os.ReadDir(desktopcachedir)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	for _, file := range files {
@@ -382,8 +334,8 @@ func moveDesktopFiles() {
 				}
 			}
 		*/
-
 	}
+	return nil
 }
 
 func watchDirectories() {
@@ -442,15 +394,13 @@ func watchDirectoriesReally(watchedDirectories []string) {
 		// For now we don't walk subdirectories.
 		// filepath.Walk scans subfolders too,
 		// ioutil.ReadDir does not.
-		infos, err := ioutil.ReadDir(v)
+		infos, err := os.ReadDir(v)
 		if err != nil {
 			helpers.PrintError("watchDirectoriesReally", err)
 			continue
 		}
 		for _, info := range infos {
-			if err != nil {
-				log.Printf("%v\n", err)
-			} else if info.IsDir() {
+			if info.IsDir() {
 				// go inotifyWatch(v + "/" + info.Name())
 			} else if !info.IsDir() {
 				var ai *AppImage
@@ -458,18 +408,12 @@ func watchDirectoriesReally(watchedDirectories []string) {
 				if err != nil {
 					continue
 				}
-				ToBeIntegratedOrUnintegrated = helpers.AppendIfMissing(ToBeIntegratedOrUnintegrated, ai.Path)
+				integrationChannel <- ai.Path
+				fmt.Println("YOOOOOOL")
 			}
+			fmt.Println("HELLLLLLLLLO")
 		}
 		helpers.LogError("main: watchDirectoriesReally", err)
 	}
-}
-
-func RemoveFromSlice(s []string, r string) []string {
-	for i, v := range s {
-		if v == r {
-			return append(s[:i], s[i+1:]...)
-		}
-	}
-	return s
+	fmt.Println("HELLO")
 }

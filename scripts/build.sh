@@ -39,6 +39,9 @@ help_message() {
   echo "-dc"
   echo "  Don't clean-up build files."
   echo ""
+  echo "-pc"
+  echo "  Pre-Clean the build directory before building"
+  echo ""
   echo "-h"
   echo "  Prints this message"
   exit 0
@@ -155,6 +158,8 @@ while [ $# -gt 0 ]; do
       shift;;
     -dc)
       DONTCLEAN=true;;
+    -pc)
+      PRECLEAN=true;;
     -h)
       help_message;;
     help)
@@ -208,10 +213,11 @@ fi
 if [ -z $BUILDDIR ]; then
   BUILDDIR=$PROJECT/build
 fi
+if [ ! -z $PRECLEAN ]; then
+  rm -rf $BUILDDIR || true
+fi
 mkdir -p $BUILDDIR || true
 cd $BUILDDIR
-
-BUILDINGAPPIMAGETOOL=false
 
 # We always want the amd64 appimagetool built first so that other AppImages can be built.
 # If this isn't wanted, we clean it up afterwards
@@ -219,7 +225,7 @@ build amd64 appimagetool
 
 for arch in ${BUILDARCH[@]}; do
   for tool in ${BUILDTOOL[@]}; do
-    if [ $arch == amd64 ] && [ tool == appimagetool ]; then
+    if [ $arch == amd64 ] && [ $tool == appimagetool ]; then
       BUILDINGAPPIMAGETOOL=true
     else
       build $arch $tool
@@ -227,11 +233,11 @@ for arch in ${BUILDARCH[@]}; do
   done
 done
 
-if [ ! $BUILDINGAPPIMAGETOOL ]; then
-  CLEANUP+=(appimagetool-*-x86_64.AppImage)
+if [ -z $BUILDINGAPPIMAGETOOL ]; then
+  CLEANUP+=($BUILDDIR/appimagetool-$VERSION-x86_64.AppImage)
 fi
 
-if [ ! $DONTCLEAN ]; then
+if [ -z $DONTCLEAN]; then
   for file in ${CLEANUP[@]}; do
     echo $file
     rm -rf $file || true
