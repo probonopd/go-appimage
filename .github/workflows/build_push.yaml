@@ -1,12 +1,9 @@
-name: Build all Architectures
+name: Build And Release
 
 on:
   push:
-    paths-ignore:
-      - '.idea/..'
-      - 'docs/**'
-
-  pull_request:
+    branches:
+      - master
     paths-ignore:
       - '.idea/..'
       - 'docs/**'
@@ -31,3 +28,12 @@ jobs:
           ${{ runner.os }}-go-
     - name: Run build script
       run: ./scripts/build.sh -a amd64,386,arm64,arm
+    - name: Upload tools
+      uses: "marvinpinto/action-automatic-releases@latest"
+      with:
+        repo_token: "${{ secrets.GITHUB_TOKEN }}"
+        automatic_release_tag: "continuous"
+        prerelease: true
+        title: "Continuous Build"
+        files: |
+          ./build/*
