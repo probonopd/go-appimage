@@ -31,6 +31,7 @@ type AppImage struct {
 	thumbnailfilename string
 	thumbnailfilepath string
 	updateinformation string
+	startup           bool //used so we don't notify applications being added on startup
 	// offset            int64
 	// rawcontents       string
 	// niceName          string
@@ -44,10 +45,6 @@ type AppImage struct {
 func NewAppImage(path string) (ai *AppImage, err error) {
 	ai = new(AppImage)
 	ai.AppImage, err = goappimage.NewAppImage(path)
-	if err != nil {
-		return ai, err
-	}
-
 	ai.uri = strings.TrimSpace(string(uri.File(filepath.Clean(ai.Path))))
 	ai.md5 = ai.calculateMD5filenamepart() // Need this also for non-existing AppImages for removal
 	ai.desktopfilename = "appimagekit_" + ai.md5 + ".desktop"
@@ -57,6 +54,9 @@ func NewAppImage(path string) (ai *AppImage, err error) {
 		ai.thumbnailfilepath = ThumbnailsDirNormal + ai.thumbnailfilename
 	} else {
 		ai.thumbnailfilepath = ThumbnailsDirNormal + "/" + ai.thumbnailfilename
+	}
+	if err != nil {
+		return ai, err
 	}
 	ui, err := ai.ReadUpdateInformation()
 	if err == nil && ui != "" {
@@ -191,6 +191,8 @@ func (ai AppImage) _removeIntegration() {
 	if err == nil {
 		log.Println("appimage: Deleted", ai.desktopfilepath)
 		sendDesktopNotification("Removed", ai.Path, 3000)
+	} else {
+		log.Println("appimage:", err, ai.desktopfilename)
 	}
 }
 
@@ -199,12 +201,14 @@ func (ai AppImage) _removeIntegration() {
 // depending on whether the file exists on disk. NEVER call this directly,
 // ONLY have this called from a function that limits parallelism and ensures
 // uniqueness of the AppImages to be processed
-func (ai AppImage) IntegrateOrUnintegrate() {
+func (ai AppImage) IntegrateOrUnintegrate() bool {
 	if _, err := os.Stat(ai.Path); os.IsNotExist(err) {
 		ai._removeIntegration()
 	} else {
 		ai._integrate()
+		return true
 	}
+	return false
 }
 
 // ReadUpdateInformation reads updateinformation from an AppImage

@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -46,8 +45,7 @@ var cleanPtr = flag.Bool("c", true, "Clean pre-existing desktop files")
 var quietPtr = flag.Bool("q", false, "Do not send desktop notifications")
 var noZeroconfPtr = flag.Bool("nz", false, "Do not announce this service on the network using Zeroconf")
 
-// var ToBeIntegratedOrUnintegrated []string
-var integrationChannel chan string = make(chan string, 50)
+var integrationChannel chan *AppImage = make(chan *AppImage, 50)
 
 var thisai *AppImage // A reference to myself
 
@@ -216,12 +214,11 @@ func main() {
 	}()
 
 	go func() {
-		for path, open := <-integrationChannel; open; path, open = <-integrationChannel {
-			log.Println("Integrating or unintegrating: ", path)
-			err := moveDesktopFiles(path)
+		for app, open := <-integrationChannel; open; app, open = <-integrationChannel {
+			log.Println("Integrating or unintegrating:", app.Name)
+			err := moveDesktopFiles(app)
 			if err != nil {
-				close(integrationChannel)
-				log.Fatal(err)
+				helpers.LogError("integrate", err)
 			}
 		}
 	}()
@@ -250,91 +247,72 @@ func checkMQTTConnected(MQTTclient mqtt.Client) {
 
 // Periodically move desktop files from their temporary location
 // into the menu, so that the menu does not get rebuilt all the time
-func moveDesktopFiles(path string) error {
-	ai, err := NewAppImage(path)
-	if err != nil {
-		return err
+func moveDesktopFiles(ai *AppImage) error {
+	integrate := ai.IntegrateOrUnintegrate()
+	if !integrate {
+		return nil
 	}
-	ai.IntegrateOrUnintegrate()
-
 	desktopcachedir := xdg.CacheHome + "/applications/" // FIXME: Do not hardcode here and in other places
 
-	files, err := os.ReadDir(desktopcachedir)
+	err := os.Rename(desktopcachedir+"/appimagekit_"+ai.md5+".desktop", ai.desktopfilepath)
 	if err != nil {
 		return err
 	}
-
-	for _, file := range files {
-		if *verbosePtr {
-			log.Println("main: Moving", file.Name(), "to", xdg.DataHome+"/applications/")
-		}
-		err = os.Rename(desktopcachedir+"/"+file.Name(), xdg.DataHome+"/applications/"+file.Name())
-		helpers.LogError("main", err)
+	if *verbosePtr {
+		log.Println("main: Moved ", desktopcachedir+"/appimagekit_"+ai.md5+".desktop to", xdg.DataHome+"/applications/")
 	}
 
-	if len(files) != 0 {
+	if !ai.startup {
+		// If one single application has been integrated, then the user probably cares about it
+		// e.g., has downloaded it.
+		// TODO: Find out which application was added, and show its icon, make the notification clickable
+		// to open the application
+		sendDesktopNotification("Added "+ai.Name, "", 5000)
+	}
 
-		if *verbosePtr {
-			log.Println("main: Moved", len(files), "desktop files to", xdg.DataHome+"/applications/")
-		} else {
-			log.Println("main: Moved", len(files), "desktop files to", xdg.DataHome+"/applications/; use -v to see details")
-		}
-
-		if len(files) == 1 {
-			// If one single application has been integrated, then the user probably cares about it
-			// e.g., has downloaded it.
-			// TODO: Find out which application was added, and show its icon, make the notification clickable
-			// to open the application
-			sendDesktopNotification("Added application", "", 5000)
-		} else {
-			// If more than one has been integrated, then let's just display the number (or even nothing?)
-			sendDesktopNotification("Added "+strconv.Itoa(len(files))+" applications", "", 5000)
-		}
-
-		// Run the various tools that make sure that the added desktop files really show up in the menu.
-		// Of course, almost no 2 systems are similar.
-		updateMenuCommands := []string{
-			"update-menus", // Needed on Ubuntu MATE so that the menu gets populated
-		}
-		for _, updateMenuCommand := range updateMenuCommands {
-			if helpers.IsCommandAvailable(updateMenuCommand) {
-				cmd := exec.Command(updateMenuCommand)
-				err := cmd.Run()
-				if err == nil {
-					log.Println("Ran", updateMenuCommand, "command")
-				} else {
-					helpers.LogError("main: "+updateMenuCommand, err)
-				}
-			}
-
-		}
-
-		// Run update-desktop-database
-		// "Build cache database of MIME types handled by desktop files."
-		if helpers.IsCommandAvailable("update-desktop-database") {
-			cmd := exec.Command("update-desktop-database", xdg.DataHome+"/applications/")
+	// Run the various tools that make sure that the added desktop files really show up in the menu.
+	// Of course, almost no 2 systems are similar.
+	updateMenuCommands := []string{
+		"update-menus", // Needed on Ubuntu MATE so that the menu gets populated
+	}
+	for _, updateMenuCommand := range updateMenuCommands {
+		if helpers.IsCommandAvailable(updateMenuCommand) {
+			cmd := exec.Command(updateMenuCommand)
 			err := cmd.Run()
 			if err == nil {
-				log.Println("Ran", "update-desktop-database "+xdg.DataHome+"/applications/")
+				log.Println("Ran", updateMenuCommand, "command")
 			} else {
-				helpers.LogError("main", err)
+				helpers.LogError("main: "+updateMenuCommand, err)
 			}
 		}
 
-		/*
-			// Run xdg-desktop-menu forceupdate
-			// It probably doesn't hurt, although it may not really be needed.
-			if isCommandAvailable("xdg-desktop-menu") {
-				cmd := exec.Command("xdg-desktop-menu", "forceupdate")
-				err := cmd.Run()
-				if err == nil {
-					log.Println("Ran", "xdg-desktop-menu forceupdate")
-				} else {
-					printError("main", err)
-				}
-			}
-		*/
 	}
+
+	// Run update-desktop-database
+	// "Build cache database of MIME types handled by desktop files."
+	if helpers.IsCommandAvailable("update-desktop-database") {
+		cmd := exec.Command("update-desktop-database", xdg.DataHome+"/applications/")
+		err := cmd.Run()
+		if err == nil {
+			log.Println("Ran", "update-desktop-database "+xdg.DataHome+"/applications/")
+		} else {
+			helpers.LogError("main", err)
+		}
+	}
+
+	/*
+		// Run xdg-desktop-menu forceupdate
+		// It probably doesn't hurt, although it may not really be needed.
+		if isCommandAvailable("xdg-desktop-menu") {
+			cmd := exec.Command("xdg-desktop-menu", "forceupdate")
+			err := cmd.Run()
+			if err == nil {
+				log.Println("Ran", "xdg-desktop-menu forceupdate")
+			} else {
+				printError("main", err)
+			}
+		}
+	*/
 	return nil
 }
 
@@ -408,12 +386,10 @@ func watchDirectoriesReally(watchedDirectories []string) {
 				if err != nil {
 					continue
 				}
-				integrationChannel <- ai.Path
-				fmt.Println("YOOOOOOL")
+				ai.startup = true
+				integrationChannel <- ai
 			}
-			fmt.Println("HELLLLLLLLLO")
 		}
 		helpers.LogError("main: watchDirectoriesReally", err)
 	}
-	fmt.Println("HELLO")
 }

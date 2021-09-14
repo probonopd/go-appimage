@@ -50,11 +50,15 @@ func inotifyWatch(path string) {
 		switch ei := <-c; ei.Event() {
 		case notify.InDeleteSelf:
 			log.Println("TODO:", ei.Path(), "was deleted, un-integrate all AppImages that were conteined herein")
-			integrationChannel <- ei.Path()
+			ai, _ := NewAppImage(ei.Path())
+			ai.startup = false
+			integrationChannel <- ai
 			// log.Println("ToBeIntegratedOrUnintegrated now contains:", ToBeIntegratedOrUnintegrated)
 		default:
 			log.Println("inotifyWatch:", ei.Path(), ei.Event())
-			integrationChannel <- ei.Path()
+			ai, _ := NewAppImage(ei.Path())
+			ai.startup = false
+			integrationChannel <- ai
 			// log.Println("ToBeIntegratedOrUnintegrated now contains:", ToBeIntegratedOrUnintegrated)
 		}
 	}

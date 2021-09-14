@@ -42,7 +42,7 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	dirIconRdr, err := ai.Thumbnail()
 	if err != nil {
 		if *verbosePtr {
-			log.Print("Could not find .DirIcon, trying to find the desktop file's specified icon")
+			log.Println("Could not find .DirIcon, trying to find the desktop file's specified icon")
 		}
 		dirIconRdr, _, err = ai.Icon()
 		if err != nil {
@@ -50,7 +50,7 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 			dirIconRdr = nil //Make sure it's nil, just in case.
 		}
 	}
-	if dirIconRdr == nil {
+	if dirIconRdr != nil {
 		iconBuf, err = io.ReadAll(dirIconRdr)
 		dirIconRdr.Close()
 		if err != nil {
@@ -65,8 +65,6 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 			iconBuf, err = convertToPng(iconBuf)
 			if err != nil {
 				helpers.LogError("thumbnail", err)
-				iconBuf = defaultIcon
-			} else if len(iconBuf) == 0 {
 				iconBuf = defaultIcon
 			}
 		}
