@@ -1,6 +1,7 @@
-name: Build All Architectures for PR
+name: Build All Architectures
 
 on:
+  workflow_dispatch:
   pull_request:
     paths-ignore:
       - '.idea/..'

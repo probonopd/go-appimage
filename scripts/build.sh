@@ -184,7 +184,7 @@ done
 # Export version and build number
 if [ ! -z "$GITHUB_RUN_NUMBER" ] ; then
   export COMMIT="${GITHUB_RUN_NUMBER}"
-  export VERSION=$GITHUB_RUN_NUMBER
+  export VERSION=$((GITHUB_RUN_NUMBER+646))
 else
   export COMMIT=$(date '+%Y-%m-%d_%H%M%S')
   export VERSION=$(date '+%Y-%m-%d_%H%M%S')
