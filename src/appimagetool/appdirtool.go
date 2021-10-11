@@ -106,7 +106,6 @@ cd "$HERE/usr" # Not all applications will need this; TODO: Make this opt-in
 MAIN_BIN=$(find "$HERE/usr/bin" -name "$MAIN" | head -n 1)
 LD_LINUX=$(find "$HERE" -name 'ld-*.so.*' | head -n 1)
 if [ -e "$LD_LINUX" ] ; then
-  echo "Run experimental self-contained bundle"
   export GCONV_PATH="$HERE/usr/lib/gconv"
   export FONTCONFIG_FILE="$HERE/etc/fonts/fonts.conf"
   export GTK_EXE_PREFIX="$HERE/usr"
