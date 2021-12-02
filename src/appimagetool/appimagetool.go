@@ -111,6 +111,9 @@ func getMeta() (string, string) {
 	gitRepo, err := helpers.GetGitRepository()
 	if err != nil {
 		log.Println("Apparently not in a git repository")
+		if version == "" {
+			log.Fatal("Version not found, aborting. Set it with VERSION=... " + os.Args[0] + "\n")
+		}
 	} else {
 		gitWt, err := gitRepo.Worktree()
 		if err == nil {
