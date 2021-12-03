@@ -34,3 +34,12 @@ func CheckDesktopFile(desktopfile string) error {
 
 	return nil
 }
+
+// Converts a multi-item INI value into a slice
+// eg: `foo;bar;` becomes []string{ "foo", "bar" }
+func SplitKey(str string) []string {
+    str = strings.ReplaceAll(str, "；", ";")
+    f := func(c rune) bool { return c == ';' }
+
+    return strings.FieldsFunc(str, f)
+}
