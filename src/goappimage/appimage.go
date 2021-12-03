@@ -181,7 +181,7 @@ func loadPerms(f *ini.File) (*Permissions, error) {
 		}
 	} else {
 		p.Level = -1
-		return p, errors.New("profile does not have required flag `Level` under section [Required Permissions]")
+		return p, errors.New("profile does not have required flag `Level` under section [X-AppImage-Required-Permissions]")
 	}
 
 	p.Files = helpers.SplitKey(filePerms)
