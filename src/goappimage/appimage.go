@@ -31,10 +31,21 @@ type AppImage struct {
 	Desktop *ini.File
 	Path    string
 	// updateInformation string TODO: add update stuff
-	Name      string
-	Version   string
-	offset    int64
-	imageType int
+	Name         string
+	Version      string
+	Permissions *Permissions
+	offset       int64
+	imageType    int
+}
+
+// Simple, Android-like permissions an AppImage can request
+// Note that these are ONLY for external sandbox implementations to use, no
+// sandboxing is done by default
+type Permissions struct {
+	Level     int    // How much access to system files
+	Files   []string // Grant permission to access files
+	Devices []string // Access device files (eg: dri)
+	Sockets []string // Use sockets (eg: x11, network)
 }
 
 // NewAppImage creates an AppImage object from the location defined by path.
@@ -94,6 +105,9 @@ func NewAppImage(path string) (*AppImage, error) {
 	if ai.Version == "" {
 		ai.Version = "1.0"
 	}
+
+	ai.Permissions, _ = loadPerms(ai.Desktop)
+
 	return &ai, nil
 }
 
@@ -145,6 +159,55 @@ func (ai AppImage) determineImageType() int {
 	return -1
 }
 
+// Load permissions from INI
+func loadPerms(f *ini.File) (*Permissions, error) {
+	p := &Permissions{}
+	var err error
+
+	// Get permissions from keys
+	level       := f.Section("X-AppImage-Required-Permissions").Key("Level").Value()
+	filePerms   := f.Section("X-AppImage-Required-Permissions").Key("Files").Value()
+	devicePerms := f.Section("X-AppImage-Required-Permissions").Key("Devices").Value()
+	socketPerms := f.Section("X-AppImage-Required-Permissions").Key("Sockets").Value()
+
+	if level != "" {
+		l, err := strconv.Atoi(level)
+
+		if err != nil || l < 0 || l > 3 {
+			p.Level = -1
+			return p, errors.New("invalid permissions level (must be 0-3)")
+		} else {
+			p.Level = l
+		}
+	} else {
+		p.Level = -1
+		return p, errors.New("profile does not have required flag `Level` under section [Required Permissions]")
+	}
+
+	p.Files = helpers.SplitKey(filePerms)
+	p.Devices = helpers.SplitKey(devicePerms)
+	p.Sockets = helpers.SplitKey(socketPerms)
+
+	// Assume readonly if unspecified
+	for i := range(p.Files) {
+		ex := p.Files[i][len(p.Files[i])-3:]
+
+		if len(strings.Split(p.Files[i], ":")) < 2 ||
+		ex != ":ro" && ex != ":rw" {
+			p.Files[i] = p.Files[i]+":ro"
+		}
+	}
+
+	// Convert devices to shorthand if not already
+	for i, val := range(p.Devices) {
+		if len(val) > 5 && val[0:5] == "/dev/" {
+			p.Devices[i] = strings.Replace(val, "/dev/", "", 1)
+		}
+	}
+
+	return p, err
+}
+
 //Type is the type of the AppImage. Should be either 1 or 2.
 func (ai AppImage) Type() int {
 	return ai.imageType
@@ -152,7 +215,7 @@ func (ai AppImage) Type() int {
 
 //ExtractFile extracts a file from from filepath (which may contain * wildcards) in an AppImage to the destinationdirpath.
 //
-//If resolveSymlinks is true, if the filepath specified is a symlink, the actual file is extracted in it's place.
+//If resolveSymlinks is true, if the filepath specified is a symlink, the actual file is extracted in its place.
 //resolveSymlinks will have no effect on absolute symlinks (symlinks that start at root).
 func (ai AppImage) ExtractFile(filepath string, destinationdirpath string, resolveSymlinks bool) error {
 	return ai.reader.ExtractTo(filepath, destinationdirpath, resolveSymlinks)
