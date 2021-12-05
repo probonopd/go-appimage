@@ -26,14 +26,15 @@ TODO List:
 
 // AppImage handles AppImage files.
 type AppImage struct {
-	reader archiveReader
 	//Desktop is the AppImage's main .desktop file parsed as an ini.File.
-	Desktop *ini.File
-	Path    string
-	// updateInformation string TODO: add update stuff
+	Desktop     *ini.File
 	Name         string
-	Version      string
+	Path         string
 	Permissions *Permissions
+	UpdateInfo   string
+	Version      string
+
+	reader       archiveReader
 	offset       int64
 	imageType    int
 }
@@ -106,6 +107,7 @@ func NewAppImage(path string) (*AppImage, error) {
 		ai.Version = "1.0"
 	}
 
+	ai.UpdateInfo,  _ = helpers.ReadUpdateInfo(ai.Path)
 	ai.Permissions, _ = loadPerms(ai.Desktop)
 
 	return &ai, nil
