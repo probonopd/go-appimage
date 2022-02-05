@@ -28,8 +28,9 @@ chmod +x ~/Applications/appimaged-*.AppImage
 ## Removal
 
 ```
+systemctl --user disable appimaged.service || true
 systemctl --user stop appimaged.service || true
-sudo rm /etc/systemd/user/appimaged.service
+rm ~/.config/systemd/user/appimaged.service
 rm ~/.local/share/applications/appimagekit*.desktop
 rm ~/Applications/appimaged-*-x86_64.AppImage
 ```
