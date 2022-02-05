@@ -28,13 +28,13 @@ TODO List:
 type AppImage struct {
 	reader archiveReader
 	//Desktop is the AppImage's main .desktop file parsed as an ini.File.
-	Desktop *ini.File
-	Path    string
-	// updateInformation string TODO: add update stuff
-	Name      string
-	Version   string
-	offset    int64
-	imageType int
+	Desktop   *ini.File
+	Path       string
+	Name       string
+	UpdateInfo string
+	Version    string
+	offset     int64
+	imageType  int
 }
 
 // NewAppImage creates an AppImage object from the location defined by path.
@@ -76,38 +76,41 @@ func NewAppImage(path string) (*AppImage, error) {
 	for err == nil {
 		var line string
 		line, err = buf.ReadString('\n')
-		if strings.Contains(line, ";") {
-			line = strings.ReplaceAll(line, ";", "；") //replacing it with a fullwidth semicolon (unicode FF1B)
-		}
+		line = strings.ReplaceAll(line, ";", "；") //replacing it with a fullwidth semicolon (unicode FF1B)
 		desktop = append(desktop, line...)
 	}
 
 	ai.Desktop, err = ini.Load(desktop)
-	if err == nil {
-		ai.Name = ai.Desktop.Section("Desktop Entry").Key("Name").Value()
-		ai.Version = ai.Desktop.Section("Desktop Entry").Key("X-AppImage-Version").Value()
+	if err != nil {
+		return nil, err
 	}
+
+	ai.Name = ai.Desktop.Section("Desktop Entry").Key("Name").Value()
+	ai.Version = ai.Desktop.Section("Desktop Entry").Key("X-AppImage-Version").Value()
 	if ai.Name == "" {
 		ai.Name = ai.calculateNiceName()
 	}
-	//If key "X-AppImage-Version" not set (likely), resort to just setting it to 1
 	if ai.Version == "" {
 		ai.Version = "1.0"
 	}
+
+	ai.UpdateInfo, _ = helpers.ReadUpdateInfo(ai.Path)
 	return &ai, nil
 }
 
 func (ai AppImage) calculateNiceName() string {
 	niceName := filepath.Base(ai.Path)
-	niceName = strings.Replace(niceName, ".AppImage", "", -1)
-	niceName = strings.Replace(niceName, ".appimage", "", -1)
-	niceName = strings.Replace(niceName, "-x86_64", "", -1)
-	niceName = strings.Replace(niceName, "-i386", "", -1)
-	niceName = strings.Replace(niceName, "-i686", "", -1)
-	niceName = strings.Replace(niceName, "-aarch64", "", -1)
-	niceName = strings.Replace(niceName, "-armhf", "", -1)
-	niceName = strings.Replace(niceName, "-", " ", -1)
-	niceName = strings.Replace(niceName, "_", " ", -1)
+	niceName = strings.ReplaceAll(niceName, ".AppImage", "")
+	niceName = strings.ReplaceAll(niceName, ".appimage", "")
+	niceName = strings.ReplaceAll(niceName, ".app", "")
+	niceName = strings.ReplaceAll(niceName, ".App", "")
+	niceName = strings.ReplaceAll(niceName, "-x86_64", "")
+	niceName = strings.ReplaceAll(niceName, "-i386", "")
+	niceName = strings.ReplaceAll(niceName, "-i686", "")
+	niceName = strings.ReplaceAll(niceName, "-aarch64", "")
+	niceName = strings.ReplaceAll(niceName, "-armhf", "")
+	niceName = strings.ReplaceAll(niceName, "-", " ")
+	niceName = strings.ReplaceAll(niceName, "_", " ")
 	return niceName
 }
 
@@ -213,17 +216,6 @@ func runCommand(cmd *exec.Cmd) (bytes.Buffer, error) {
 	err := cmd.Run()
 	return out, err
 }
-
-// TODO: implement update functionality
-// ReadUpdateInformation reads updateinformation from an AppImage
-// func (ai AppImage) readUpdateInformation() (string, error) {
-// 	aibytes, err := helpers.GetSectionData(ai.path, ".upd_info")
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	ui := strings.TrimSpace(string(bytes.Trim(aibytes, "\x00")))
-// 	return ui, nil
-// }
 
 //ModTime is the time the AppImage was edited/created. If the AppImage is type 2,
 //it will try to get that information from the squashfs, if not, it returns the file's ModTime.
