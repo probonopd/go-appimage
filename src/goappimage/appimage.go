@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/CalebQ42/squashfs"
 	"github.com/probonopd/go-appimage/internal/helpers"
 	"gopkg.in/ini.v1"
 )
@@ -144,6 +145,24 @@ func (ai AppImage) determineImageType() int {
 		return 1
 	}
 	return -1
+}
+
+//SquashfsReader allows direct access to an AppImage's squashfs.
+func (ai AppImage) SquashfsReader() (*squashfs.Reader, error) {
+	if ai.imageType != 2 {
+		return nil, errors.New("not a type 2 appimage")
+	}
+	aiFil, err := os.Open(ai.Path)
+	if err != nil {
+		return nil, err
+	}
+	stat, _ := aiFil.Stat()
+	aiRdr := io.NewSectionReader(aiFil, ai.offset, stat.Size()-ai.offset)
+	squashRdr, err := squashfs.NewSquashfsReader(aiRdr)
+	if err != nil {
+		return nil, err
+	}
+	return squashRdr, nil
 }
 
 //Type is the type of the AppImage. Should be either 1 or 2.
