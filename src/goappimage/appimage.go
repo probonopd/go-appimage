@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -232,7 +231,6 @@ func (ai AppImage) Args() ([]string, error) {
 		return nil, errors.New("desktop file wasn't parsed")
 	}
 	var exec = ai.Desktop.Section("Desktop Entry").Key("Exec").Value()
-	fmt.Println("exec:", exec)
 	if exec == "" {
 		return nil, errors.New("exec key not present")
 	}
