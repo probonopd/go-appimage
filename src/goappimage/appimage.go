@@ -147,6 +147,7 @@ func (ai AppImage) determineImageType() int {
 }
 
 //SquashfsReader allows direct access to an AppImage's squashfs.
+//Only works on type 2 AppImages
 func (ai AppImage) SquashfsReader() (*squashfs.Reader, error) {
 	if ai.imageType != 2 {
 		return nil, errors.New("not a type 2 appimage")
