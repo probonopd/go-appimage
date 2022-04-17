@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -13,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/CalebQ42/squashfs"
 	"github.com/probonopd/go-appimage/internal/helpers"
 	"gopkg.in/ini.v1"
 )
@@ -149,6 +149,25 @@ func (ai AppImage) determineImageType() int {
 	return -1
 }
 
+//SquashfsReader allows direct access to an AppImage's squashfs.
+//Only works on type 2 AppImages
+func (ai AppImage) SquashfsReader() (*squashfs.Reader, error) {
+	if ai.imageType != 2 {
+		return nil, errors.New("not a type 2 appimage")
+	}
+	aiFil, err := os.Open(ai.Path)
+	if err != nil {
+		return nil, err
+	}
+	stat, _ := aiFil.Stat()
+	aiRdr := io.NewSectionReader(aiFil, ai.offset, stat.Size()-ai.offset)
+	squashRdr, err := squashfs.NewSquashfsReader(aiRdr)
+	if err != nil {
+		return nil, err
+	}
+	return squashRdr, nil
+}
+
 //Type is the type of the AppImage. Should be either 1 or 2.
 func (ai AppImage) Type() int {
 	return ai.imageType
@@ -216,7 +235,6 @@ func (ai AppImage) Args() ([]string, error) {
 		return nil, errors.New("desktop file wasn't parsed")
 	}
 	var exec = ai.Desktop.Section("Desktop Entry").Key("Exec").Value()
-	fmt.Println("exec:", exec)
 	if exec == "" {
 		return nil, errors.New("exec key not present")
 	}

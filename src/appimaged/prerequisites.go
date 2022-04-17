@@ -207,16 +207,16 @@ func stopSystemdService(servicename string) {
 */
 
 func exitIfBinfmtExists(path string) {
-	cmd := exec.Command("/bin/sh", "-c", "echo -1 | sudo tee "+path)
-	cmd.Run()
-	// if err != nil {
-	// helpers.PrintError("prerequisites: exitIfBinfmtExists", err)
-	// If these binfmts are not there, that is actually not an error and should not be reported as that
-	// }
 	if _, err := os.Stat(path); err == nil {
-		log.Println("ERROR:", path, "exists. Please remove it by running")
-		println("echo -1 | sudo tee", path)
-		os.Exit(1)
+		//If path exists, try to get sudo and remove it.
+		cmd := exec.Command("/bin/sh", "-c", "echo -1 | sudo tee "+path)
+		cmd.Run()
+		if _, err := os.Stat(path); err == nil {
+			//It still exists, so we panic and quit.
+			log.Println("ERROR:", path, "exists. Please remove it by running")
+			println("echo -1 | sudo tee", path)
+			os.Exit(1)
+		}
 	}
 }
 

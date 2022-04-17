@@ -95,7 +95,7 @@ func writeDesktopFile(ai AppImage) {
 	time.Sleep(1 * time.Second)
 	add := ""
 	args, err := ai.Args()
-	if err == nil {
+	if err == nil && len(args) > 0 {
 		add = " " + strings.Join(args, " ")
 	}
 	cfg.Section("Desktop Entry").Key("Exec").SetValue(arg0abs + " wrap \"" + ai.Path + "\"" + add) // Resolve to a full path
