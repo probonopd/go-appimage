@@ -144,6 +144,7 @@ func GenerateAppImage(
 	appdir string,
 	destination string,
 	generateUpdateInformation bool,
+	runtimeFile string,
 	squashfsCompressionType string,
 	checkAppStreamMetadata bool,
 	updateInformation string,
@@ -368,20 +369,25 @@ func GenerateAppImage(
 		}
 	}
 
-	runtimedir := filepath.Clean(helpers.Here() + "/../share/AppImageKit/runtime/")
-	if _, err := os.Stat(runtimedir); os.IsNotExist(err) {
-		runtimedir = helpers.Here()
-	}
-	runtimefilepath := runtimedir + "/runtime-" + arch
-	if helpers.CheckIfFileExists(runtimefilepath) == false {
-		log.Println("Cannot find " + runtimefilepath + ", exiting")
-		log.Println("It should have been bundled, but you can get it from https://github.com/AppImage/AppImageKit/releases/continuous")
-		// TODO: Download it from there?
+	if len(runtimeFile) < 1 {
+		runtimeDir := filepath.Clean(helpers.Here() + "/../share/AppImageKit/runtime/")
+		if _, err := os.Stat(runtimeDir); os.IsNotExist(err) {
+			runtimeDir = helpers.Here()
+		}
+		runtimeFile = runtimeDir + "/runtime-" + arch
+		if helpers.CheckIfFileExists(runtimeFile) == false {
+			log.Println("Cannot find " + runtimeFile + ", exiting")
+			log.Println("It should have been bundled, but you can get it from https://github.com/AppImage/AppImageKit/releases/continuous")
+			// TODO: Download it from there?
+			os.Exit(1)
+		}
+	} else if helpers.CheckIfFileExists(runtimeFile) == false {
+		log.Println("Cannot find " + runtimeFile + ", exiting")
 		os.Exit(1)
 	}
 
 	// Find out the size of the binary runtime
-	fi, err := os.Stat(runtimefilepath)
+	fi, err := os.Stat(runtimeFile)
 	if err != nil {
 		helpers.PrintError("runtime", err)
 		os.Exit(1)
@@ -427,7 +433,7 @@ func GenerateAppImage(
 	// Embed the binary runtime into the squashfs
 	fmt.Println("Embedding ELF...")
 
-	err = helpers.WriteFileIntoOtherFileAtOffset(runtimefilepath, target, 0)
+	err = helpers.WriteFileIntoOtherFileAtOffset(runtimeFile, target, 0)
 	if err != nil {
 		helpers.PrintError("Embedding runtime", err)
 		os.Exit(1)

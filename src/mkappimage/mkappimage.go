@@ -84,6 +84,12 @@ func bootstrapMkAppImage(c *cli.Context) error {
 			shouldGuessUpdateInformation = true
 		}
 
+		// Manually specify an external runtime file
+		runtimeFile := ""
+		if c.String("runtime-file") != "" {
+			runtimeFile = filepath.Clean(c.String("runtime-file"))
+		}
+
 		// is manual compressor provided? if yes use that, else default
 		compressionType := "gzip"
 		if c.String("comp") != "" {
@@ -110,6 +116,7 @@ func bootstrapMkAppImage(c *cli.Context) error {
 			fileToAppDir,
 			fileToAppImageOutput,
 			shouldGuessUpdateInformation,
+			runtimeFile,
 			compressionType,
 			shouldValidateAppstream,
 			receivedUpdateInformation,
@@ -194,6 +201,10 @@ func main() {
 			Name:    "no-appstream",
 			Aliases: []string{"n"},
 			Usage:   "Do not check AppStream metadata",
+		},
+		&cli.StringFlag{
+			Name:  "runtime-file",
+			Usage: "Specify an external runtime file",
 		},
 		&cli.StringFlag{
 			Name:  "comp",

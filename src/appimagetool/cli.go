@@ -181,6 +181,7 @@ func bootstrapAppImageBuild(c *cli.Context) error {
 		GenerateAppImage(
 			fileToAppDir, "",
 			true,
+			"",
 			"gzip",
 			true,
 			"",
