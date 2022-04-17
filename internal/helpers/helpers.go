@@ -102,7 +102,7 @@ func AddHereToPath() {
 // FilesWithSuffixInDirectoryRecursive returns the files in a given directory with the given filename extension, and err
 func FilesWithSuffixInDirectoryRecursive(directory string, extension string) []string {
 	var foundfiles []string
-	err := filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(directory, func(path string, info os.FileInfo, _ error) error {
 		if strings.HasSuffix(info.Name(), extension) {
 			foundfiles = append(foundfiles, path)
 		}
@@ -152,19 +152,35 @@ func FilesWithPrefixInDirectory(directory string, prefix string) []string {
 // Returns true if it does, false otherwise.
 func CheckIfFileExists(filepath string) bool {
 	info, err := os.Stat(filepath)
+	if err == nil {
+		return true
+	}
 	if os.IsNotExist(err) || info.IsDir() {
 		return false
 	}
-	return true
+	// anything else is not good
+	// https://stackoverflow.com/q/12518876
+	// Schrodinger: file may or may not exist. See err for details.
+	panic(err)
 }
 
+// CheckIfFolderExists checks if a folder exists and is a directory before we
+// try using it to prevent further errors.
+// Returns true if it does, false otherwise.
+func CheckIfFolderExists(filepath string) bool {
+	info, err := os.Stat(filepath)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return info.IsDir()
+}
 
 // CheckIfFileOrFolderExists checks if a file exists and is not a directory before we
 // try using it to prevent further errors.
 // Returns true if it does, false otherwise.
 func CheckIfFileOrFolderExists(filepath string) bool {
 	_, err := os.Stat(filepath)
-	if os.IsNotExist(err){
+	if os.IsNotExist(err) {
 		return false
 	}
 	return true
@@ -331,6 +347,18 @@ func CheckIfSquashfsVersionSufficient(toolname string) bool {
 		return false
 	}
 	return true
+}
+
+// CheckIfAllToolsArePresent checks if all the required tools, for example. mksquashfs, unsquashfs
+// are present using exec.LookPath. Function exits with exit code 1, if any tool is missing
+// and reports that particular missing tool to the user
+func CheckIfAllToolsArePresent(tools []string) {
+	for _, t := range tools {
+		_, err := exec.LookPath(t)
+		if err != nil {
+			log.Fatal("Required helper tool '", t, "' missing")
+		}
+	}
 }
 
 // WriteFileIntoOtherFileAtOffset writes the content of inputfile into outputfile at Offset, without truncating
@@ -595,11 +623,13 @@ func CheckMagicAtOffset(f *os.File, magic string, offset int64) bool {
 	n, err := f.Read(b)
 	LogError("CheckMagicAtOffset: "+f.Name(), err)
 	hexmagic := hex.EncodeToString(b[:n])
-	if hexmagic == magic {
-		// if *verbosePtr == true {
-		// 	log.Printf("CheckMagicAtOffset: %v: Magic 0x%x at offset %v\n", f.Name(), string(b[:n]), offset)
-		// }
-		return true
-	}
-	return false
+	return hexmagic == magic
+}
+
+// Return true if magic string (hex) is found at offset
+// TODO: Instead of magic string, could probably use something like []byte{'\r', '\n'} or []byte("AI")
+func CheckMagicAtOffsetBytes(byts []byte, magic string, offset int) bool {
+	b := byts[offset : offset+(len(magic)/2)]
+	hexmagic := hex.EncodeToString(b)
+	return hexmagic == magic
 }

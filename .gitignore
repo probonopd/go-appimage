@@ -14,6 +14,9 @@
 !*.iml
 !*.xml
 
+# Don't ignore Github Actions
+!.github/workflows/*
+
 # Everything below this line is redundant
 # and may be removed once everything works as intended
 
@@ -29,3 +32,6 @@
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+
+# Output of the build script
+build/**

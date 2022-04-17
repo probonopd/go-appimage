@@ -1,6 +1,8 @@
 package helpers
 
 import (
+	"bytes"
+	"debug/elf"
 	"errors"
 	"net/url"
 	"strings"
@@ -121,4 +123,31 @@ func ValidateUpdateInformation(updateinformation string) error {
 
 func getChangelogHeadlineForUpdateInformation(updateinformation string) string {
 	return ""
+}
+
+// Taken and modified from
+// <https://github.com/AppImageCrafters/appimage-update/blob/945dfa16017496be7a3f21c827a7ffb11124e548/util/util.go>
+func ReadUpdateInfo(appImagePath string) (string, error) {
+	elfFile, err := elf.Open(appImagePath)
+	if err != nil {
+		return "", errors.New("file not found")
+	}
+
+	updInfoSect := elfFile.Section(".upd_info")
+	if updInfoSect == nil {
+		return "", errors.New("ELF missing .upd_info section")
+	}
+	
+	sectionData, err := updInfoSect.Data()
+	if err != nil {
+		return "", errors.New("unable to read update information from section")
+	}
+
+	str_end := bytes.Index(sectionData, []byte("\000"))
+	if str_end == -1 || str_end == 0 {
+		return "", errors.New("no update information found")
+	}
+	updInfoStr := string(sectionData[:str_end])
+
+	return updInfoStr, nil
 }

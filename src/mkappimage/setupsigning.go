@@ -1,0 +1,1 @@
+../appimagetool/setupsigning.go

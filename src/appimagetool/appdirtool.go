@@ -13,16 +13,15 @@ import (
 	"strconv"
 	"syscall"
 
+	"debug/elf"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-)
-import "debug/elf"
-import "github.com/probonopd/go-appimage/internal/helpers"
-import "github.com/otiai10/copy"
 
-//go:generate go run genexclude.go
+	"github.com/otiai10/copy"
+	"github.com/probonopd/go-appimage/internal/helpers"
+)
 
 type QMLImport struct {
 	Classname    string `json:"classname,omitempty"`
@@ -107,7 +106,6 @@ cd "$HERE/usr" # Not all applications will need this; TODO: Make this opt-in
 MAIN_BIN=$(find "$HERE/usr/bin" -name "$MAIN" | head -n 1)
 LD_LINUX=$(find "$HERE" -name 'ld-*.so.*' | head -n 1)
 if [ -e "$LD_LINUX" ] ; then
-  echo "Run experimental self-contained bundle"
   export GCONV_PATH="$HERE/usr/lib/gconv"
   export FONTCONFIG_FILE="$HERE/etc/fonts/fonts.conf"
   export GTK_EXE_PREFIX="$HERE/usr"
@@ -166,16 +164,14 @@ var packagesContainingFiles = make(map[string]string) // Need to use 'make', oth
       /usr/lib64.)  If the binary was linked with the -z nodeflib linker option, this step is skipped.
 */
 
-
 type DeployOptions struct {
-	standalone bool
+	standalone     bool
 	libAppRunHooks bool
 }
 
 // this is the public options instance
 // which need to be set before the function is called
 var options DeployOptions
-
 
 func AppDirDeploy(path string) {
 	appdir, err := helpers.NewAppDir(path)
@@ -339,7 +335,7 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 		}
 
 	}
-	if options.libAppRunHooks {
+	if options.standalone {
 		var err error
 		// ld-linux might be a symlink; hence we first need to resolve it
 		src, err := filepath.EvalSymlinks(ldLinux)
@@ -397,6 +393,13 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 			helpers.PrintError("Could not deploy the interpreter", err)
 			os.Exit(1)
 		}
+		
+		// Make ld-linux executable
+		err = os.Chmod(ldTargetPath, 0755)
+		if err != nil {
+			helpers.PrintError("Could not set permissions on the interpreter", err)
+			os.Exit(1)
+		}
 	} else {
 		log.Println("Not deploying", ldLinux, "because it was not requested or it is not needed")
 	}
@@ -407,13 +410,13 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 // if it is not on the exclude list and it is not yet at the target location
 func deployElf(lib string, appdir helpers.AppDir, err error) {
 	for _, excludePrefix := range ExcludedLibraries {
-		if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true && ! options.standalone {
+		if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true && !options.standalone {
 			log.Println("Skipping", lib, "because it is on the excludelist")
 			return
 		}
 	}
-	
-	log.Println("Working on", lib, "(TODO: Remove this message)")
+
+	log.Println("Working on", lib)
 	if strings.HasPrefix(lib, appdir.Path) == false { // Do not copy if it is already in the AppDir
 		libTargetPath := appdir.Path + "/" + lib
 		if options.libAppRunHooks && checkWhetherPartOfLibc(lib) == true {
@@ -425,7 +428,7 @@ func deployElf(lib string, appdir helpers.AppDir, err error) {
 			log.Println(lib, "is part of libc; copy to", LibcDir, "subdirectory")
 			libTargetPath = appdir.Path + "/" + LibcDir + "/" + lib // If libapprun_hooks is used
 		}
-		log.Println("Copying to libTargetPath:", libTargetPath, "(TODO: Remove this message)")
+		log.Println("Copying to libTargetPath:", libTargetPath)
 
 		err = helpers.CopyFile(lib, libTargetPath) // If libapprun_hooks is not used
 
@@ -796,7 +799,7 @@ func deployGtkDirectory(appdir helpers.AppDir, gtkVersion int) {
 func appendLib(path string) {
 
 	for _, excludedlib := range ExcludedLibraries {
-		if filepath.Base(path) == excludedlib && ! options.standalone {
+		if filepath.Base(path) == excludedlib && !options.standalone {
 			// log.Println("Skipping", excludedlib, "because it is on the excludelist")
 			return
 		}
@@ -1435,7 +1438,7 @@ func checkWhetherPartOfLibc(thisfile string) bool {
 
 	for _, prefix := range prefixes {
 		if strings.HasPrefix(filepath.Base(thisfile), prefix+"-") || strings.HasPrefix(filepath.Base(thisfile), prefix+".") || strings.HasPrefix(filepath.Base(thisfile), prefix+"_") {
-		return true
+			return true
 		}
 	}
 

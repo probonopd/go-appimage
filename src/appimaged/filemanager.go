@@ -20,7 +20,6 @@ import (
 	"github.com/adrg/xdg"
 )
 
-
 // Context menus for the file manager in GNOME and KDE
 // https://github.com/AppImage/AppImageKit/issues/169
 func installFilemanagerContextMenus() {
@@ -111,18 +110,19 @@ Name=Make executable
 	if err != nil {
 		helpers.PrintError("filemanager", err)
 	}
-	
+
 	XFCEThunarUCABuffer := ""
 	d3 := []byte(nil)
 
-	if _, err := os.Stat(xdg.ConfigHome+"/Thunar/uca.xml"); os.IsNotExist(err) {
+	if _, err = os.Stat(xdg.ConfigHome + "/Thunar/uca.xml"); os.IsNotExist(err) {
 		// uca.xml doesn't exist so we write our default one
 		d3 = []byte(fmt.Sprintf(XFCEThunarAction, XFCEThunarUCABody))
 	} else {
 		// uca.xml exists so we open it to:
 		// A. Check if our action exists
 		// B. If not, add it
-		ucaFile, err := os.Open(xdg.ConfigHome+"/Thunar/uca.xml")
+		var ucaFile *os.File
+		ucaFile, err = os.Open(xdg.ConfigHome + "/Thunar/uca.xml")
 		if err != nil {
 			helpers.PrintError("filemanager", err)
 		}
@@ -143,13 +143,13 @@ Name=Make executable
 
 		// Then we add our action
 		curLine := ucaFileReader.Text() // Read the XML header into curLine
-		for curLine != "<actions>" { // Read everything up to the actions section into the buffer
+		for curLine != "<actions>" {    // Read everything up to the actions section into the buffer
 			ucaFileReader.Scan()
 			curLine = ucaFileReader.Text()
 			XFCEThunarUCABuffer += curLine + "\n"
 		}
 		XFCEThunarUCABuffer += XFCEThunarAction + "\n" // Add the update action
-		for ucaFileReader.Scan() { // Read the rest of the file into our buffer
+		for ucaFileReader.Scan() {                     // Read the rest of the file into our buffer
 			XFCEThunarUCABuffer += ucaFileReader.Text() + "\n"
 		}
 

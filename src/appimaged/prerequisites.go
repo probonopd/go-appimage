@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/acobaugh/osrelease"
@@ -53,10 +54,10 @@ func checkPrerequisites() {
 	// The ONLY exception is developers that know what they are doing
 	_, aiEnvIsThere := os.LookupEnv("APPIMAGE")
 	_, gcEnvIsThere := os.LookupEnv("GOCACHE")
-	if aiEnvIsThere == false {
+	if !aiEnvIsThere {
 		// log.Println(os.Environ())
-		log.Println("Running from AppImage type", thisai.imagetype)
-		if gcEnvIsThere == false {
+		log.Println("Running from AppImage type", thisai.Type())
+		if !gcEnvIsThere {
 			log.Println("Not running from within an AppImage, exiting")
 			os.Exit(1)
 		} else {
@@ -66,14 +67,14 @@ func checkPrerequisites() {
 	}
 
 	// Check whether we have a sufficient version of unsquashfs for -offset
-	if helpers.CheckIfSquashfsVersionSufficient("unsquashfs") == false {
+	if !helpers.CheckIfSquashfsVersionSufficient("unsquashfs") {
 		os.Exit(1)
 	}
 
 	// Stop any other AppImage system integration daemon
 	// so that they won't interfere with each other
-	if checkIfSystemdServiceRunning([]string{"appimagelauncher*"}) == true {
-		sendErrorDesktopNotification("Other AppImage integration daemon running", "Please uninstall appimagelauncher first, then try again")
+	if checkIfSystemdServiceRunning([]string{"appimagelauncher*"}) {
+		sendErrorDesktopNotification("Other AppImage integration daemon detected", "Please uninstall appimagelauncher first, then try again")
 		os.Exit(1)
 		// log.Println("Trying to stop interfering AppImage system integration daemons")
 		// stopSystemdService("appimagelauncherd")
@@ -86,17 +87,18 @@ func checkPrerequisites() {
 
 	// Clean pre-existing desktop files and thumbnails
 	// This is useful for debugging
-	if *cleanPtr == true {
-		files, err := filepath.Glob(filepath.Join(xdg.DataHome+"/applications/", "appimagekit_*"))
+	if *cleanPtr {
+		var files []string
+		files, err = filepath.Glob(filepath.Join(xdg.DataHome+"/applications/", "appimagekit_*"))
 		helpers.LogError("main:", err)
 		for _, file := range files {
-			if *verbosePtr == true {
+			if *verbosePtr {
 				log.Println("Deleting", file)
 			}
-			err := os.Remove(file)
+			err = os.Remove(file)
 			helpers.LogError("main:", err)
 		}
-		if *verbosePtr == true {
+		if *verbosePtr {
 			log.Println("Deleted", len(files), "desktop files from", xdg.DataHome+"/applications/")
 		} else {
 			log.Println("Deleted", len(files), "desktop files from", xdg.DataHome+"/applications/; use -v to see details")
@@ -116,7 +118,7 @@ func checkPrerequisites() {
 
 	// Some systems may expect thumbnails in another (old?) location. Use that old location if it exists and the new location does not exist
 	// TODO: Find a more robust mechanism
-	if helpers.Exists(ThumbnailsDirNormal) == false && helpers.Exists(home+"/.thumbnails/normal/") == true {
+	if !helpers.Exists(ThumbnailsDirNormal) && helpers.Exists(home+"/.thumbnails/normal/") {
 		log.Println("Using", ThumbnailsDirNormal, "as the location for thumbnails")
 		ThumbnailsDirNormal = home + "/.thumbnails/normal/"
 	}
@@ -134,18 +136,23 @@ func checkPrerequisites() {
 
 func checkIfSystemdServiceRunning(servicenames []string) bool {
 
-	conn, err := systemddbus.NewUserConnection()
-	defer conn.Close()
+	cont := context.Background()
+
+	conn, err := systemddbus.NewUserConnectionContext(cont)
 	helpers.PrintError("pre: checkIfSystemdServiceRunning", err)
 	if err != nil {
+		if conn != nil {
+			conn.Close()
+		}
 		return false
 	}
+	defer conn.Close()
 	if conn == nil {
 		log.Println("ERROR: checkIfSystemdServiceRunning: Could not get conn")
 		return false
 	}
 
-	units, err := conn.ListUnitsByPatterns([]string{}, servicenames)
+	units, err := conn.ListUnitsByPatternsContext(cont, []string{}, servicenames)
 	helpers.PrintError("pre: checkIfSystemdServiceRunning", err)
 	if err != nil {
 		return false
@@ -155,12 +162,7 @@ func checkIfSystemdServiceRunning(servicenames []string) bool {
 		log.Println(unit.Name, unit.ActiveState)
 	}
 
-	if len(units) > 0 {
-		return true
-	} else {
-		return false
-	}
-
+	return len(units) > 0
 }
 
 /*
@@ -206,11 +208,11 @@ func stopSystemdService(servicename string) {
 
 func exitIfBinfmtExists(path string) {
 	cmd := exec.Command("/bin/sh", "-c", "echo -1 | sudo tee "+path)
-	err := cmd.Run()
-	if err != nil {
-		// helpers.PrintError("prerequisites: exitIfBinfmtExists", err)
-		// If these binfmts are not there, that is actually not an error and should not be reported as that
-	}
+	cmd.Run()
+	// if err != nil {
+	// helpers.PrintError("prerequisites: exitIfBinfmtExists", err)
+	// If these binfmts are not there, that is actually not an error and should not be reported as that
+	// }
 	if _, err := os.Stat(path); err == nil {
 		log.Println("ERROR:", path, "exists. Please remove it by running")
 		println("echo -1 | sudo tee", path)
@@ -250,7 +252,7 @@ func ensureRunningFromLiveSystem() {
 		return
 	}
 
-	if found == false && gcEnvIsThere == false {
+	if !found && !gcEnvIsThere {
 		// The following temporarily relaxes the Live system restriction
 		sendDesktopNotification("Not running on one of the supported Live systems", "This configuration is currently unsupported but may still work, please give feedback.", -1)
 		// We may want to go back to the more restrictive behavior in the future
@@ -277,11 +279,11 @@ func TerminateOtherInstances() {
 	for _, p := range procs {
 		cmdline, _ := p.Cmdline()
 		// Do not terminate instances that were called with a verb, and our own AppImage
-		if strings.Contains(cmdline, filepath.Base(myself)) == true &&
-			strings.Contains(cmdline, "wrap") == false &&
-			strings.Contains(cmdline, "run") == false &&
-			strings.Contains(cmdline, appImageEnv) == false &&
-			strings.Contains(cmdline, myself) == false {
+		if strings.Contains(cmdline, filepath.Base(myself)) &&
+			!strings.Contains(cmdline, "wrap") &&
+			!strings.Contains(cmdline, "run") &&
+			!strings.Contains(cmdline, appImageEnv) &&
+			!strings.Contains(cmdline, myself) {
 			procusername, err := p.Username()
 			if err != nil {
 				panic(err)
@@ -333,13 +335,13 @@ func setupToRunThroughSystemd() {
 	// systemd launch appimaged. We need to set up systemd to be able to do that
 	// in case it is not already set up this way.
 
-	if CheckIfRunningSystemd() == false {
+	if !CheckIfRunningSystemd() {
 		log.Println("This system is not running systemd")
 		log.Println("This is not a problem; skipping checking the systemd service")
 		return
 	}
 
-	if CheckIfInvokedBySystemd() == false {
+	if !CheckIfInvokedBySystemd() {
 
 		log.Println("Manually launched, not by systemd. Check if enabled in systemd...")
 
@@ -416,7 +418,7 @@ func CheckIfRunningSystemd() bool {
 // to a normal shell on e.g., Clear Linux OS
 func CheckIfInvokedBySystemd() bool {
 
-	if CheckIfRunningSystemd() == false {
+	if !CheckIfRunningSystemd() {
 		log.Println("This system is not running systemd")
 		return false
 	}
@@ -489,14 +491,14 @@ func installServiceFileInHome() {
 		}
 	}
 
-	log.Println("thisai.path:", thisai.path)
+	log.Println("thisai.path:", thisai.Path)
 	d1 := []byte(`[Unit]
 Description=AppImage system integration daemon
 After=syslog.target network.target
 
 [Service]
 Type=simple
-ExecStart=` + thisai.path + `
+ExecStart=` + thisai.Path + `
 
 LimitNOFILE=65536
 

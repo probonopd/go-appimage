@@ -25,7 +25,6 @@ import (
 	"gopkg.in/src-d/go-git.v4"
 )
 
-
 func setupSigning(overwriteSecretFiles bool) error {
 
 	// Check if we are on a clean git repository. Exit as fast as possible if we are not.
@@ -145,7 +144,7 @@ func setupSigning(overwriteSecretFiles bool) error {
 
 	// Check if password/secret already exists, delete it if -o was specified, exit otherwise
 	if _, err := os.Stat("secret"); err == nil {
-		if ! overwriteSecretFiles {
+		if !overwriteSecretFiles {
 			fmt.Println("Secret already exists, exiting")
 			os.Exit(1)
 		} else {
@@ -271,7 +270,7 @@ func Contains(s []string, e string) bool {
 // exitIfFileExists checks if file already exists, deletes it if -o was specified, exit otherwise
 func exitIfFileExists(file string, description string, overwriteSecretFile bool) {
 	if _, err := os.Stat(file); err == nil {
-		if ! overwriteSecretFile {
+		if !overwriteSecretFile {
 			fmt.Println(description, "'"+file+"'", "already exists, exiting")
 			os.Exit(1)
 		} else {

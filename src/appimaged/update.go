@@ -35,7 +35,8 @@ func runUpdate(path string) {
 	// but merely launch an updater we found among the integrated
 	// AppImages. In the future we may do the updating ourselves.
 
-	aiur := "gh-releases-zsync|antony-jr|AppImageUpdater|continuous|AppImageUpdater*-x86_64.AppImage.zsync"
+	aiur := "gh-releases-zsync|antony-jr|AppImageUpdater|latest|AppImageUpdater*-x86_64.AppImage.zsync"
+	legacy := "gh-releases-zsync|antony-jr|AppImageUpdater|continuous|AppImageUpdater*-x86_64.AppImage.zsync"
 
 	// aiu := "gh-releases-zsync|AppImage|AppImageUpdate|continuous|AppImageUpdate-*x86_64.AppImage.zsync"
 	// Using AppImageUpdate is blocked by https://github.com/AppImage/AppImageUpdate/issues/1
@@ -44,12 +45,19 @@ func runUpdate(path string) {
 	// https://github.com/antony-jr/AppImageUpdater/issues/14
 
 	a := FindMostRecentAppImageWithMatchingUpdateInformation(aiur)
-	if a == "" {
+	legacy_app := FindMostRecentAppImageWithMatchingUpdateInformation(legacy)
+	if a == "" && legacy_app == "" {
 		sendDesktopNotification("AppImageUpdater missing", "Please download the AppImageUpdater\nAppImage and try again", 30000)
 		// Tried making a hyperlink but when I click it in Xfce, nothing happens.
 	} else {
 		os.Unsetenv("INVOCATION_ID") // This is a variable that systemd sets; we use it to determine whether we were launched through systemd
-		cmd := []string{a}
+		var program string
+		if a == "" {
+			program = legacy_app
+		} else {
+			program = a
+		}
+		cmd := []string{program}
 		cmd = append(cmd, "-n")
 		cmd = append(cmd, "-d")
 		cmd = append(cmd, path)

@@ -35,13 +35,13 @@ func appwrap() {
 	// and check them with desktop-file-verify; display notification if verification fails
 	go checkDesktopFiles(os.Args[2])
 
-	ai := NewAppImage(os.Args[2])
+	ai, err := NewAppImage(os.Args[2])
 
-	if ai.imagetype > 0 {
+	if err == nil {
 		// TODO: If we have an AppImage, then check the updateinformation inside the AppImage (or better: lint the AppImage)
 		err := ai.Validate()
 		if err != nil {
-			sendDesktopNotification(ai.niceName+" is not a proper AppImage", err.Error()+"\nPlease ask the author to fix it.", 30000)
+			sendDesktopNotification(ai.Name+" is not a proper AppImage", err.Error()+"\nPlease ask the author to fix it.", 30000)
 		}
 		// TODO: If we have an AppImage, then check the desktop file inside the AppImage (or better: lint the AppDir, reuse code from appimagetool)
 		// TODO: If we have an AppImage, then check that the .DirIcon  inside the AppImage exists (or better: lint the AppDir, reuse code from appimagetool)
@@ -61,9 +61,9 @@ func appwrap() {
 				// If what we launched (and failed) was an AppImage, then use its nice (short) name
 				// to display the error message
 				var appname string
-				ai := NewAppImage(os.Args[2])
-				if ai.imagetype > 0 {
-					appname = ai.niceName
+				ai, err = NewAppImage(os.Args[2])
+				if err == nil {
+					appname = ai.Name
 				} else {
 					appname = filepath.Base(os.Args[2])
 				}
@@ -71,7 +71,7 @@ func appwrap() {
 				summary := "Cannot open " + appname
 				body := strings.TrimSpace(out.String())
 
-				if strings.Contains(out.String(), "cannot open shared object file: No such file or directory") == true {
+				if strings.Contains(out.String(), "cannot open shared object file: No such file or directory") {
 					parts := strings.Split(out.String(), ":")
 					body = "Missing library " + strings.TrimSpace(parts[2])
 					// summary = "Error: Missing library " + strings.TrimSpace(parts[2])
@@ -79,12 +79,12 @@ func appwrap() {
 				}
 
 				// https://github.com/AppImage/AppImageKit/issues/1004
-				if strings.Contains(out.String(), "execv error") == true && ai.imagetype > 0 {
+				if strings.Contains(out.String(), "execv error") && err == nil {
 					body = filepath.Base(os.Args[2]) + " is defective, AppRun is missing. \nPlease ask the author to fix it."
 				}
 
 				// https://github.com/pinnaculum/galacteek/issues/6
-				if strings.Contains(out.String(), "Could not load the Qt platform plugin") == true && ai.imagetype > 0 {
+				if strings.Contains(out.String(), "Could not load the Qt platform plugin") && err == nil {
 					body = filepath.Base(os.Args[2]) + " is defective, could not load the Qt platform plugin. \nPlease run on the command line with 'QT_DEBUG_PLUGINS=1' \nto see error messages and ask the author to fix it."
 				}
 
@@ -105,11 +105,14 @@ func sendErrorDesktopNotification(title string, body string) {
 	log.Println(body)
 
 	conn, err := dbus.SessionBusPrivate() // When using SessionBusPrivate(), need to follow with Auth(nil) and Hello()
-	defer conn.Close()
 	if err != nil {
+		if conn != nil {
+			conn.Close()
+		}
 		helpers.PrintError("SessionBusPrivate", err)
 		return
 	}
+	defer conn.Close()
 	if conn == nil {
 		helpers.PrintError("No conn", err)
 		return
@@ -121,7 +124,6 @@ func sendErrorDesktopNotification(title string, body string) {
 	}
 
 	if err = conn.Hello(); err != nil {
-		conn.Close()
 		helpers.PrintError("Hello", err)
 		return
 	}
