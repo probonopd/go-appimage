@@ -93,7 +93,12 @@ func writeDesktopFile(ai AppImage) {
 	// so that renaming the file in the file manager results in a changed name in the menu
 	// FIXME: If the thumbnail is not generated here but by another external thumbnailer, it may not be fast enough
 	time.Sleep(1 * time.Second)
-	cfg.Section("Desktop Entry").Key("Exec").SetValue(arg0abs + " wrap \"" + ai.Path + "\"") // Resolve to a full path
+	add := ""
+	args, err := ai.Args()
+	if err == nil {
+		add = " " + strings.Join(args, " ")
+	}
+	cfg.Section("Desktop Entry").Key("Exec").SetValue(arg0abs + " wrap \"" + ai.Path + "\"" + add) // Resolve to a full path
 	cfg.Section("Desktop Entry").Key(ExecLocationKey).SetValue(ai.Path)
 	cfg.Section("Desktop Entry").Key("TryExec").SetValue(arg0abs) // Resolve to a full path
 	// For icons, use absolute paths. This way icons start working

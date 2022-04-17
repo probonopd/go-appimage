@@ -413,8 +413,8 @@ func GenerateAppImage(
 		os.Exit(1)
 	}
 
-	// "mksquashfs", source, destination, "-offset", offset, "-comp", "gzip", "-root-owned", "-noappend"
-	cmd := exec.Command("mksquashfs", appdir, target, "-offset", strconv.FormatInt(offset, 10), "-fstime", fstime, "-comp", squashfsCompressionType, "-root-owned", "-noappend")
+	// "mksquashfs", source, destination, "-offset", offset, "-comp", "gzip", "-root-owned", "-noappend", "-b", "1M"
+	cmd := exec.Command("mksquashfs", appdir, target, "-offset", strconv.FormatInt(offset, 10), "-fstime", fstime, "-comp", squashfsCompressionType, "-root-owned", "-noappend", "-b", "1M")
 	fmt.Println(cmd.String())
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout

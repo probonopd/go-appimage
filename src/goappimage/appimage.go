@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -208,6 +209,27 @@ func (ai AppImage) Icon() (io.ReadCloser, string, error) {
 		}
 	}
 	return nil, "", errors.New("Cannot find the AppImage's icon: " + icon)
+}
+
+func (ai AppImage) Args() ([]string, error) {
+	if ai.Desktop == nil {
+		return nil, errors.New("desktop file wasn't parsed")
+	}
+	var exec = ai.Desktop.Section("Desktop Entry").Key("Exec").Value()
+	fmt.Println("exec:", exec)
+	if exec == "" {
+		return nil, errors.New("exec key not present")
+	}
+	if strings.HasPrefix(exec, "\"") {
+		if strings.Contains(exec[1:], "\"") {
+			exec = exec[1 : strings.Index(exec[1:], "\"")+1]
+		}
+	}
+	spl := strings.Split(exec, " ")
+	if len(spl) <= 1 {
+		return make([]string, 0), nil
+	}
+	return spl[1:], nil
 }
 
 func runCommand(cmd *exec.Cmd) (bytes.Buffer, error) {
