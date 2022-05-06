@@ -385,7 +385,8 @@ func setupToRunThroughSystemd() {
 				log.Println(prc.String())
 				log.Println(err)
 			} else {
-				log.Println("Exiting...")
+				log.Println("appimaged should now be running via systemd. To check this, run")
+				log.Println("/usr/bin/systemctl -l --no-pager --user status appimaged")
 				os.Exit(0)
 			}
 		}
