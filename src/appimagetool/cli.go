@@ -172,7 +172,7 @@ func bootstrapAppImageBuild(c *cli.Context) error {
 		// for optimum performance, the following default parameters are passed
 		// fileToAppDir: 				fileToAppDir
 		// generateUpdateInformation: 	true (always guess based on environment variables)
-		// squashfsCompressionType: 	gzip
+		// squashfsCompressionType: 	zstd
 		// checkAppStreamMetadata: 		true (always verify the appstream metadata if files exists
 		// 								using appstreamcli
 		// updateinformation: 			"" 	(empty string, we want to guess the update information from
@@ -182,7 +182,7 @@ func bootstrapAppImageBuild(c *cli.Context) error {
 			fileToAppDir, "",
 			true,
 			"",
-			"gzip",
+			"zstd",
 			true,
 			"",
 			"appimagetool",
