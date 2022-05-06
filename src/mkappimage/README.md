@@ -1,7 +1,6 @@
 # mkappimage
 
-This is an experimental implementation of the AppImage command line tool,
- `appimagetool`, in Go, mainly to see what is possible. 
+This is a low-level tool that converts an AppDir into an AppImage. This is provided mainly for other higher-level tools that need this functionality. It alone will not produce usable AppImages. __If you would like to make AppImages, you should NOT be using this tool__ unless you know exactly what you are doing and need a low-level tool.
 
 ## Installation and usage
 
@@ -14,20 +13,6 @@ VERSION=1.0 ./mkappimage-*.AppImage ./Some.AppDir # turn AppDir into AppImage
 ```
 
 https://github.com/probonopd/go-appimage/releases/tag/continuous has builds for 32-bit Intel, 32-bit ARM (e.g., Raspberry Pi), and 64-bit ARM.
-
-## Features
-
-Implemented
-
-* Creates AppImage
-* Embeds update information by guessing from CI variables 
-(GitHub Actions, Travis CI) with the help of `-g, --guess` flag
-or manually provide the update information with `-u, --updateinformation` flag
-* Prepare self-contained AppDirs using the `deploy` verb
-* Bundle GStreamer
-* Bundle Qt
-* Bundle Qml
-* Obey excludelist (unless invoked in self-contained a.k.a. "bundle everything" mode)
 
 
 ## Building
