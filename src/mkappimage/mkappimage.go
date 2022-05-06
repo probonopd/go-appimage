@@ -91,7 +91,7 @@ func bootstrapMkAppImage(c *cli.Context) error {
 		}
 
 		// is manual compressor provided? if yes use that, else default
-		compressionType := "gzip"
+		compressionType := "zstd"
 		if c.String("comp") != "" {
 			compressionType = c.String("comp")
 		}
