@@ -73,12 +73,6 @@ set_arch_env () {
 build () {
   set_arch_env $1
   case $1 in
-    amd64) export GOGCCFLAGS=-m64;;
-    386) export GOGCCFLAGS=-m32;;
-    arm64) export GOGCCFLAGS=-m64;;
-    arm) export GOGCCFLAGS=-m32;;
-  esac
-  case $1 in
     amd64) local ARCH=x86_64;;
     386) local ARCH=i686;;
     arm64) local ARCH=aarch64;;
@@ -86,7 +80,7 @@ build () {
   esac
   local PROG=$2
   CLEANUP+=($BUILDDIR/$PROG-$ARCH.AppDir)
-  go clean
+  # go clean
   echo ARCH: $ARCH
   echo GOARCH: $GOARCH
   echo GOHOSTARCH: $GOHOSTARCH
