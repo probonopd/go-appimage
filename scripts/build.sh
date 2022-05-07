@@ -87,6 +87,9 @@ build () {
   local PROG=$2
   CLEANUP+=($BUILDDIR/$PROG-$ARCH.AppDir)
   go clean
+  echo ARCH: $ARCH
+  echo GOARCH: $GOARCH
+  echo GOHOSTARCH: $GOHOSTARCH
   CGO_LDFLAGS="-no-pie" CC=/usr/local/musl/bin/musl-gcc go build -o $BUILDDIR -v -trimpath -ldflags="-linkmode external -extldflags \"-static\" -s -w -X main.commit=$COMMIT" $PROJECT/src/$PROG
   # common appimage steps
   rm -rf $BUILDDIR/$PROG-$ARCH.AppDir || true
