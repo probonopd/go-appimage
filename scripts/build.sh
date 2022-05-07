@@ -93,7 +93,8 @@ build () {
   echo BUILDARCH: $BUILDARCH
   echo GOGCCFLAGS: $GOGCCFLAGS
   echo ZIGTARGET: $ZIGTARGET
-  CGO_LDFLAGS="-no-pie" CC="$(readlink -f ./zig-linux-*/zig) cc -target $ZIGTARGET" go build -o $BUILDDIR -v -trimpath -ldflags="-linkmode external -extldflags \"-static\" -s -w -X main.commit=$COMMIT" $PROJECT/src/$PROG
+  export PATH=$(readlink -f ./zig-linux-*/):$PATH
+  CGO_LDFLAGS="-no-pie" CC="zig cc -target $ZIGTARGET" go build -o $BUILDDIR -v -trimpath -ldflags="-linkmode external -extldflags \"-static\" -s -w -X main.commit=$COMMIT" $PROJECT/src/$PROG
   # common appimage steps
   rm -rf $BUILDDIR/$PROG-$ARCH.AppDir || true
   mkdir -p $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin
@@ -221,9 +222,9 @@ if [ ! -e "/usr/local/musl/bin/musl-gcc" ]; then
   sudo make install
 fi
 
-if [ ! -e ./zig-linux-*/zig ]; then
+if [ ! -e /usr/local/bin/zig ]; then
   wget -c -q "https://ziglang.org/builds/zig-linux-x86_64-0.10.0-dev.2112+0df28f9d4.tar.xz"
-  tar xf zig-linux-x86_64-*.tar.xz
+  tar xf zig-linux-*-*.tar.xz
 fi
 
 if [ -z $BUILDTOOL ]; then
