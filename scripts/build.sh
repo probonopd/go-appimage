@@ -84,6 +84,7 @@ build () {
     arm64) export ZIGTARGET=aarch64-linux-musleabi;;
     arm) export ZIGTARGET=arm-linux-musleabihf;;
   esac
+  export CC=zig cc -target $ZIGTARGET
   local PROG=$2
   CLEANUP+=($BUILDDIR/$PROG-$ARCH.AppDir)
   # go clean
@@ -92,8 +93,9 @@ build () {
   echo GOHOSTARCH: $GOHOSTARCH
   echo BUILDARCH: $BUILDARCH
   echo GOGCCFLAGS: $GOGCCFLAGS
-  echo ZIGTARGET: $ZIGTARGET
-  CGO_LDFLAGS="-no-pie" CC="zig cc -target $ZIGTARGET" go build -o $BUILDDIR -v -trimpath -ldflags="-linkmode external -extldflags \"-static\" -s -w -X main.commit=$COMMIT" $PROJECT/src/$PROG
+  echo CC: $CC
+  which zig
+  CGO_LDFLAGS="-no-pie" go build -o $BUILDDIR -v -trimpath -ldflags="-linkmode external -extldflags \"-static\" -s -w -X main.commit=$COMMIT" $PROJECT/src/$PROG
   # common appimage steps
   rm -rf $BUILDDIR/$PROG-$ARCH.AppDir || true
   mkdir -p $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin
