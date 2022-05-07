@@ -73,6 +73,12 @@ set_arch_env () {
 build () {
   set_arch_env $1
   case $1 in
+    amd64) local GOGCCFLAGS=-m64;;
+    386) local GOGCCFLAGS=-m32;;
+    arm64) local GOGCCFLAGS=-m64;;
+    arm) local GOGCCFLAGS=-m32;;
+  esac
+  case $1 in
     amd64) local ARCH=x86_64;;
     386) local ARCH=i686;;
     arm64) local ARCH=aarch64;;
