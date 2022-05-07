@@ -211,18 +211,7 @@ if [ $GITHUB_ACTIONS ]; then
   sudo apt-get install --yes wget file
 fi
 
-# Allow to statically link Go programs, even with cgo, using musl libc, like this:
-# CC=/usr/local/musl/bin/musl-gcc go build --ldflags '-linkmode external -extldflags "-static"' hello.go
-# https://honnef.co/posts/2015/06/statically_compiled_go_programs__always__even_with_cgo__using_musl/
-if [ ! -e "/usr/local/musl/bin/musl-gcc" ]; then
-  wget -c -q http://www.musl-libc.org/releases/musl-1.1.10.tar.gz
-  tar -xvf musl-*.tar.gz
-  cd musl-*/
-  ./configure --enable-gcc-wrapper
-  make -j$(nproc)
-  sudo make install
-fi
-
+# Install zig, it comes with musl libc
 if [ -n "$(which zig)" ]; then
   wget -c -q "https://ziglang.org/builds/zig-linux-x86_64-0.10.0-dev.2112+0df28f9d4.tar.xz"
   tar xf zig-linux-*-*.tar.xz
