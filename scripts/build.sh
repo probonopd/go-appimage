@@ -78,6 +78,12 @@ build () {
     arm64) local ARCH=aarch64;;
     arm) local ARCH=armhf;;
   esac
+  case $1 in
+    amd64) export ZIGTARGET=x86_64-linux-musl;;
+    386) export ZIGTARGET=i386-linux-musl;;
+    arm64) export ZIGTARGET=aarch64-linux-musleabi;;
+    arm) export ZIGTARGET=arm-linux-musleabihf;;
+  esac
   local PROG=$2
   CLEANUP+=($BUILDDIR/$PROG-$ARCH.AppDir)
   # go clean
@@ -86,7 +92,8 @@ build () {
   echo GOHOSTARCH: $GOHOSTARCH
   echo BUILDARCH: $BUILDARCH
   echo GOGCCFLAGS: $GOGCCFLAGS
-  CGO_LDFLAGS="-no-pie" CC=/usr/local/musl/bin/musl-gcc go build -o $BUILDDIR -v -trimpath -ldflags="-linkmode external -extldflags \"-static\" -s -w -X main.commit=$COMMIT" $PROJECT/src/$PROG
+  echo ZIGTARGET: $ZIGTARGET
+  CGO_LDFLAGS="-no-pie" CC="$(readlink -f ./zig-linux-*/zig) cc -target $ZIGTARGET" go build -o $BUILDDIR -v -trimpath -ldflags="-linkmode external -extldflags \"-static\" -s -w -X main.commit=$COMMIT" $PROJECT/src/$PROG
   # common appimage steps
   rm -rf $BUILDDIR/$PROG-$ARCH.AppDir || true
   mkdir -p $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin
@@ -212,6 +219,11 @@ if [ ! -e "/usr/local/musl/bin/musl-gcc" ]; then
   ./configure --enable-gcc-wrapper
   make -j$(nproc)
   sudo make install
+fi
+
+if [ ! -e ./zig-linux-*/zig ]; then
+  wget -c -q "https://ziglang.org/builds/zig-linux-x86_64-0.10.0-dev.2112+0df28f9d4.tar.xz"
+  tar xf zig-linux-x86_64-*.tar.xz
 fi
 
 if [ -z $BUILDTOOL ]; then
