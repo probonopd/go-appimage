@@ -221,7 +221,7 @@ if [ ! -e "/usr/local/musl/bin/musl-gcc" ]; then
   sudo make install
 fi
 
-if [ ! -e /usr/local/bin/zig ]; then
+if [ -n "$(which zig)" ]; then
   wget -c -q "https://ziglang.org/builds/zig-linux-x86_64-0.10.0-dev.2112+0df28f9d4.tar.xz"
   tar xf zig-linux-*-*.tar.xz
   export PATH=$(readlink -f ./zig-linux-*/):$PATH
