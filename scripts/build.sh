@@ -80,7 +80,8 @@ build () {
   esac
   local PROG=$2
   CLEANUP+=($BUILDDIR/$PROG-$ARCH.AppDir)
-  go build -o $BUILDDIR -v -trimpath -ldflags="-s -w -X main.commit=$COMMIT" $PROJECT/src/$PROG
+  # CC=/usr/local/musl/bin/musl-gcc go build ...
+  go build -o $BUILDDIR -v -trimpath -ldflags="-linkmode external -extldflags \"-static\" -s -w -X main.commit=$COMMIT" $PROJECT/src/$PROG
   # common appimage steps
   rm -rf $BUILDDIR/$PROG-$ARCH.AppDir || true
   mkdir -p $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin
@@ -193,7 +194,19 @@ fi
 # Install dependencies if needed
 if [ $GITHUB_ACTIONS ]; then
   sudo apt-get update
-  sudo apt-get install --yes wget file gcc
+  sudo apt-get install --yes wget file
+fi
+
+# Allow to statically link Go programs, even with cgo, using musl libc, like this:
+# CC=/usr/local/musl/bin/musl-gcc go build --ldflags '-linkmode external -extldflags "-static"' hello.go
+# https://honnef.co/posts/2015/06/statically_compiled_go_programs__always__even_with_cgo__using_musl/
+if [ ! -e "/usr/local/musl/bin/musl-gcc" ]; then
+  wget -c -q http://www.musl-libc.org/releases/musl-1.1.10.tar.gz
+  tar -xvf musl-*.tar.gz
+  cd musl-*/
+  ./configure
+  make -j$(nproc)
+  sudo make install
 fi
 
 if [ -z $BUILDTOOL ]; then
