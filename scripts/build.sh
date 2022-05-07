@@ -86,6 +86,7 @@ build () {
   esac
   local PROG=$2
   CLEANUP+=($BUILDDIR/$PROG-$ARCH.AppDir)
+  go clean ./...
   rm -rf /tmp/go-link-* || true
   CGO_LDFLAGS="-no-pie" CC=/usr/local/musl/bin/musl-gcc go build -o $BUILDDIR -v -trimpath -ldflags="-linkmode external -extldflags \"-static\" -s -w -X main.commit=$COMMIT" $PROJECT/src/$PROG
   # common appimage steps
