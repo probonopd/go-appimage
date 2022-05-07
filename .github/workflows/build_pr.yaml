@@ -10,7 +10,7 @@ on:
 jobs:
   build-all:
     name: Build for all architectures
-    runs-on: ubuntu-18.04
+    runs-on: alpine-latest
     steps:
     - uses: actions/checkout@v2
     - name: Set up Go
