@@ -93,7 +93,7 @@ build () {
   echo BUILDARCH: $BUILDARCH
   echo GOGCCFLAGS: $GOGCCFLAGS
   echo CC: $CC
-  export PATH=$(readlink -f ../zig-linux-*/):$PATH
+  export PATH=$HOME/zig-linux-*/:$PATH
   which zig
   zig env
   CGO_LDFLAGS="-no-pie" go build -o $BUILDDIR -v -trimpath -ldflags="-linkmode external -extldflags \"-static\" -s -w -X main.commit=$COMMIT" $PROJECT/src/$PROG
@@ -213,9 +213,11 @@ if [ $GITHUB_ACTIONS ]; then
 fi
 
 # Install zig, it comes with musl libc
-if [ -n "$(which zig)" ]; then
+if [ ! -e $HOME/zig-linux-*/zig ]; then
+  cd $HOME
   wget -c -q "https://ziglang.org/builds/zig-linux-x86_64-0.10.0-dev.2112+0df28f9d4.tar.xz"
   tar xf zig-linux-*-*.tar.xz
+  cd -
 fi
 
 if [ -z $BUILDTOOL ]; then
