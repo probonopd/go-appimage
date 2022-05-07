@@ -203,7 +203,7 @@ if [ ! -e "/usr/local/musl/bin/musl-gcc" ]; then
   wget -c -q http://www.musl-libc.org/releases/musl-1.1.10.tar.gz
   tar -xvf musl-*.tar.gz
   cd musl-*/
-  ./configure
+  ./configure --enable-gcc-wrapper
   make -j$(nproc)
   sudo make install
 fi
