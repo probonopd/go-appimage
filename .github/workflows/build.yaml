@@ -27,7 +27,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
     - name: Run build script
-      run: ./scripts/build.sh -a amd64,arm64
+      run: ./scripts/build.sh -a amd64
     - name: Upload to GitHub Artifacts
       uses: actions/upload-artifact@v3
       with:
