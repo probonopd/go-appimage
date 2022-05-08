@@ -93,7 +93,7 @@ build () {
   echo BUILDARCH: $BUILDARCH
   echo GOGCCFLAGS: $GOGCCFLAGS
   echo CC: $CC
-  export PATH=$HOME/zig-linux-*/:$PATH
+  export PATH=$(readlink -f $HOME/zig-linux-*/):$PATH
   which zig
   zig env
   CGO_LDFLAGS="-no-pie" go build -o $BUILDDIR -v -trimpath -ldflags="-linkmode external -extldflags \"-static\" -s -w -X main.commit=$COMMIT" $PROJECT/src/$PROG
