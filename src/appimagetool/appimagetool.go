@@ -169,7 +169,7 @@ func GenerateAppImage(
 
 	// If more than one desktop files found, exit
 	if n > 1 {
-		log.Fatal("Multiple top-level desktop files found in" + appdir + ", aborting\n")
+		log.Fatal("Multiple top-level desktop files found in " + appdir + ", aborting\n")
 	}
 
 	desktopfile := helpers.FilesWithSuffixInDirectory(appdir, ".desktop")[0]
