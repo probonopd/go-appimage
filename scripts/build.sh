@@ -81,8 +81,8 @@ build () {
   case $1 in
     amd64) export ZIGTARGET=x86_64-linux-musl;;
     386) export ZIGTARGET=i386-linux-musl;;
-    arm64) export ZIGTARGET=aarch64-linux-musleabi;;
-    arm) export ZIGTARGET=arm-linux-musleabihf;;
+    arm64) export ZIGTARGET=aarch64-linux-musl;;
+    arm) export ZIGTARGET=arm-linux-musl;;
   esac
   export CC="zig cc -target $ZIGTARGET"
   local PROG=$2
