@@ -151,23 +151,6 @@ func bootstrapAppImageBuild(c *cli.Context) error {
 		log.Fatal("The specified file does not exist")
 	}
 
-	// Add the location of the executable to the $PATH
-	helpers.AddHereToPath()
-
-	// Check for needed files on $PATH
-	tools := []string{"file", "mksquashfs", "desktop-file-validate", "uploadtool", "patchelf", "desktop-file-validate", "patchelf"} // "sh", "strings", "grep" no longer needed?; "curl" is needed for uploading only, "glib-compile-schemas" is needed in some cases only
-	// curl is needed by uploadtool; TODO: Replace uploadtool with native Go code
-	// "sh", "strings", "grep" are needed by appdirtool to parse qt_prfxpath; TODO: Replace with native Go code
-	err := helpers.CheckForNeededTools(tools)
-	if err != nil {
-		os.Exit(1)
-	}
-	
-	// Check whether we have a sufficient version of mksquashfs for -offset
-	if helpers.CheckIfSquashfsVersionSufficient("mksquashfs") == false {
-		os.Exit(1)
-	}
-
 	// Check if is directory, then assume we want to convert an AppDir into an AppImage
 	fileToAppDir, _ = filepath.EvalSymlinks(fileToAppDir)
 	if info, err := os.Stat(fileToAppDir); err == nil && info.IsDir() {
@@ -233,6 +216,25 @@ func main() {
 		Action:               bootstrapAppImageBuild,
 	}
 
+	// Add the location of the executable to the $PATH
+	helpers.AddHereToPath()
+	
+	fmt.Println("PATH:", os.Getenv("PATH"))
+
+	// Check for needed files on $PATH
+	tools := []string{"file", "mksquashfs", "desktop-file-validate", "uploadtool", "patchelf", "desktop-file-validate", "patchelf"} // "sh", "strings", "grep" no longer needed?; "curl" is needed for uploading only, "glib-compile-schemas" is needed in some cases only
+	// curl is needed by uploadtool; TODO: Replace uploadtool with native Go code
+	// "sh", "strings", "grep" are needed by appdirtool to parse qt_prfxpath; TODO: Replace with native Go code
+	err := helpers.CheckForNeededTools(tools)
+	if err != nil {
+		os.Exit(1)
+	}
+	
+	// Check whether we have a sufficient version of mksquashfs for -offset
+	if helpers.CheckIfSquashfsVersionSufficient("mksquashfs") == false {
+		os.Exit(1)
+	}
+	
 	// define subcommands, like 'deploy', 'validate', ...
 	app.Commands = []*cli.Command{
 		{
