@@ -82,7 +82,7 @@ build () {
     amd64) export ZIGTARGET=x86_64-linux-musl;;
     386) export ZIGTARGET=i386-linux-musl;;
     arm64) export ZIGTARGET=aarch64-linux-musl;;
-    arm) export ZIGTARGET=arm-linux-musl;;
+    arm) export ZIGTARGET=arm-linux-musleabihf;;
   esac
   export CC="zig cc -target $ZIGTARGET"
   local PROG=$2
