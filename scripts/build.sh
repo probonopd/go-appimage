@@ -95,7 +95,8 @@ build () {
   echo CC: $CC
   which zig
   zig env
-  CGO_LDFLAGS="-no-pie" go build -o $BUILDDIR -v -trimpath -ldflags="-linkmode external -extldflags \"-static\" -s -w -X main.commit=$COMMIT" $PROJECT/src/$PROG
+  # CGO_LDFLAGS="-no-pie" go build -o $BUILDDIR -v -trimpath -ldflags="-linkmode external -extldflags \"-static\" -s -w -X main.commit=$COMMIT" $PROJECT/src/$PROG
+  CGO_ENABLED=1 go build --tags extended  $PROJECT/src/$PROG
   # common appimage steps
   rm -rf $BUILDDIR/$PROG-$ARCH.AppDir || true
   mkdir -p $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin
