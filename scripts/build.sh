@@ -137,6 +137,7 @@ Comment=Tool to generate AppImages from AppDirs
 Icon=appimage
 Categories=Development;
 Terminal=true
+NoDisplay=true
 EOF
   elif [ $PROG == mkappimage ]; then
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/desktop-file-validate-$AIARCH -O desktop-file-validate )
