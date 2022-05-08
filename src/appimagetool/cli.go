@@ -141,7 +141,7 @@ func bootstrapAppImageBuild(c *cli.Context) error {
 	// check if the number of arguments are stictly 1, if not
 	// return
 	if c.NArg() != 1 {
-		log.Fatal("Please specify the path to the desktop file of the application in your AppDir")
+		log.Fatal("Please specify the path to the AppDir")
 
 	}
 	fileToAppDir := c.Args().Get(0)
@@ -215,11 +215,13 @@ func main() {
 		Compiled:             time.Time{},
 		Action:               bootstrapAppImageBuild,
 	}
+	// Unclear: Does bootstrapAppImageBuild automatically get executed just
+	// because it is mentioned above?
 
 	// Add the location of the executable to the $PATH
 	helpers.AddHereToPath()
 	
-	fmt.Println("PATH:", os.Getenv("PATH"))
+	// fmt.Println("PATH:", os.Getenv("PATH"))
 
 	// Check for needed files on $PATH
 	tools := []string{"file", "mksquashfs", "desktop-file-validate", "uploadtool", "patchelf", "desktop-file-validate", "patchelf"} // "sh", "strings", "grep" no longer needed?; "curl" is needed for uploading only, "glib-compile-schemas" is needed in some cases only
