@@ -84,7 +84,7 @@ build () {
     arm64) export ZIGTARGET=aarch64-linux-musl;;
     arm) export ZIGTARGET=arm-linux-musleabihf;;
   esac
-  export CC="zig cc -target $ZIGTARGET"
+  export CC="zig cc -Wl,--no-gc-sections -target $ZIGTARGET"
   local PROG=$2
   CLEANUP+=($BUILDDIR/$PROG-$ARCH.AppDir)
   echo ARCH: $ARCH
