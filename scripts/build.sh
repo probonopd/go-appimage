@@ -84,7 +84,7 @@ build () {
     arm64) export ZIGTARGET=aarch64-linux-musl;;
     arm) export ZIGTARGET=arm-linux-musleabihf;;
   esac
-  export CC="zig cc -Wl,--no-gc-sections -target $ZIGTARGET"
+  export CC="zig cc -target $ZIGTARGET"
   local PROG=$2
   CLEANUP+=($BUILDDIR/$PROG-$ARCH.AppDir)
   echo ARCH: $ARCH
@@ -95,7 +95,8 @@ build () {
   echo CC: $CC
   which zig
   zig env
-  CGO_ENABLED=1 go build -o $BUILDDIR -v -trimpath -ldflags="-extldflags \"-static\" -s -w -X main.commit=$COMMIT" $PROJECT/src/$PROG
+  CGO_ENABLED=1 go build -o $BUILDDIR -v -trimpath -ldflags="-linkmode=external -extldflags \"-static\" -s -w -X main.commit=$COMMIT" $PROJECT/src/$PROG
+  strip $PROG
   # common appimage steps
   rm -rf $BUILDDIR/$PROG-$ARCH.AppDir || true
   mkdir -p $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin
