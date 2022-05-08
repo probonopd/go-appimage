@@ -224,14 +224,12 @@ func main() {
 	// basic information
 	app := &cli.App{
 		Name:                 "appimagetool",
-		Authors:              []*cli.Author{{Name: "Simon Peter"}},
 		Version:              version,
 		Usage:                "An automatic tool to create AppImages",
 		EnableBashCompletion: false,
 		HideHelp:             false,
 		HideVersion:          false,
 		Compiled:             time.Time{},
-		Copyright:            "MIT License",
 		Action:               bootstrapAppImageBuild,
 	}
 
