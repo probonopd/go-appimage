@@ -84,10 +84,9 @@ build () {
     arm64) export ZIGTARGET=aarch64-linux-musl;;
     arm) export ZIGTARGET=arm-linux-musleabihf;;
   esac
-  export CC="zig cc -target $ZIGTARGET"
+  export CC="zig cc -Wl,--strip-all -target $ZIGTARGET"
   local PROG=$2
   CLEANUP+=($BUILDDIR/$PROG-$ARCH.AppDir)
-  export GOGCCFLAGS="-Wl,--strip-all" # strip
   echo ARCH: $ARCH
   echo GOARCH: $GOARCH
   echo GOHOSTARCH: $GOHOSTARCH
