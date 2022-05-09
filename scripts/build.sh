@@ -87,6 +87,7 @@ build () {
   export CC="zig cc -target $ZIGTARGET"
   local PROG=$2
   CLEANUP+=($BUILDDIR/$PROG-$ARCH.AppDir)
+  export GOGCCFLAGS="-Wl,--strip-all" # strip
   echo ARCH: $ARCH
   echo GOARCH: $GOARCH
   echo GOHOSTARCH: $GOHOSTARCH
