@@ -151,11 +151,24 @@ func findDesktopFilesPointingToExecutable(executablefilepath string) ([]string, 
 	if e != nil {
 		return results, e
 	}
-
 	for _, file := range files {
 		if strings.HasSuffix(file.Name(), ".desktop") {
-			cfg, _ := ini.LoadSources(ini.LoadOptions{IgnoreInlineComment: true}, // Do not cripple lines hat contain ";"
-				xdg.DataHome+"/applications/"+file.Name())
+			var cfg *ini.File
+			if file.Mode()&os.ModeSymlink != 0 { // Check if it's a symlink
+				linkfile, err := os.Readlink(xdg.DataHome + "/applications/" + file.Name()) // Read the symlink target
+				if err != nil {
+					log.Printf("Readlink error %s on file %s", err, linkfile)
+					continue
+				}
+				cfg, err = ini.LoadSources(ini.LoadOptions{IgnoreInlineComment: true}, linkfile) // Load the original file
+				if err != nil {
+					log.Printf("ini.Load error %s on file %s", err, linkfile)
+					continue
+				}
+			} else { // If not a symlink then load the file directly
+				cfg, _ = ini.LoadSources(ini.LoadOptions{IgnoreInlineComment: true}, // Do not cripple lines hat contain ";"
+					xdg.DataHome+"/applications/"+file.Name())
+			}
 			// log.Println(xdg.DataHome + "/applications/" + file.Name())
 			s := cfg.Section("Desktop Entry").Key("Exec").String()
 			// dst = strings.Replace(dst, os.Args[0]+" "+os.Args[1]+" ", "", -1)
