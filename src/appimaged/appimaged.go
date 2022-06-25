@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"bufio"
 
 	"github.com/adrg/xdg"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -83,6 +84,12 @@ var candidateDirectories = []string{
 	"/usr/local/bin",
 }
 
+// Define watch configuration folders used in preference of candidateDirectories if available
+var configfiles = []string{
+	home + "/.config/appimaged/watchfolders.conf",
+	"/etc/appimaged/watchfolders.conf",
+}
+
 func main() {
 	thisai, _ = NewAppImage(helpers.Args0())
 
@@ -121,12 +128,47 @@ func main() {
 	// Always show version
 	fmt.Println(filepath.Base(os.Args[0]), version)
 
-	for _, dir := range candidateDirectories {
-		if helpers.Exists(dir) {
-			watchedDirectories = append(watchedDirectories, dir)
+	// Load paths from config files
+       	for _, configfile := range configfiles {
+
+		if (len(watchedDirectories)==0) {
+
+			file, err := os.Open(configfile)
+			if err == nil {
+
+				log.Println(os.Stderr, "loading watch directory list from " + configfile + "\n")
+				scanner := bufio.NewScanner(file)
+				scanner.Split(bufio.ScanLines)
+				
+				for scanner.Scan() {
+
+					// Tidy and append valid folders to watchedDirectories list
+										
+					dir := strings.TrimSpace(scanner.Text()) 
+					
+					if (strings.HasPrefix(dir,"~/")) {
+						dir = strings.Replace(dir,"~",home,1)
+					}
+					
+					if (!strings.HasPrefix(dir,"#") && helpers.Exists(dir)) {
+						watchedDirectories = append(watchedDirectories, dir) ;
+					}
+					
+				}
+        			file.Close() ;
+        		}
+        	}
+        }
+        
+        // No config files parsed, so resort to candidateDirectories
+	if (len(watchedDirectories)==0) {
+		for _, dir := range candidateDirectories {
+			if helpers.Exists(dir) {
+				watchedDirectories = append(watchedDirectories, dir)
+			}
 		}
 	}
-
+		
 	checkPrerequisites()
 
 	setupToRunThroughSystemd()

@@ -48,6 +48,8 @@ Folders being watched for AppImage files:
 * ~/Downloads
 * $PATH, which frequently includes /bin, /sbin, /usr/bin, /usr/sbin, /usr/local/bin, /usr/local/sbin, and other locations
 
+Folders may be overridden in ~/.config/appimaged/watchfolders.conf or /etc/appimaged/watchfolders.conf
+
 https://github.com/probonopd/go-appimage/releases/tag/continuous has builds for 32-bit Intel, 32-bit ARM (e.g., Raspberry Pi), and 64-bit ARM.
 
 ## Features
