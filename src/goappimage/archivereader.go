@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -40,7 +39,7 @@ func (ai *AppImage) populateReader(allowFallback, forceFallback bool) (err error
 	return errors.New("invalid AppImage type")
 }
 
-//TODO: Implement command based fallback here.
+// TODO: Implement command based fallback here.
 type type2Reader struct {
 	rdr *squashfs.Reader
 }
@@ -52,7 +51,7 @@ func newType2Reader(ai *AppImage) (*type2Reader, error) {
 	}
 	stat, _ := aiFil.Stat()
 	aiRdr := io.NewSectionReader(aiFil, ai.offset, stat.Size()-ai.offset)
-	squashRdr, err := squashfs.NewSquashfsReader(aiRdr)
+	squashRdr, err := squashfs.NewReader(aiRdr)
 	if err != nil {
 		return nil, err
 	}
@@ -179,12 +178,12 @@ func newType1Reader(filepath string) (*type1Reader, error) {
 	return &rdr, nil
 }
 
-//makes sure that the path is nice and only points to ONE file, which is needed if there are wildcards.
-//If you were to search for *.desktop, you will get both blender.desktop AND /usr/bin/blender.desktop.
-//This could cause issues, especially for FileReader
+// makes sure that the path is nice and only points to ONE file, which is needed if there are wildcards.
+// If you were to search for *.desktop, you will get both blender.desktop AND /usr/bin/blender.desktop.
+// This could cause issues, especially for FileReader
 //
-//Probably a bit spagetti and can be cleaned up. Maybe add a rawPaths variable to type1reader to make
-//it easier to find a match with wildcards.
+// Probably a bit spagetti and can be cleaned up. Maybe add a rawPaths variable to type1reader to make
+// it easier to find a match with wildcards.
 func (r *type1Reader) cleanPath(filepath string) (string, error) {
 	filepath = strings.TrimPrefix(filepath, "/")
 	filepath = path.Clean(filepath)
@@ -239,7 +238,7 @@ func (r *type1Reader) FileReader(filepath string) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ioutil.NopCloser(&out), nil
+	return io.NopCloser(&out), nil
 }
 
 func (r *type1Reader) IsDir(filepath string) bool {

@@ -29,7 +29,7 @@ TODO List:
 type AppImage struct {
 	reader archiveReader
 	//Desktop is the AppImage's main .desktop file parsed as an ini.File.
-	Desktop   *ini.File
+	Desktop    *ini.File
 	Path       string
 	Name       string
 	UpdateInfo string
@@ -149,8 +149,8 @@ func (ai AppImage) determineImageType() int {
 	return -1
 }
 
-//SquashfsReader allows direct access to an AppImage's squashfs.
-//Only works on type 2 AppImages
+// SquashfsReader allows direct access to an AppImage's squashfs.
+// Only works on type 2 AppImages
 func (ai AppImage) SquashfsReader() (*squashfs.Reader, error) {
 	if ai.imageType != 2 {
 		return nil, errors.New("not a type 2 appimage")
@@ -161,40 +161,40 @@ func (ai AppImage) SquashfsReader() (*squashfs.Reader, error) {
 	}
 	stat, _ := aiFil.Stat()
 	aiRdr := io.NewSectionReader(aiFil, ai.offset, stat.Size()-ai.offset)
-	squashRdr, err := squashfs.NewSquashfsReader(aiRdr)
+	squashRdr, err := squashfs.NewReader(aiRdr)
 	if err != nil {
 		return nil, err
 	}
 	return squashRdr, nil
 }
 
-//Type is the type of the AppImage. Should be either 1 or 2.
+// Type is the type of the AppImage. Should be either 1 or 2.
 func (ai AppImage) Type() int {
 	return ai.imageType
 }
 
-//ExtractFile extracts a file from from filepath (which may contain * wildcards) in an AppImage to the destinationdirpath.
+// ExtractFile extracts a file from from filepath (which may contain * wildcards) in an AppImage to the destinationdirpath.
 //
-//If resolveSymlinks is true, if the filepath specified is a symlink, the actual file is extracted in it's place.
-//resolveSymlinks will have no effect on absolute symlinks (symlinks that start at root).
+// If resolveSymlinks is true, if the filepath specified is a symlink, the actual file is extracted in it's place.
+// resolveSymlinks will have no effect on absolute symlinks (symlinks that start at root).
 func (ai AppImage) ExtractFile(filepath string, destinationdirpath string, resolveSymlinks bool) error {
 	return ai.reader.ExtractTo(filepath, destinationdirpath, resolveSymlinks)
 }
 
-//ExtractFileReader tries to get an io.ReadCloser for the file at filepath.
-//Returns an error if the path is pointing to a folder. If the path is pointing to a symlink,
-//it will try to return the file being pointed to, but only if it's within the AppImage.
+// ExtractFileReader tries to get an io.ReadCloser for the file at filepath.
+// Returns an error if the path is pointing to a folder. If the path is pointing to a symlink,
+// it will try to return the file being pointed to, but only if it's within the AppImage.
 func (ai AppImage) ExtractFileReader(filepath string) (io.ReadCloser, error) {
 	return ai.reader.FileReader(filepath)
 }
 
-//Thumbnail tries to get the AppImage's thumbnail and returns it as a io.ReadCloser.
+// Thumbnail tries to get the AppImage's thumbnail and returns it as a io.ReadCloser.
 func (ai AppImage) Thumbnail() (io.ReadCloser, error) {
 	return ai.reader.FileReader(".DirIcon")
 }
 
-//Icon tries to get a io.ReadCloser for the icon dictated in the AppImage's desktop file.
-//Returns the ReadCloser and the file's name (which could be useful for decoding).
+// Icon tries to get a io.ReadCloser for the icon dictated in the AppImage's desktop file.
+// Returns the ReadCloser and the file's name (which could be useful for decoding).
 func (ai AppImage) Icon() (io.ReadCloser, string, error) {
 	if ai.Desktop == nil {
 		return nil, "", errors.New("desktop file wasn't parsed")
@@ -257,8 +257,8 @@ func runCommand(cmd *exec.Cmd) (bytes.Buffer, error) {
 	return out, err
 }
 
-//ModTime is the time the AppImage was edited/created. If the AppImage is type 2,
-//it will try to get that information from the squashfs, if not, it returns the file's ModTime.
+// ModTime is the time the AppImage was edited/created. If the AppImage is type 2,
+// it will try to get that information from the squashfs, if not, it returns the file's ModTime.
 func (ai AppImage) ModTime() time.Time {
 	if ai.imageType == 2 {
 		if ai.reader != nil {
