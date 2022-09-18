@@ -7,7 +7,6 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -245,15 +244,18 @@ func writeDesktopFile(ai AppImage) {
 	if *verbosePtr {
 		log.Println("desktop: Saving to", desktopcachedir+"/"+filename)
 	}
-	err = cfg.SaveTo(desktopcachedir + "/" + filename)
+	buf := new(bytes.Buffer)
+	cfg.WriteTo(buf)
+	out := fixDesktopFile(buf.Bytes())
+	os.Remove(desktopcachedir + "/" + filename)
+	deskFil, err := os.Create(desktopcachedir + "/" + filename)
 	if err != nil {
 		log.Printf("Fail to write file: %v", err)
+		return
 	}
-
-	err = fixDesktopFile(desktopcachedir + "/" + filename)
+	_, err = deskFil.Write(out)
 	if err != nil {
-		helpers.PrintError("desktop fixDesktopFile", err)
-		os.Exit(1)
+		log.Printf("Fail to write file: %v", err)
 	}
 }
 
@@ -264,20 +266,12 @@ func isWritable(path string) bool {
 
 // Really ugly workaround for
 // https://github.com/go-ini/ini/issues/90
-func fixDesktopFile(path string) error {
-	input, err := ioutil.ReadFile(path)
-	if err != nil {
-		return err
-	}
+func fixDesktopFile(input []byte) []byte {
 	var output []byte
 	if bytes.Contains(input, []byte("=`")) {
 		output = bytes.Replace(input, []byte("=`"), []byte("="), -1)
 		output = bytes.Replace(output, []byte("`\n"), []byte("\n"), -1)
 	}
 	output = bytes.ReplaceAll(output, []byte("；"), []byte(";"))
-
-	if err = ioutil.WriteFile(path, output, 0755); err != nil {
-		return err
-	}
-	return nil
+	return output
 }
