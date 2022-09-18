@@ -58,6 +58,7 @@ func writeDesktopFile(ai AppImage) {
 		desktopRdr, _ := ai.ExtractFileReader("*.desktop")
 		defer desktopRdr.Close()
 		//cleaning the desktop file so it can be parsed properly
+		//TODO: find better desktop file parser that doesn't mistake semicolons for comments.
 		var desktop []byte
 		buf := bufio.NewReader(desktopRdr)
 		for err == nil {
@@ -126,7 +127,7 @@ func writeDesktopFile(ai AppImage) {
 	}
 	// Actions
 
-	var actions []string
+	actions := strings.Split(cfg.Section("Desktop Entry").Key("Actions").String(), "；")
 
 	if isWritable(ai.Path) {
 		// Add "Move to Trash" action
