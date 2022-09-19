@@ -5,9 +5,7 @@ package main
 // but eventually may be rewritten to do things natively in Go.
 
 import (
-	"bufio"
 	"bytes"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -16,7 +14,6 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"github.com/adrg/xdg"
 	"github.com/probonopd/go-appimage/internal/helpers"
 	"gopkg.in/ini.v1"
 )
@@ -27,24 +24,14 @@ import (
 // for a while
 func writeDesktopFile(ai AppImage) {
 
-	filename := "appimagekit_" + ai.md5 + ".desktop"
-
 	// log.Println(md5s)
 	// XDG directories
 	// log.Println(xdg.DataHome)
 	// log.Println(xdg.DataDirs)
 	// log.Println(xdg.ConfigHome)
 	// log.Println(xdg.ConfigDirs)
-	desktopcachedir := xdg.CacheHome + "/applications/" // FIXME: Do not hardcode here and in other places
-
-	err := os.MkdirAll(desktopcachedir, os.ModePerm)
-	if err != nil {
-		log.Printf("desktop: %v", err)
-	}
 	// log.Println(xdg.RuntimeDir)
-	var cfg *ini.File
 	ini.PrettyFormat = false
-	startingPoint := false //An easy way to tell if extracting the desktop file worked.
 	arg0abs, err := filepath.Abs(os.Args[0])
 
 	// FIXME: KDE seems to have a problem when the AppImage is on a partition of which the disklabel contains "_"?
@@ -52,40 +39,17 @@ func writeDesktopFile(ai AppImage) {
 	if err != nil {
 		log.Println(err)
 	}
-	if ai.Desktop != nil {
-		//Start with a fresh copy of the desktop file so we don't make edits to ai.Desktop
 
-		desktopRdr, _ := ai.ExtractFileReader("*.desktop")
-		defer desktopRdr.Close()
-		//cleaning the desktop file so it can be parsed properly
-		var desktop []byte
-		buf := bufio.NewReader(desktopRdr)
-		for err == nil {
-			var line string
-			line, err = buf.ReadString('\n')
-			if strings.Contains(line, ";") {
-				line = strings.ReplaceAll(line, ";", "；") //replacing it with a fullwidth semicolon (unicode FF1B)
-			}
-			desktop = append(desktop, line...)
-		}
-		cfg, err = ini.Load(desktop)
-		if err == nil {
-			startingPoint = true
-		}
-		//TODO: check if the thumbnail is already present and only extract it and set it's value if it isn't
-	}
+	//Create a copy of the desktop file to edit.
+	deskCopy := new(bytes.Buffer)
+	ai.Desktop.WriteTo(deskCopy)
+	cfg, _ := ini.Load(deskCopy)
 
-	if !startingPoint {
-		cfg = ini.Empty()
-		cfg.Section("Desktop Entry").Key("Type").SetValue("Application")
+	if !cfg.Section("Desktop Entry").HasKey("Name") {
 		cfg.Section("Desktop Entry").Key("Name").SetValue(ai.Name)
-	} else {
-		if !cfg.Section("Desktop Entry").HasKey("Name") {
-			cfg.Section("Desktop Entry").Key("Name").SetValue(ai.Name)
-		}
-		if !cfg.Section("Desktop Entry").HasKey("Type") {
-			cfg.Section("Desktop Entry").Key("Type").SetValue("Application")
-		}
+	}
+	if !cfg.Section("Desktop Entry").HasKey("Type") {
+		cfg.Section("Desktop Entry").Key("Type").SetValue("Application")
 	}
 	thumbnail := ThumbnailsDirNormal + ai.md5 + ".png"
 	cfg.Section("Desktop Entry").Key("Icon").SetValue(thumbnail)
@@ -125,8 +89,28 @@ func writeDesktopFile(ai AppImage) {
 		cfg.Section("Desktop Entry").Key(helpers.UpdateInformationKey).SetValue("\"" + ui + "\"")
 	}
 	// Actions
-
 	var actions []string
+	if strings.TrimSpace(cfg.Section("Desktop Entry").Key("Actions").String()) != "" {
+		actions = strings.Split(cfg.Section("Desktop Entry").Key("Actions").String(), "；")
+		for i := 0; i < len(actions); i++ {
+			if actions[i] == "" {
+				actions = append(actions[:i], actions[i+1:]...)
+			}
+		}
+	}
+	for _, a := range actions {
+		sec := cfg.Section("Desktop Action " + a)
+		exec := sec.Key("Exec").String()
+		if exec != "" {
+			if strings.HasPrefix(exec, "\"") {
+				if strings.Contains(exec[1:], "\"") {
+					exec = exec[1 : strings.Index(exec[1:], "\"")+1]
+				}
+			}
+			spl := strings.Split(exec, " ")
+			sec.Key("Exec").SetValue(arg0abs + " wrap \"" + ai.Path + "\" " + strings.Join(spl[1:], " "))
+		}
+	}
 
 	if isWritable(ai.Path) {
 		// Add "Move to Trash" action
@@ -235,24 +219,24 @@ func writeDesktopFile(ai AppImage) {
 		cfg.Section("Desktop Action FirejailOverlayTmpfs").Key("Exec").SetValue("firejail --env=DESKTOPINTEGRATION=appimaged --noprofile --overlay-tmpfs --appimage \"" + ai.Path + "\"")
 	}
 
-	as := ""
-	for _, action := range actions {
-		as = as + action + ";"
-	}
+	as := strings.Join(actions, ";")
 	cfg.Section("Desktop Entry").Key("Actions").SetValue(as)
 
 	if *verbosePtr {
-		log.Println("desktop: Saving to", desktopcachedir+"/"+filename)
+		log.Println("desktop: Saving to", ai.desktopfilepath)
 	}
-	err = cfg.SaveTo(desktopcachedir + "/" + filename)
+	buf := new(bytes.Buffer)
+	cfg.WriteTo(buf)
+	out := fixDesktopFile(buf.Bytes())
+	os.Remove(ai.desktopfilepath)
+	deskFil, err := os.Create(ai.desktopfilepath)
+	if err != nil {
+		log.Printf("Fail to create file: %v", err)
+		return
+	}
+	_, err = deskFil.Write(out)
 	if err != nil {
 		log.Printf("Fail to write file: %v", err)
-	}
-
-	err = fixDesktopFile(desktopcachedir + "/" + filename)
-	if err != nil {
-		helpers.PrintError("desktop fixDesktopFile", err)
-		os.Exit(1)
 	}
 }
 
@@ -263,20 +247,12 @@ func isWritable(path string) bool {
 
 // Really ugly workaround for
 // https://github.com/go-ini/ini/issues/90
-func fixDesktopFile(path string) error {
-	input, err := ioutil.ReadFile(path)
-	if err != nil {
-		return err
-	}
+func fixDesktopFile(input []byte) []byte {
 	var output []byte
 	if bytes.Contains(input, []byte("=`")) {
 		output = bytes.Replace(input, []byte("=`"), []byte("="), -1)
 		output = bytes.Replace(output, []byte("`\n"), []byte("\n"), -1)
 	}
 	output = bytes.ReplaceAll(output, []byte("；"), []byte(";"))
-
-	if err = ioutil.WriteFile(path, output, 0755); err != nil {
-		return err
-	}
-	return nil
+	return output
 }

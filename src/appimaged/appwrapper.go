@@ -27,6 +27,8 @@ func appwrap() {
 	}
 
 	cmd := exec.Command(os.Args[2], os.Args[3:]...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
 
 	var out bytes.Buffer
 	cmd.Stderr = &out

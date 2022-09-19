@@ -41,8 +41,8 @@ type AppImage struct {
 // NewAppImage creates an AppImage object from the location defined by path.
 // Returns an error if the given path is not an appimage, or is a temporary file.
 // In all instances, will still return the AppImage.
-func NewAppImage(path string) (*AppImage, error) {
-	ai := AppImage{Path: path, imageType: -1}
+func NewAppImage(path string) (ai *AppImage, err error) {
+	ai = &AppImage{Path: path, imageType: -1}
 	// If we got a temp file, exit immediately
 	// E.g., ignore typical Internet browser temporary files used during download
 	if strings.HasSuffix(path, ".temp") ||
@@ -51,24 +51,35 @@ func NewAppImage(path string) (*AppImage, error) {
 		strings.HasSuffix(path, ".partial") ||
 		strings.HasSuffix(path, ".zs-old") ||
 		strings.HasSuffix(path, ".crdownload") {
-		return &ai, errors.New("given path is a temporary file")
+		return ai, errors.New("given path is a temporary file")
 	}
 	ai.imageType = ai.determineImageType()
 	// Don't waste more time if the file is not actually an AppImage
 	if ai.imageType < 0 {
-		return &ai, errors.New("given path is NOT an AppImage")
+		return ai, errors.New("given path is NOT an AppImage")
 	}
 	if ai.imageType > 1 {
 		ai.offset = helpers.CalculateElfSize(ai.Path)
 	}
-	err := ai.populateReader(true, false)
+	err = ai.populateReader(true, false)
 	if err != nil {
-		return &ai, err
+		return
 	}
 	//try to load up the desktop file for some information.
-	desktopFil, err := ai.reader.FileReader("*.desktop")
+	var desk string
+	files := ai.reader.ListFiles(".")
+	for _, f := range files {
+		if strings.HasSuffix(f, ".desktop") {
+			desk = f
+			break
+		}
+	}
+	if desk == "" {
+		return ai, errors.New("cannot find desktop file")
+	}
+	desktopFil, err := ai.reader.FileReader(desk)
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	//cleaning the desktop file so it can be parsed properly
@@ -83,7 +94,7 @@ func NewAppImage(path string) (*AppImage, error) {
 
 	ai.Desktop, err = ini.Load(desktop)
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	ai.Name = ai.Desktop.Section("Desktop Entry").Key("Name").Value()
@@ -96,7 +107,7 @@ func NewAppImage(path string) (*AppImage, error) {
 	}
 
 	ai.UpdateInfo, _ = helpers.ReadUpdateInfo(ai.Path)
-	return &ai, nil
+	return
 }
 
 func (ai AppImage) calculateNiceName() string {
@@ -171,6 +182,10 @@ func (ai AppImage) SquashfsReader() (*squashfs.Reader, error) {
 // Type is the type of the AppImage. Should be either 1 or 2.
 func (ai AppImage) Type() int {
 	return ai.imageType
+}
+
+func (ai AppImage) ListFiles(folder string) []string {
+	return ai.reader.ListFiles(folder)
 }
 
 // ExtractFile extracts a file from from filepath (which may contain * wildcards) in an AppImage to the destinationdirpath.
