@@ -218,14 +218,6 @@ if [ $GITHUB_ACTIONS ]; then
   sudo apt-get install --yes wget file
 fi
 
-# Install zig, it comes with musl libc
-if [ ! -e /usr/local/bin/zig ]; then
-  wget -c -q "https://ziglang.org/builds/zig-linux-x86_64-0.10.0-dev.2112+0df28f9d4.tar.xz"
-  tar xf zig-linux-*-*.tar.xz
-  sudo mv zig-linux-*/* /usr/local/bin/
-  which zig
-fi
-
 if [ -z $BUILDTOOL ]; then
   BUILDTOOL=(appimaged appimagetool mkappimage)
 fi
@@ -249,6 +241,17 @@ fi
 mkdir -p $BUILDDIR || true
 cd $BUILDDIR
 
+# Install zig, it comes with musl libc
+if [ ! -e $BUILDDIR/zig ]; then
+  wget -c -q "https://ziglang.org/builds/zig-linux-x86_64-0.10.0-dev.2112+0df28f9d4.tar.xz"
+  tar xf zig-linux-*.tar.xz
+  rm zig-linux-*.tar.xz
+  mv zig-linux-* zig
+  CLEANUP+=($BUILDDIR/zig)
+fi
+
+PATH=$BUILDDIR/zig:$PATH
+
 # We always want the amd64 appimagetool built first so that other AppImages can be built.
 # If this isn't wanted, we clean it up afterwards
 build amd64 appimagetool
@@ -267,7 +270,7 @@ if [ -z $BUILDINGAPPIMAGETOOL ]; then
   CLEANUP+=($BUILDDIR/appimagetool-$VERSION-x86_64.AppImage)
 fi
 
-if [ -z $DONTCLEAN]; then
+if [ -z $DONTCLEAN ]; then
   for file in ${CLEANUP[@]}; do
     echo $file
     rm -rf $file || true

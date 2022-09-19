@@ -252,15 +252,6 @@ func moveDesktopFiles(ai *AppImage) error {
 	if !integrate {
 		return nil
 	}
-	desktopcachedir := xdg.CacheHome + "/applications/" // FIXME: Do not hardcode here and in other places
-
-	err := os.Rename(desktopcachedir+"/appimagekit_"+ai.md5+".desktop", ai.desktopfilepath)
-	if err != nil {
-		return err
-	}
-	if *verbosePtr {
-		log.Println("main: Moved ", desktopcachedir+"/appimagekit_"+ai.md5+".desktop to", xdg.DataHome+"/applications/")
-	}
 
 	if !ai.startup {
 		// If one single application has been integrated, then the user probably cares about it
