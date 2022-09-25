@@ -351,10 +351,10 @@ func GenerateAppImage(
 		log.Println("WARNING: Skipping AppStream metadata check...")
 	} else if helpers.CheckIfFileExists(appstreamfile) == false {
 		log.Println("WARNING: AppStream upstream metadata is missing, please consider creating it in")
-		fmt.Println("         " + appdir + "/usr/share/metainfo/" + filepath.Base(desktopfile) + ".appdata.xml")
+		fmt.Println("         " + appstreamfile)
 		fmt.Println("         Please see https://www.freedesktop.org/software/appstream/docs/chap-Quickstart.html#sect-Quickstart-DesktopApps")
 		fmt.Println("         for more information or use the generator at")
-		fmt.Println("         https://appimage.github.io/simple-appstream-generator/")
+		fmt.Println("         https://appimagecommunity.github.io/simple-appstream-generator/")
 	} else {
 		fmt.Println("Trying to validate AppStream information with the appstreamcli tool")
 		_, err := exec.LookPath("appstreamcli")
