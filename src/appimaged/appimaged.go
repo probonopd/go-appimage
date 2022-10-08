@@ -362,7 +362,7 @@ func watchDirectoriesReally(watchedDirectories []string) {
 		go inotifyWatch(v)
 		// For now we don't walk subdirectories.
 		// filepath.Walk scans subfolders too,
-		// ioutil.ReadDir does not.
+		// os.ReadDir does not.
 		infos, err := os.ReadDir(v)
 		if err != nil {
 			helpers.PrintError("watchDirectoriesReally", err)

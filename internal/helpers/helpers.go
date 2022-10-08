@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -118,7 +117,7 @@ func FilesWithSuffixInDirectoryRecursive(directory string, extension string) []s
 // FilesWithSuffixInDirectory returns the files in a given directory with the given filename extension, and err
 func FilesWithSuffixInDirectory(directory string, extension string) []string {
 	var foundfiles []string
-	files, err := ioutil.ReadDir(directory)
+	files, err := os.ReadDir(directory)
 	if err != nil {
 		return foundfiles
 	}
@@ -134,7 +133,7 @@ func FilesWithSuffixInDirectory(directory string, extension string) []string {
 // FilesWithPrefixInDirectory returns the files in a given directory with the given filename extension, and err
 func FilesWithPrefixInDirectory(directory string, prefix string) []string {
 	var foundfiles []string
-	files, err := ioutil.ReadDir(directory)
+	files, err := os.ReadDir(directory)
 	if err != nil {
 		return foundfiles
 	}
@@ -211,7 +210,7 @@ func CheckIfExecFileExists(desktopfilepath string) bool {
 // in xdg.DataHome + "/applications/"
 // that point to non-existing Exec= entries
 func DeleteDesktopFilesWithNonExistingTargets() {
-	files, e := ioutil.ReadDir(xdg.DataHome + "/applications/")
+	files, e := os.ReadDir(xdg.DataHome + "/applications/")
 	LogError("desktop", e)
 	if e != nil {
 		return
@@ -233,7 +232,7 @@ func DeleteDesktopFilesWithNonExistingTargets() {
 // in xdg.DataHome + "/applications/"
 func GetValuesForAllDesktopFiles(key string) []string {
 	var results []string
-	files, e := ioutil.ReadDir(xdg.DataHome + "/applications/")
+	files, e := os.ReadDir(xdg.DataHome + "/applications/")
 	LogError("GetValuesForAllDesktopFiles", e)
 	if e != nil {
 		return results
@@ -498,12 +497,12 @@ func AppendIfMissing(slice []string, s string) []string {
 // ReplaceTextInFile replaces search string with replce string in a file.
 // Returns error or nil
 func ReplaceTextInFile(path string, search string, replace string) error {
-	input, err := ioutil.ReadFile(path)
+	input, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
 	output := bytes.Replace(input, []byte(search), []byte(replace), -1)
-	if err = ioutil.WriteFile(path, output, 0666); err != nil {
+	if err = os.WriteFile(path, output, 0666); err != nil {
 		return err
 	}
 	return nil

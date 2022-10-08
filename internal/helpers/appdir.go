@@ -3,13 +3,13 @@ package helpers
 import (
 	"errors"
 	"fmt"
-	"gopkg.in/ini.v1"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"gopkg.in/ini.v1"
 )
 
 type AppDir struct {
@@ -44,7 +44,7 @@ func NewAppDir(desktopFilePath string) (AppDir, error) {
 	}
 
 	// Find main top-level desktop file
-	infos, err := ioutil.ReadDir(ad.Path)
+	infos, err := os.ReadDir(ad.Path)
 	if err != nil {
 		PrintError("ReadDir", err)
 		return ad, err
@@ -143,10 +143,10 @@ func (AppDir) GetElfInterpreter(appdir AppDir) (string, error) {
 
 // CreateIconDirectories creates empty directories
 // in <AppDir>/usr/share/icons/<size>/apps
-func (appdir AppDir) CreateIconDirectories() (error) {
+func (appdir AppDir) CreateIconDirectories() error {
 	// Only use the most common sizes in the hope that at least
 	// those will work on all target systems
-	iconSizes := []int{ 512, 256, 128, 48, 32, 24, 22, 16, 8 }
+	iconSizes := []int{512, 256, 128, 48, 32, 24, 22, 16, 8}
 	var err error = nil
 	for _, iconSize := range iconSizes {
 		err = os.MkdirAll(appdir.Path+"/usr/share/icons/hicolor/"+string(iconSize)+"x"+string(iconSize)+"/apps", 0755)
@@ -156,18 +156,18 @@ func (appdir AppDir) CreateIconDirectories() (error) {
 
 // CopyMainIconToRoot copies the most suitable icon for the
 // Icon= entry in DesktopFilePath to the root of the AppDir
-func (appdir AppDir) CopyMainIconToRoot(iconName string) (error) {
+func (appdir AppDir) CopyMainIconToRoot(iconName string) error {
 	var err error = nil
-	iconPreferenceOrder := []int{ 128, 256, 512, 48, 32, 24, 22, 16, 8 }
-	if Exists(appdir.Path + "/" + iconName+  ".png") {
+	iconPreferenceOrder := []int{128, 256, 512, 48, 32, 24, 22, 16, 8}
+	if Exists(appdir.Path + "/" + iconName + ".png") {
 		log.Println("Top-level icon already exists, leaving untouched")
 	} else {
-	for _, iconSize := range iconPreferenceOrder {
-		candidate := appdir.Path+"/usr/share/icons/hicolor/"+string(iconSize)+"x"+string(iconSize)+"/apps/" + iconName + ".png"
-		if Exists(candidate){
-			CopyFile(candidate,appdir.Path + "/" + iconName+  ".png" )
+		for _, iconSize := range iconPreferenceOrder {
+			candidate := appdir.Path + "/usr/share/icons/hicolor/" + string(iconSize) + "x" + string(iconSize) + "/apps/" + iconName + ".png"
+			if Exists(candidate) {
+				CopyFile(candidate, appdir.Path+"/"+iconName+".png")
+			}
 		}
-	}
 	}
 	return err
 }

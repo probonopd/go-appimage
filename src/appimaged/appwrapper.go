@@ -5,7 +5,6 @@ package main
 
 import (
 	"bytes"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -148,7 +147,7 @@ func sendErrorDesktopNotification(title string, body string) {
 // which have Exec= entries pointing to the executable
 func findDesktopFilesPointingToExecutable(executablefilepath string) ([]string, error) {
 	var results []string
-	files, e := ioutil.ReadDir(xdg.DataHome + "/applications/")
+	files, e := os.ReadDir(xdg.DataHome + "/applications/")
 	helpers.LogError("desktop", e)
 	if e != nil {
 		return results, e
@@ -156,7 +155,8 @@ func findDesktopFilesPointingToExecutable(executablefilepath string) ([]string, 
 	for _, file := range files {
 		if strings.HasSuffix(file.Name(), ".desktop") {
 			var cfg *ini.File
-			if file.Mode()&os.ModeSymlink != 0 { // Check if it's a symlink
+			info, _ := file.Info()
+			if info.Mode()&os.ModeSymlink != 0 { // Check if it's a symlink
 				linkfile, err := os.Readlink(xdg.DataHome + "/applications/" + file.Name()) // Read the symlink target
 				if err != nil {
 					log.Printf("Readlink error %s on file %s", err, linkfile)

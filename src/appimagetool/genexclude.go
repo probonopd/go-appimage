@@ -1,5 +1,6 @@
 // The following directive is necessary to make the package coherent:
 
+//go:build ignore
 // +build ignore
 
 // This program generates exclude.go. It can be invoked by running
@@ -8,7 +9,6 @@ package main
 
 import (
 	"errors"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -48,7 +48,7 @@ func getExcludedLibs(url string) []string {
 	defer resp.Body.Close()
 	var bodyString string
 	if resp.StatusCode == http.StatusOK {
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		bodyBytes, err := io.ReadAll(resp.Body)
 		if err != nil {
 			log.Println(err)
 			return (excludeListLibs)

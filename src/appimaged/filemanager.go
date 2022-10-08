@@ -15,8 +15,6 @@ import (
 
 	"github.com/probonopd/go-appimage/internal/helpers"
 
-	"io/ioutil"
-
 	"github.com/adrg/xdg"
 )
 
@@ -90,7 +88,7 @@ Name=Make executable
 		helpers.PrintError("filemanager", err)
 	}
 	d1 := []byte(GNOMEFileManagerActionEntry)
-	err = ioutil.WriteFile(xdg.DataHome+"/file-manager/actions/appimaged.desktop", d1, 0644)
+	err = os.WriteFile(xdg.DataHome+"/file-manager/actions/appimaged.desktop", d1, 0644)
 	helpers.PrintError("filemanager", err)
 
 	// KDE
@@ -100,7 +98,7 @@ Name=Make executable
 		helpers.PrintError("filemanager", err)
 	}
 	d2 := []byte(KDEServiceMenuEntry)
-	err = ioutil.WriteFile(xdg.DataHome+"/kservices5/ServiceMenus/appimaged.desktop", d2, 0644)
+	err = os.WriteFile(xdg.DataHome+"/kservices5/ServiceMenus/appimaged.desktop", d2, 0644)
 	helpers.PrintError("filemanager", err)
 
 	// XFCE
@@ -155,7 +153,7 @@ Name=Make executable
 
 		d3 = []byte(XFCEThunarUCABuffer)
 	}
-	err = ioutil.WriteFile(xdg.ConfigHome+"/Thunar/uca.xml", d3, 0644)
+	err = os.WriteFile(xdg.ConfigHome+"/Thunar/uca.xml", d3, 0644)
 	helpers.PrintError("filemanager", err)
 
 	// Cinnamon/Nemo
