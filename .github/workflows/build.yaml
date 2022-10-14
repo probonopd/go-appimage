@@ -17,6 +17,8 @@ jobs:
   build-all:
     name: Build for all architectures
     runs-on: ubuntu-18.04
+    env:
+      VERSION: continuous
     steps:
     - uses: actions/checkout@v2
     - name: Set up Go
