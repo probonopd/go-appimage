@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -17,9 +16,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mgord9518/imgconv"
 	"github.com/probonopd/go-appimage/internal/helpers"
 	"github.com/probonopd/go-zsyncmake/zsync"
-	"github.com/mgord9518/imgconv"
 	"gopkg.in/ini.v1"
 )
 
@@ -40,9 +39,9 @@ var LibcDir = "libc"
 func checkRunningWithinDocker() bool {
 	// Detect if we are running inside Docker; https://github.com/AppImage/AppImageKit/issues/912
 	// If the file /.dockerenv exists, and/or if /proc/1/cgroup begins with /lxc/ or /docker/
-	res, err := ioutil.ReadFile("/proc/1/cgroup")
+	res, err := os.ReadFile("/proc/1/cgroup")
 	if err == nil {
-		// Do not exit if ioutil.ReadFile("/proc/1/cgroup") fails. This happens, e.g., on FreeBSD
+		// Do not exit if os.ReadFile("/proc/1/cgroup") fails. This happens, e.g., on FreeBSD
 		if strings.HasPrefix(string(res), "/lxc") || strings.HasPrefix(string(res), "/docker") || helpers.Exists("/.dockerenv") == true {
 			log.Println("Running inside Docker. Please make sure that the environment variables from Travis CI")
 			log.Println("available inside Docker if you are running on Travis CI.")
@@ -327,22 +326,22 @@ func GenerateAppImage(
 		_ = os.Remove(appdir + "/.DirIcon")
 	}
 
-    // If the icon is an svg, attempt to convert it to a png
-    // If that fails, just copy over the original icon
-    iconext := iconfile[len(iconfile)-3:]
-    if iconext == "svg" {
-        err = imgconv.ConvertFileWithAspect(iconfile, appdir+"/.DirIcon", 256, "png")
-        if err != nil {
-            err = helpers.CopyFile(iconfile, appdir+"/.DirIcon")
-        }
-    } else {
-        err = helpers.CopyFile(iconfile, appdir+"/.DirIcon")
-    }
+	// If the icon is an svg, attempt to convert it to a png
+	// If that fails, just copy over the original icon
+	iconext := iconfile[len(iconfile)-3:]
+	if iconext == "svg" {
+		err = imgconv.ConvertFileWithAspect(iconfile, appdir+"/.DirIcon", 256, "png")
+		if err != nil {
+			err = helpers.CopyFile(iconfile, appdir+"/.DirIcon")
+		}
+	} else {
+		err = helpers.CopyFile(iconfile, appdir+"/.DirIcon")
+	}
 
-    if err != nil {
-        helpers.PrintError("Copy .DirIcon", err)
-        os.Exit(1)
-    }
+	if err != nil {
+		helpers.PrintError("Copy .DirIcon", err)
+		os.Exit(1)
+	}
 
 	// Check if AppStream upstream metadata is present in source AppDir
 	// If yes, use ximion's appstreamcli to make sure that desktop file and appdata match together and are valid
@@ -608,7 +607,7 @@ func GenerateAppImage(
 	}
 
 	// Embed public key into '.sig_key' section if it exists
-	buf, err := ioutil.ReadFile(gitRoot + "/" + helpers.PubkeyFileName)
+	buf, err := os.ReadFile(gitRoot + "/" + helpers.PubkeyFileName)
 	if err != nil {
 		fmt.Println("Could not read "+gitRoot+"/"+helpers.PubkeyFileName+":", err)
 	} else {

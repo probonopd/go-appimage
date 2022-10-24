@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/md5"
 	"encoding/hex"
-	"io/ioutil"
 	"net/url"
 
 	"gopkg.in/ini.v1"
@@ -256,7 +255,7 @@ func FindMostRecentAppImageWithMatchingUpdateInformation(updateinformation strin
 // FindAppImagesWithMatchingUpdateInformation finds registered AppImages
 // that have matching upate information embedded
 func FindAppImagesWithMatchingUpdateInformation(updateinformation string) []string {
-	files, err := ioutil.ReadDir(xdg.DataHome + "/applications/")
+	files, err := os.ReadDir(xdg.DataHome + "/applications/")
 	helpers.LogError("desktop", err)
 	var results []string
 	if err != nil {

@@ -52,6 +52,8 @@ func inotifyWatch(path string) {
 			log.Println("TODO:", ei.Path(), "was deleted, un-integrate all AppImages that were conteined herein")
 			fallthrough
 			// log.Println("ToBeIntegratedOrUnintegrated now contains:", ToBeIntegratedOrUnintegrated)
+		case notify.InDelete:
+			fallthrough
 		case notify.InMovedFrom:
 			ai, _ := NewAppImage(ei.Path())
 			ai.startup = false

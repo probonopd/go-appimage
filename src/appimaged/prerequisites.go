@@ -8,7 +8,7 @@ import (
 	"github.com/adrg/xdg"
 
 	//	"github.com/amenzhinsky/go-polkit"
-	"io/ioutil"
+
 	"log"
 	"os"
 	"os/exec"
@@ -224,7 +224,7 @@ func exitIfBinfmtExists(path string) {
 // and exits the process if we are not
 func ensureRunningFromLiveSystem() {
 	keywords := []string{"casper", "live", "Live", ".iso"}
-	b, _ := ioutil.ReadFile("/proc/cmdline")
+	b, _ := os.ReadFile("/proc/cmdline")
 	str := string(b)
 	found := false
 	for _, k := range keywords {
@@ -527,7 +527,7 @@ WantedBy=default.target`)
 
 }
 
-// syncWritFile is a reproduction of ioutil.WriteFile,
+// syncWritFile is a reproduction of os.WriteFile,
 // with an additional call to f.Sync() before f.Close()
 func syncWriteFile(path string, data []byte, perm os.FileMode) error {
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)

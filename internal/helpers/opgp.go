@@ -9,11 +9,11 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"golang.org/x/crypto/openpgp/packet"
-	"io/ioutil"
 	"log"
 	"strings"
 	"time"
+
+	"golang.org/x/crypto/openpgp/packet"
 
 	"os"
 
@@ -24,7 +24,7 @@ import (
 func CreateAndValidateKeyPair() {
 	createKeyPair()
 
-	b, err := ioutil.ReadFile("privkey")
+	b, err := os.ReadFile("privkey")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -87,8 +87,8 @@ func createKeyPair() {
 		return
 	}
 
-	ioutil.WriteFile(PubkeyFileName, []byte(pubkeyascdata), 0666)
-	ioutil.WriteFile(PrivkeyFileName, []byte(privkeyascdata), 0600)
+	os.WriteFile(PubkeyFileName, []byte(pubkeyascdata), 0666)
+	os.WriteFile(PrivkeyFileName, []byte(privkeyascdata), 0600)
 }
 
 // CheckSignature checks the signature embedded in an AppImage at path,

@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"path"
 	"strconv"
@@ -224,7 +223,7 @@ func AppDirDeploy(path string) {
 	if options.libAppRunHooks == false {
 		// If libapprun_hooks is not used
 		log.Println("Adding AppRun...")
-		err = ioutil.WriteFile(appdir.Path+"/AppRun", []byte(AppRunData), 0755)
+		err = os.WriteFile(appdir.Path+"/AppRun", []byte(AppRunData), 0755)
 		if err != nil {
 			helpers.PrintError("write AppRun", err)
 			os.Exit(1)
@@ -393,7 +392,7 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 			helpers.PrintError("Could not deploy the interpreter", err)
 			os.Exit(1)
 		}
-		
+
 		// Make ld-linux executable
 		err = os.Chmod(ldTargetPath, 0755)
 		if err != nil {
@@ -1052,14 +1051,14 @@ func PatchFile(path string, search string, replace string) error {
 		return err
 	}
 
-	input, err := ioutil.ReadFile(path)
+	input, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
 
 	output := bytes.Replace(input, []byte(search), []byte(replace), -1)
 
-	if err = ioutil.WriteFile(path+".patched", output, fi.Mode().Perm()); err != nil {
+	if err = os.WriteFile(path+".patched", output, fi.Mode().Perm()); err != nil {
 		return err
 	}
 
