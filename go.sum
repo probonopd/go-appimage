@@ -1,5 +1,5 @@
-github.com/CalebQ42/squashfs v0.6.1 h1:YAliGkOM1rI5ZFrrn9flp5E6d+uDBWXckwXNIdMDcDg=
-github.com/CalebQ42/squashfs v0.6.1/go.mod h1:5qWmiXpaWlIxoqxpnFM21KsMecVXbBpQ8e5fgm1TToA=
+github.com/CalebQ42/squashfs v0.6.2 h1:wGWLDxCMWI2CMrO5fZvw9qdBjM+mJaw/qa7gmqRcuOA=
+github.com/CalebQ42/squashfs v0.6.2/go.mod h1:5qWmiXpaWlIxoqxpnFM21KsMecVXbBpQ8e5fgm1TToA=
 github.com/acobaugh/osrelease v0.1.0 h1:Yb59HQDGGNhCj4suHaFQQfBps5wyoKLSSX/J/+UifRE=
 github.com/acobaugh/osrelease v0.1.0/go.mod h1:4bFEs0MtgHNHBrmHCt67gNisnabCRAlzdVasCEGHTWY=
 github.com/adrg/xdg v0.4.0 h1:RzRqFcjH4nE5C6oTAxhBtoE2IRyjBSa62SCbyPidvls=
