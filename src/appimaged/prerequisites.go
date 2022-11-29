@@ -506,11 +506,6 @@ LimitNOFILE=65536
 RestartSec=3
 Restart=always
 
-StandardOutput=syslog
-StandardError=syslog
-
-SyslogIdentifier=appimaged
-
 Environment=LAUNCHED_BY_SYSTEMD=1
 
 [Install]
