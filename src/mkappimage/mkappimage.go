@@ -162,7 +162,7 @@ func main() {
 	}
 
 	// let the user know that we are running within a docker container
-	checkRunningWithinDocker()
+	helpers.CheckRunningWithinDocker()
 
 	// build the Command Line interface
 	// https://github.com/urfave/cli/blob/master/docs/v2/manual.md
