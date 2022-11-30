@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"time"
 
 	"github.com/probonopd/go-appimage/internal/helpers"
 
@@ -115,11 +116,19 @@ func monitorUdisks() {
 	} else {
 		satisfied = true
 	}
+	retried := false
+retry:
 	// FIXME: For whatever reason this does NOT work with org.kde.Solid.Device
 	// (which we actually care about), so we check the next best thing
 	e = conn.Object("org.kde.Solid.PowerManagement", "/").Call("org.freedesktop.DBus.Introspectable.Introspect", 0).Store(&s)
 	if e != nil {
-		log.Println("Notice: Cannot introspect org.kde.Solid on this system", e)
+		if retried {
+			log.Println("Notice: Cannot introspect org.kde.Solid on this system", e)
+		} else {
+			log.Println("org.kde.Solid.PowerManagement might not be started yet. Waiting a moment then retrying")
+			time.Sleep(500 * time.Millisecond)
+			goto retry
+		}
 	} else {
 		satisfied = true
 	}
