@@ -82,7 +82,7 @@ func bootstrapValidateAppImage(c *cli.Context) error {
 // the current Git repository
 // 		Args: c: cli.Context
 func bootstrapSetupSigning(c *cli.Context) error {
-	return signing.SetupSigning(c.Bool("overwrite"))
+	return signing.Setup(c.Bool("overwrite"))
 }
 
 // bootstrapAppImageSections is a function which converts cli.Context to
