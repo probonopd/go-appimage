@@ -97,7 +97,7 @@ build () {
   echo CC: $CC
   which zig
   zig env
-  CGO_ENABLED=1 go build -o $BUILDDIR -v -trimpath -ldflags="-linkmode=external -extldflags \"-static\" -s -w -X main.commit=$COMMIT" $PROJECT/src/$PROG
+  CGO_ENABLED=1 go build -o $BUILDDIR -v -trimpath -ldflags="-linkmode=external -extldflags \"-static\" -s -w -X main.commit=$COMMIT" $PROJECT/cmd/$PROG
   ls -lh $PROG
   file $PROG
   # common appimage steps

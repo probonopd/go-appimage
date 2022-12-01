@@ -4,19 +4,20 @@ import (
 	"bytes"
 	"crypto/md5"
 	"encoding/hex"
-	"net/url"
-
-	"gopkg.in/ini.v1"
-
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"gopkg.in/ini.v1"
+
 	"github.com/adrg/xdg"
+
 	"github.com/probonopd/go-appimage/internal/helpers"
-	"github.com/probonopd/go-appimage/src/goappimage"
+	"github.com/probonopd/go-appimage/pkg/goappimage"
+
 	"go.lsp.dev/uri"
 )
 

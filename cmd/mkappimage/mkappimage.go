@@ -9,7 +9,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/probonopd/go-appimage/internal/helpers"
-	"github.com/probonopd/go-appimage/src/goappimage"
+	"github.com/probonopd/go-appimage/pkg/goappimage"
 )
 
 // https://blog.kowalczyk.info/article/vEja/embedding-build-number-in-go-executable.html
@@ -45,7 +45,8 @@ func listLongFilesInAppImage(path string) {
 // check if all the necessary dependencies exist,
 // finally check if the provided argument, AppDir is a directly.
 // Call GenerateAppImage with the converted arguments
-// 		Args: c: cli.Context
+//
+//	Args: c: cli.Context
 func bootstrapMkAppImage(c *cli.Context) error {
 
 	// check if the number of arguments are stictly 1, if not
