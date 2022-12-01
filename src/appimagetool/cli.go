@@ -9,6 +9,7 @@ import (
 
 	"github.com/probonopd/go-appimage/internal/helpers"
 	"github.com/probonopd/go-appimage/internal/signing"
+	"github.com/probonopd/go-appimage/src/goappimage"
 	"github.com/urfave/cli/v2"
 )
 
@@ -165,7 +166,7 @@ func bootstrapAppImageBuild(c *cli.Context) error {
 		// updateinformation: 			"" 	(empty string, we want to guess the update information from
 		//								scratch, and if we fail to guess it, then no update metadata for
 		// 								the appimage)
-		GenerateAppImage(
+		goappimage.GenerateAppImage(
 			fileToAppDir, "",
 			true,
 			"",

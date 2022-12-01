@@ -7,8 +7,14 @@ import (
 	"time"
 
 	"github.com/probonopd/go-appimage/internal/helpers"
+	"github.com/probonopd/go-appimage/src/goappimage"
 	"github.com/urfave/cli/v2"
 )
+
+// https://blog.kowalczyk.info/article/vEja/embedding-build-number-in-go-executable.html
+// The build script needs to set, e.g.,
+// go build -ldflags "-X main.commit=$TRAVIS_BUILD_NUMBER"
+var commit string
 
 // listFilesInAppImage lists the files in the AppImage, similar to
 // the ls command in UNIX systems
@@ -112,7 +118,7 @@ func bootstrapMkAppImage(c *cli.Context) error {
 		}
 
 		// now generate the appimage
-		GenerateAppImage(
+		goappimage.GenerateAppImage(
 			fileToAppDir,
 			fileToAppImageOutput,
 			shouldGuessUpdateInformation,
