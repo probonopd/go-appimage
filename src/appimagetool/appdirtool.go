@@ -239,12 +239,12 @@ func AppDirDeploy(path string) {
 
 	qtVersionDetected := 0
 
-	if containsString(allELFs, "libQt5Core.so.5") == true {
+	if helpers.ContainsString(allELFs, "libQt5Core.so.5") == true {
 		log.Println("Detected Qt 5")
 		qtVersionDetected = 5
 	}
 
-	if containsString(allELFs, "libQtCore.so.4") == true {
+	if helpers.ContainsString(allELFs, "libQtCore.so.4") == true {
 		log.Println("Detected Qt 4")
 		qtVersionDetected = 4
 	}

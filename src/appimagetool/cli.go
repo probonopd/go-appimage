@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/probonopd/go-appimage/internal/helpers"
+	"github.com/probonopd/go-appimage/internal/signing"
 	"github.com/urfave/cli/v2"
 )
 
@@ -81,7 +82,7 @@ func bootstrapValidateAppImage(c *cli.Context) error {
 // the current Git repository
 // 		Args: c: cli.Context
 func bootstrapSetupSigning(c *cli.Context) error {
-	return setupSigning(c.Bool("overwrite"))
+	return signing.SetupSigning(c.Bool("overwrite"))
 }
 
 // bootstrapAppImageSections is a function which converts cli.Context to

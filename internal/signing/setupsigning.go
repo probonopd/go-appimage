@@ -8,7 +8,7 @@
 // * Commit the encrypted file
 // * even git push?
 
-package main
+package signing
 
 import (
 	"bufio"
@@ -25,7 +25,7 @@ import (
 	"gopkg.in/src-d/go-git.v4"
 )
 
-func setupSigning(overwriteSecretFiles bool) error {
+func SetupSigning(overwriteSecretFiles bool) error {
 
 	// Check if we are on a clean git repository. Exit as fast as possible if we are not.
 	var gitRepo *git.Repository
@@ -299,9 +299,9 @@ func AskForConfirmation() bool {
 	}
 	okayResponses := []string{"y", "Y", "yes", "Yes", "YES"}
 	nokayResponses := []string{"n", "N", "no", "No", "NO"}
-	if containsString(okayResponses, response) {
+	if helpers.ContainsString(okayResponses, response) {
 		return true
-	} else if containsString(nokayResponses, response) {
+	} else if helpers.ContainsString(nokayResponses, response) {
 		return false
 	} else {
 		fmt.Println("Please type yes or no and then press enter:")
@@ -318,18 +318,6 @@ func posString(slice []string, element string) int {
 		}
 	}
 	return -1
-}
-
-// containsString returns true iff slice contains element that ends with the given string
-func containsString(slice []string, element string) bool {
-
-	for _, item := range slice {
-		if strings.HasSuffix(item, element) == true {
-			return true
-		}
-	}
-
-	return false
 }
 
 //////////////////////////////// end AskForConfirmation
