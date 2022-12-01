@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -e
-set -x
 
 # Now accepting arguments!
 # If you want a non-native architecture, specify those first, then which
@@ -41,6 +40,9 @@ help_message() {
   echo ""
   echo "-pc"
   echo "  Pre-Clean the build directory before building"
+  echo ""
+  echo "-v"
+  echo "  Verbose script output"
   echo ""
   echo "-h"
   echo "  Prints this message"
@@ -172,6 +174,8 @@ EOF
 
 while [ $# -gt 0 ]; do
   case $1 in
+    -v)
+      set -x;;
     -a)
       BUILDARCH=(${2//,/ })
       shift;;
