@@ -4,10 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/mgord9518/imgconv"
-	"github.com/probonopd/go-appimage/internal/helpers"
-	"github.com/probonopd/go-zsyncmake/zsync"
-	"gopkg.in/ini.v1"
 	"log"
 	"os"
 	"os/exec"
@@ -15,6 +11,12 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/mgord9518/imgconv"
+	"github.com/probonopd/go-zsyncmake/zsync"
+	"gopkg.in/ini.v1"
+
+	"github.com/probonopd/go-appimage/internal/helpers"
 )
 
 // constructMQTTPayload TODO: Add documentation
@@ -74,7 +76,7 @@ func getMeta() (string, string) {
 	if err != nil {
 		log.Println("Apparently not in a git repository")
 		if version == "" {
-			log.Fatal("Version not found, aborting. Set it with VERSION=... " + os.Args[0] + "\n")
+			log.Panic("Version not found, aborting. Set it with VERSION=... " + os.Args[0] + "\n")
 		}
 	} else {
 		gitWt, err := gitRepo.Worktree()
@@ -84,7 +86,7 @@ func getMeta() (string, string) {
 			if version == "" {
 				gitHead, err := gitRepo.Head()
 				if err != nil {
-					log.Fatal("Could not determine version automatically, " +
+					log.Panic("Could not determine version automatically, " +
 						"please supply the application version as $VERSION " +
 						filepath.Base(os.Args[0]) + " ... \n")
 				} else {
@@ -111,49 +113,43 @@ func GenerateAppImage(
 	checkAppStreamMetadata bool,
 	updateInformation string,
 	source string,
-) {
-
+) error {
+	var err error
 	// does the file exist? if not early-exit
 	if !helpers.CheckIfFileOrFolderExists(appdir) {
-		log.Fatal("The specified directory does not exist")
+		return fmt.Errorf("the specified directory does not exist")
 	}
 
-	if _, err := os.Stat(appdir + "/AppRun"); os.IsNotExist(err) {
-		_, _ = os.Stderr.WriteString("AppRun is missing \n")
-		os.Exit(1)
+	if _, err = os.Stat(appdir + "/AppRun"); os.IsNotExist(err) {
+		return fmt.Errorf("AppRun is missing: %w", err)
 	}
 
-	// If no desktop file found, exit
-	n := len(helpers.FilesWithSuffixInDirectory(appdir, ".desktop"))
-	if n < 1 {
-		log.Fatal("No top-level desktop file found in " + appdir + ", aborting\n")
+	desktopFiles := helpers.FilesWithSuffixInDirectory(appdir, ".desktop")
+	switch n := len(desktopFiles); {
+	case n < 1: // If no desktop file found, exit
+		return fmt.Errorf("No top-level desktop file found in " + appdir + ", aborting\n")
+	case n > 1: // If more than one desktop files found, exit
+		return fmt.Errorf("Multiple top-level desktop files found in " + appdir + ", aborting\n")
 	}
+	desktopFile := desktopFiles[0]
 
-	// If more than one desktop files found, exit
-	if n > 1 {
-		log.Fatal("Multiple top-level desktop files found in " + appdir + ", aborting\n")
-	}
-
-	desktopfile := helpers.FilesWithSuffixInDirectory(appdir, ".desktop")[0]
-
-	err := helpers.ValidateDesktopFile(desktopfile)
-	helpers.PrintError("ValidateDesktopFile", err)
+	err = helpers.ValidateDesktopFile(desktopFile)
 	if err != nil {
-		os.Exit(1)
+		return fmt.Errorf("ValidateDesktopFile %w", err)
 	}
 
 	// Read information from .desktop file
-
-	err = helpers.CheckDesktopFile(desktopfile)
+	err = helpers.CheckDesktopFile(desktopFile)
 	if err != nil {
-		helpers.PrintError("CheckDesktopFile", err)
-		os.Exit(1)
+		return fmt.Errorf("CheckDesktopFile %w", err)
 	}
 
 	// Read "Name=" key and convert spaces into underscores
 	d, err := ini.LoadSources(ini.LoadOptions{IgnoreInlineComment: true}, // Do not cripple lines hat contain ";"
-		desktopfile)
-	helpers.PrintError("ini.load", err)
+		desktopFile)
+	if err != nil {
+		return fmt.Errorf("ini.load %w", err)
+	}
 	val, _ := d.Section("Desktop Entry").GetKey("Name")
 	name := val.String()
 	nameWithUnderscores := strings.Replace(name, " ", "_", -1)
@@ -174,27 +170,25 @@ func GenerateAppImage(
 		} else {
 			err := filepath.Walk(appdir, func(path string, info os.FileInfo, err error) error {
 				if err != nil {
-					helpers.PrintError("Determine architecture", err)
-					return err
-				} else if info.IsDir() == false && strings.Contains(info.Name(), ".so.") {
+					return fmt.Errorf("determine architecture %w", err)
+				} else if !info.IsDir() && strings.Contains(info.Name(), ".so.") {
 					arch, err := helpers.GetElfArchitecture(path)
 					if err != nil {
 						// we received an error when analyzing the arch
-						helpers.PrintError("Determine architecture", err)
-						return err
-					} else if helpers.SliceContains(archs, arch) == false {
+						return fmt.Errorf("determine architecture %w", err)
+					} else if !helpers.SliceContains(archs, arch) {
 						log.Println("Architecture of", info.Name()+":", arch)
 						archs = helpers.AppendIfMissing(archs, arch)
 					} else {
 						// FIXME: we found some data, but still it was not a part of the
 						// known architectures
-						errArchNotKnown := errors.New("Could not detect a valid architecture")
+						errArchNotKnown := errors.New("could not detect a valid architecture")
 						return errArchNotKnown
 					}
 				}
 				return nil
 			})
-			helpers.PrintError("Determine architecture", err)
+			return fmt.Errorf("determine architecture %w", err)
 		}
 	} else {
 		archs = helpers.AppendIfMissing(archs, os.Getenv("ARCH"))
@@ -202,7 +196,7 @@ func GenerateAppImage(
 	}
 
 	if len(archs) != 1 {
-		log.Fatal("Could not determine architecture automatically, please supply it as $ARCH " + filepath.Base(os.Args[0]) + " ... \n")
+		return fmt.Errorf("could not determine architecture automatically, please supply it as $ARCH %s ... ", filepath.Base(os.Args[0]))
 	}
 	arch := archs[0]
 
@@ -211,16 +205,19 @@ func GenerateAppImage(
 	// If no version found, exit
 	if version == "" && source != "mkappimage" {
 		// version is not required for mkappimage
-		log.Fatal("Version not found, aborting. Set it with VERSION=... " + os.Args[0] + "\n")
+		return fmt.Errorf("version not found, aborting. Set it with VERSION=... %s", os.Args[0])
 	} else if version != "" {
 		// Set VERSION in desktop file and save it
 		d, err = ini.LoadSources(ini.LoadOptions{IgnoreInlineComment: true}, // Do not cripple lines hat contain ";"
-			desktopfile)
+			desktopFile)
 		ini.PrettyFormat = false
-		helpers.PrintError("ini.load", err)
+		if err != nil {
+			return fmt.Errorf("ini.load %w", err)
+		}
 		d.Section("Desktop Entry").Key("X-AppImage-Version").SetValue(version)
-		err = d.SaveTo(desktopfile)
-		helpers.PrintError("Save desktop file", err)
+		if err = d.SaveTo(desktopFile); err != nil {
+			return fmt.Errorf("save desktop file %w", err)
+		}
 	}
 
 	// Construct target AppImage filename
@@ -237,19 +234,17 @@ func GenerateAppImage(
 			// check the parent directory exists
 			targetDir := filepath.Dir(destination)
 			if !helpers.CheckIfFolderExists(targetDir) {
-				log.Fatal(fmt.Sprintf("%s does not exist", targetDir))
-				return
+				return fmt.Errorf("%s does not exist", targetDir)
 			}
 			// the parent directory exists. Make a fullpath to the destination appimage
 			// with the basename filename following appimage conventions
 		} else if err != nil {
 			// we faced some other random error. Possibly messing around with symlinks or permissionError
 			// log it and quit.
-			log.Fatal(err)
-			return
+			return err
 		} else {
 			// the file or folder exists
-			// check if its a file or a folder.
+			// check if it's a file or a folder.
 			if targetFileInfo.IsDir() {
 				// the user provided path is a directory
 				target = filepath.Join(destination, nameWithUnderscores+"-"+version+"-"+arch+".AppImage")
@@ -276,8 +271,8 @@ func GenerateAppImage(
 		}
 	}
 	if iconfile == "" {
-		log.Fatal("Could not find icon file at " + appdir + "/" + iconname + "{.png, .svg, .xpm}" + "\n" +
-			"nor at " + appdir + "/usr/share/icons/hicolor/256x256/apps/" + iconname + "{.png, .svg, .xpm}" + ", exiting\n")
+		return fmt.Errorf("Could not find icon file at " + appdir + "/" + iconname + "{.png, .svg, .xpm}" + "\n" +
+			"nor at " + appdir + "/usr/share/icons/hicolor/256x256/apps/" + iconname + "{.png, .svg, .xpm}" + ", exiting")
 	}
 	log.Println("Icon file:", iconfile)
 
@@ -286,10 +281,12 @@ func GenerateAppImage(
 	// Deleting pre-existing .DirIcon
 	if helpers.CheckIfFileExists(appdir+"/.DirIcon") == true {
 		log.Println("Deleting pre-existing .DirIcon")
-		_ = os.Remove(appdir + "/.DirIcon")
+		if err = os.Remove(appdir + "/.DirIcon"); err != nil {
+			log.Printf("Error deleting .DirIcon: %s, try to keep going\n", err)
+		}
 	}
 
-	// If the icon is an svg, attempt to convert it to a png
+	// If the icon is a svg, attempt to convert it to a png
 	// If that fails, just copy over the original icon
 	iconext := iconfile[len(iconfile)-3:]
 	if iconext == "svg" {
@@ -302,16 +299,15 @@ func GenerateAppImage(
 	}
 
 	if err != nil {
-		helpers.PrintError("Copy .DirIcon", err)
-		os.Exit(1)
+		return fmt.Errorf("on copy .DirIcon %w", err)
 	}
 
 	// Check if AppStream upstream metadata is present in source AppDir
 	// If yes, use ximion's appstreamcli to make sure that desktop file and appdata match together and are valid
-	appstreamfile := appdir + "/usr/share/metainfo/" + strings.Replace(filepath.Base(desktopfile), ".desktop", ".appdata.xml", -1)
+	appstreamfile := appdir + "/usr/share/metainfo/" + strings.ReplaceAll(filepath.Base(desktopFile), ".desktop", ".appdata.xml")
 	if !checkAppStreamMetadata {
 		log.Println("WARNING: Skipping AppStream metadata check...")
-	} else if helpers.CheckIfFileExists(appstreamfile) == false {
+	} else if !helpers.CheckIfFileExists(appstreamfile) {
 		log.Println("WARNING: AppStream upstream metadata is missing, please consider creating it in")
 		fmt.Println("         " + appstreamfile)
 		fmt.Println("         Please see https://www.freedesktop.org/software/appstream/docs/chap-Quickstart.html#sect-Quickstart-DesktopApps")
@@ -321,13 +317,11 @@ func GenerateAppImage(
 		fmt.Println("Trying to validate AppStream information with the appstreamcli tool")
 		_, err := exec.LookPath("appstreamcli")
 		if err != nil {
-			fmt.Println("Required helper tool appstreamcli missing")
-			os.Exit(1)
+			return fmt.Errorf("required helper tool appstreamcli missing")
 		}
 		err = helpers.ValidateAppStreamMetainfoFile(appdir)
 		if err != nil {
-			fmt.Println("In case of questions regarding the validation, please refer to https://github.com/ximion/appstream")
-			os.Exit(1)
+			return fmt.Errorf("faced %w\nIn case of questions regarding the validation, please refer to https://github.com/ximion/appstream", err)
 		}
 	}
 
@@ -337,22 +331,20 @@ func GenerateAppImage(
 			runtimeDir = helpers.Here()
 		}
 		runtimeFile = runtimeDir + "/runtime-" + arch
-		if helpers.CheckIfFileExists(runtimeFile) == false {
+		if !helpers.CheckIfFileExists(runtimeFile) {
 			log.Println("Cannot find " + runtimeFile + ", exiting")
 			log.Println("It should have been bundled, but you can get it from https://github.com/AppImage/AppImageKit/releases/continuous")
 			// TODO: Download it from there?
-			os.Exit(1)
+			return fmt.Errorf("cannot find %s, it should have been bundled", runtimeFile)
 		}
-	} else if helpers.CheckIfFileExists(runtimeFile) == false {
-		log.Println("Cannot find " + runtimeFile + ", exiting")
-		os.Exit(1)
+	} else if !helpers.CheckIfFileExists(runtimeFile) {
+		return fmt.Errorf("cannot find %s, exiting", runtimeFile)
 	}
 
 	// Find out the size of the binary runtime
 	fi, err := os.Stat(runtimeFile)
 	if err != nil {
-		helpers.PrintError("runtime", err)
-		os.Exit(1)
+		return fmt.Errorf("runtime %w", err)
 	}
 	offset := fi.Size()
 
@@ -362,7 +354,7 @@ func GenerateAppImage(
 	fstime := strconv.FormatInt(FSTime.Unix(), 10) // Seconds since epoch.  Default to current time
 
 	// Turns out that using time.Now() is more precise than a Unix timestamp (seconds precision).
-	// Hence we convert back from the Unix timestamp to be consistent.
+	// Hence, we convert back from the Unix timestamp to be consistent.
 	if n, err := strconv.Atoi(fstime); err == nil {
 		FSTime = time.Unix(int64(n), 0)
 	} else {
@@ -374,11 +366,13 @@ func GenerateAppImage(
 	// this is important e.g., for Firejail
 	// https://github.com/AppImage/AppImageKit/issues/1032#issuecomment-596225173
 	info, err := os.Stat(appdir) // TODO: Walk all directories instead of just looking at the AppDir itself
+	if err != nil {
+		return fmt.Errorf("cannot get the permissions of the AppDir %w", err)
+	}
 	m := info.Mode()
 	if m&(1<<2) == 0 {
 		// Other users don't have read permission, https://stackoverflow.com/a/45430141
-		log.Println("Wrong permissions on AppDir, please set it to 0755 and try again")
-		os.Exit(1)
+		return fmt.Errorf("wrong permissions on AppDir, please set it to 0755 and try again")
 	}
 
 	// "mksquashfs", source, destination, "-offset", offset, "-comp", "zstd", "-root-owned", "-noappend", "-b", "1M"
@@ -388,8 +382,7 @@ func GenerateAppImage(
 	cmd.Stdout = os.Stdout
 	err = cmd.Run()
 	if err != nil {
-		helpers.PrintError("mksquashfs", err)
-		os.Exit(1)
+		return fmt.Errorf("mksquashfs %w", err)
 	}
 
 	// Embed the binary runtime into the squashfs
@@ -397,18 +390,16 @@ func GenerateAppImage(
 
 	err = helpers.WriteFileIntoOtherFileAtOffset(runtimeFile, target, 0)
 	if err != nil {
-		helpers.PrintError("Embedding runtime", err)
-		os.Exit(1)
+		return fmt.Errorf("embedding runtime %w", err)
 	}
 
 	fmt.Println("Marking the AppImage as executable...")
 	_ = os.Chmod(target, 0755)
 
 	// Get the filesize in bytes of the resulting AppImage
-	fi, err = os.Stat(target)
+	fi, err = os.Stat(target) //TODO: start using variable fi
 	if err != nil {
-		helpers.PrintError("Could not get size of AppImage", err)
-		os.Exit(1)
+		return fmt.Errorf("could not get size of AppImage: %w", err)
 	}
 
 	// Construct update information
@@ -442,7 +433,7 @@ func GenerateAppImage(
 		fmt.Println("Running on Travis CI")
 		if os.Getenv("TRAVIS_PULL_REQUEST") != "false" {
 			fmt.Println("Will not calculate update information for GitHub because this is a pull request")
-		} else if ghTokenFound == false || ghToken == "" {
+		} else if !ghTokenFound || ghToken == "" {
 			fmt.Println("Will not calculate update information for GitHub because $GITHUB_TOKEN is missing")
 			fmt.Println("please set it in the Travis CI Repository Settings for this project.")
 			fmt.Println("You can get one from https://github.com/settings/tokens")
@@ -491,14 +482,12 @@ func GenerateAppImage(
 	if updateinformation != "" {
 		err = helpers.ValidateUpdateInformation(updateinformation)
 		if err != nil {
-			helpers.PrintError("VerifyUpdateInformation", err)
-			os.Exit(1)
+			return fmt.Errorf("VerifyUpdateInformation %w", err)
 		}
 
 		err = helpers.EmbedStringInSegment(target, ".upd_info", updateinformation)
 		if err != nil {
-			helpers.PrintError("EmbedStringInSegment", err)
-			os.Exit(1)
+			return fmt.Errorf("EmbedStringInSegment %w", err)
 		}
 	} else {
 		// Embed the SHA256 digest only for appimages which are not having
@@ -510,8 +499,7 @@ func GenerateAppImage(
 		digest = helpers.CalculateSHA256Digest(target)
 		err = helpers.EmbedStringInSegment(target, ".sha256_sig", digest)
 		if err != nil {
-			helpers.PrintError("EmbedStringInSegment", err)
-			os.Exit(1)
+			return fmt.Errorf("EmbedStringInSegment %w", err)
 		}
 	}
 
@@ -533,17 +521,15 @@ func GenerateAppImage(
 	// Decrypt the private key which we need for signing
 	if helpers.CheckIfFileExists(helpers.EncPrivkeyFileName) == true {
 		_, ok := os.LookupEnv(helpers.EnvSuperSecret)
-		if ok != true {
-			fmt.Println("Environment variable", helpers.EnvSuperSecret, "not present, cannot sign")
-			os.Exit(1)
+		if !ok {
+			return fmt.Errorf("environment variable %s not present, cannot sign", helpers.EnvSuperSecret)
 		}
 
 		fmt.Println("Attempting to decrypt the private key...")
 		// TODO: Replace with native Go code in ossl.go
 		superSecret := os.Getenv(helpers.EnvSuperSecret)
 		if superSecret == "" {
-			fmt.Println("Could not get secure environment variable $" + helpers.EnvSuperSecret + ", exiting")
-			os.Exit(1)
+			return fmt.Errorf("could not get secure environment variable $%s, exiting", helpers.EnvSuperSecret)
 		}
 		// Note: 06065064:digital envelope routines:EVP_DecryptFinal_ex:bad decrypt:evp_enc.c:539
 		// OpenSSL 1.1.0 changed from MD5 to SHA-256; they broke stuff (again). Adding '-md sha256' seems to solve it
@@ -552,19 +538,18 @@ func GenerateAppImage(
 		cmd := "openssl aes-256-cbc -pass pass:" + superSecret + " -in " + helpers.EncPrivkeyFileName + " -out " + helpers.PrivkeyFileName + " -d -a -md sha256"
 		err = helpers.RunCmdStringTransparently(cmd)
 		if err != nil {
-			fmt.Println("Could not decrypt the private key using the password in $" + helpers.EnvSuperSecret + ", exiting")
-			os.Exit(1)
+			fmt.Printf("Could not decrypt the private key using the password in $%s, exiting\n", helpers.EnvSuperSecret)
+			return fmt.Errorf("could not decrypt the private key using the password in $%s", helpers.EnvSuperSecret)
 		}
 	}
 
 	// Sign the AppImage
-	if helpers.CheckIfFileExists(helpers.PrivkeyFileName) == true {
+	if helpers.CheckIfFileExists(helpers.PrivkeyFileName) {
 		fmt.Println("Attempting to sign the AppImage...")
 		err = helpers.SignAppImage(target, digest)
 		if err != nil {
-			helpers.PrintError("SignAppImage", err)
 			_ = os.Remove(helpers.PrivkeyFileName)
-			os.Exit(1)
+			return fmt.Errorf("SignAppImage %w", err)
 		}
 		_ = os.Remove(helpers.PrivkeyFileName)
 	}
@@ -576,13 +561,12 @@ func GenerateAppImage(
 	} else {
 		err = helpers.EmbedStringInSegment(target, ".sig_key", string(buf))
 		if err != nil {
-			helpers.PrintError("EmbedStringInSegment", err)
-			os.Exit(1)
+			return fmt.Errorf("EmbedStringInSegment %w", err)
 		}
 	}
 
 	// No updateinformation was provided nor calculated, so the following steps make no sense.
-	// Hence we print an information message and exit.
+	// Hence, we print an information message and exit.
 	if updateinformation == "" {
 		fmt.Println("Almost a success")
 		fmt.Println("")
@@ -591,7 +575,7 @@ func GenerateAppImage(
 		fmt.Println("Such an AppImage is fine for local use but should not be distributed.")
 		fmt.Println("Please build on one of the supported CI systems like Travis CI")
 		fmt.Println("if you want your AppImage to be updatable\nand have update notifications published.")
-		os.Exit(0)
+		return nil
 	}
 
 	// If updateinformation was provided, then we also generate the zsync file (after having signed the AppImage)
@@ -600,10 +584,9 @@ func GenerateAppImage(
 		zsync.ZsyncMake(target, opts)
 
 		// Check if the zsync file is really there
-		fi, err = os.Stat(target + ".zsync")
+		_, err = os.Stat(target + ".zsync")
 		if err != nil {
-			helpers.PrintError("zsync file not generated", err)
-			os.Exit(1)
+			return fmt.Errorf("zsync file not generated %w", err)
 		}
 	}
 
@@ -617,17 +600,20 @@ func GenerateAppImage(
 	// that means some characters like double quotes and new lines need to be escaped
 	// TODO: Instead of trying to somehow force this into uploadtool, do it properly in Go.
 	body, err := helpers.GetCommitMessageForThisCommitOnTravis()
-	fmt.Println("Commit message for this commit:", body)
+	if err != nil {
+		log.Println("Getting commit message from travis error:", err)
+	} else {
+		fmt.Println("Commit message for this commit:", body)
+	}
 
-	// If its a TRAVIS CI, then upload the release assets and zsync file
+	// If it's a TRAVIS CI, then upload the release assets and zsync file
 	if os.Getenv("TRAVIS_REPO_SLUG") != "" {
 		cmd := exec.Command("uploadtool", target, target+".zsync")
 		fmt.Println(cmd.String())
 		out, err := cmd.CombinedOutput()
 		fmt.Printf("%s", string(out))
 		if err != nil {
-			helpers.PrintError("uploadtool", err)
-			os.Exit(1)
+			return fmt.Errorf("uploadtool %w", err)
 		}
 
 		// If upload succeeded, publish MQTT message
@@ -642,4 +628,5 @@ func GenerateAppImage(
 	fmt.Println("Please consider submitting your AppImage to AppImageHub, the crowd-sourced")
 	fmt.Println("central directory of available AppImages, by opening a pull request")
 	fmt.Println("at https://github.com/AppImage/appimage.github.io")
+	return nil
 }

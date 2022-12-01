@@ -6,9 +6,10 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/urfave/cli/v2"
+
 	"github.com/probonopd/go-appimage/internal/helpers"
 	"github.com/probonopd/go-appimage/src/goappimage"
-	"github.com/urfave/cli/v2"
 )
 
 // https://blog.kowalczyk.info/article/vEja/embedding-build-number-in-go-executable.html
@@ -118,7 +119,7 @@ func bootstrapMkAppImage(c *cli.Context) error {
 		}
 
 		// now generate the appimage
-		goappimage.GenerateAppImage(
+		if err := goappimage.GenerateAppImage(
 			fileToAppDir,
 			fileToAppImageOutput,
 			shouldGuessUpdateInformation,
@@ -127,8 +128,9 @@ func bootstrapMkAppImage(c *cli.Context) error {
 			shouldValidateAppstream,
 			receivedUpdateInformation,
 			"mkappimage",
-		)
-
+		); err != nil {
+			log.Fatalln("ERROR: in AppImage generation", err)
+		}
 	} else {
 		if c.Bool("list") || c.Bool("listlong") {
 			// check if the file provided as argument is an AppImage
