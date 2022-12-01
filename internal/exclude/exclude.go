@@ -3,7 +3,7 @@
 // 2019-12-08 09:57:22.872554855 +0100 CET m=+0.430504375
 // using data from
 // https://raw.githubusercontent.com/AppImage/pkg2appimage/master/excludelist
-package main
+package exclude
 
 var ExcludedLibraries = []string{
 	"ld-linux.so.2",
