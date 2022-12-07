@@ -1,3 +1,5 @@
+github.com/CalebQ42/fuse v0.1.0 h1:KLCNjun7zcd2kBNVFfH+SWJyhuwJdE0nhw5/q8K8HGQ=
+github.com/CalebQ42/fuse v0.1.0/go.mod h1:pJpoKG03HJKVhsp8o0YQYqmfbFsr3Eowt90yQGQVO+4=
 github.com/CalebQ42/squashfs v0.6.2 h1:wGWLDxCMWI2CMrO5fZvw9qdBjM+mJaw/qa7gmqRcuOA=
 github.com/CalebQ42/squashfs v0.6.2/go.mod h1:5qWmiXpaWlIxoqxpnFM21KsMecVXbBpQ8e5fgm1TToA=
 github.com/acobaugh/osrelease v0.1.0 h1:Yb59HQDGGNhCj4suHaFQQfBps5wyoKLSSX/J/+UifRE=
