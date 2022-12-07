@@ -2,14 +2,15 @@ package fuse
 
 import (
 	"errors"
-	"io/fs"
+	iofs "io/fs"
 	"os"
 
 	"github.com/CalebQ42/fuse"
+	"github.com/CalebQ42/fuse/fs"
 )
 
-func TransparentMount(folder os.File, mount string) (con *fuse.Conn, err error) {
-	var stat fs.FileInfo
+func TransparentMount(folder *os.File, mount string) (con *fuse.Conn, err error) {
+	var stat iofs.FileInfo
 	if stat, err = folder.Stat(); err != nil || !stat.IsDir() {
 		if err != nil {
 			return nil, err
@@ -23,9 +24,11 @@ func TransparentMount(folder os.File, mount string) (con *fuse.Conn, err error) 
 		}
 		return
 	}
-	// err = fs.Serve(con, foldFS)
-	// if err != nil {
-	// 	con.Close()
-	// }
+	err = fs.Serve(con, fileRoot{
+		File: folder,
+	})
+	if err != nil {
+		con.Close()
+	}
 	return
 }
