@@ -8,11 +8,11 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 
 	_ "embed"
 
-	"github.com/adrg/xdg"
 	issvg "github.com/h2non/go-is-svg"
 	"github.com/probonopd/go-appimage/internal/helpers"
 	pngembed "github.com/sabhiram/png-embed" // For embedding metadata into PNG
@@ -20,15 +20,20 @@ import (
 	"github.com/srwiley/rasterx"
 )
 
-/* The thumbnail cache directory is prefixed with $XDG_CACHE_DIR/ and the leading dot removed
+var thumbnailCache = filepath.Join(cacheDir, "thumbnails")
+
+/*
+	The thumbnail cache directory is prefixed with $XDG_CACHE_DIR/ and the leading dot removed
+
 (since $XDG_CACHE_DIR is normally $HOME/.cache).
-The glib ChangeLog indicates the path for large sizes was "fixed" (Added $XDG_CACHE_DIR) starting with 2.35.3 */
-var ThumbnailsDirNormal = xdg.CacheHome + "/thumbnails/normal/"
+The glib ChangeLog indicates the path for large sizes was "fixed" (Added $XDG_CACHE_DIR) starting with 2.35.3
+*/
+// var ThumbnailsDirNormal = xdg.CacheHome + "/thumbnails/normal/"
 
 //go:embed embed/appimage.png
 var defaultIcon []byte
 
-//Tries to get .DirIcon or the desktop's icon (in that order). If a failure, return generic icon.
+// Tries to get .DirIcon or the desktop's icon (in that order). If a failure, return generic icon.
 func (ai AppImage) getThumbnailOrIcon() (out []byte) {
 	fallback := defaultIcon
 	rdr, err := ai.Thumbnail()
@@ -62,8 +67,8 @@ icon:
 	return
 }
 
-//This reads the icon from the appimage then makes necessary changes or uses the default icon as necessary.
-//All this is now done in memory instead of constantly writing the changes to disk.
+// This reads the icon from the appimage then makes necessary changes or uses the default icon as necessary.
+// All this is now done in memory instead of constantly writing the changes to disk.
 func (ai AppImage) extractDirIconAsThumbnail() {
 	// log.Println("thumbnail: extract DirIcon as thumbnail")
 	if ai.Type() <= 0 {
@@ -136,8 +141,8 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	// err = os.Chmod(thumbnailcachedir+"/.DirIcon", 0600)
 	// printError("thumbnail", err)
 
-	err = os.MkdirAll(ThumbnailsDirNormal, os.ModePerm)
-	helpers.LogError("thumbnail", err)
+	// err = os.MkdirAll(ThumbnailsDirNormal, os.ModePerm)
+	// helpers.LogError("thumbnail", err)
 
 	if *verbosePtr {
 		log.Println("thumbnail: Writing icon to", ai.thumbnailfilepath)

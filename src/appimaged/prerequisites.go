@@ -110,18 +110,16 @@ func checkPrerequisites() {
 	// the desktop needing to be restarted
 	err = os.MkdirAll(xdg.DataHome+"/applications/", os.ModePerm)
 	helpers.LogError("main:", err)
-	err = os.MkdirAll(ThumbnailsDirNormal, os.ModePerm)
-	helpers.LogError("main:", err)
 	home, _ := os.UserHomeDir()
 	err = os.MkdirAll(home+"/.cache/applications/", os.ModePerm)
 	helpers.LogError("main:", err)
 
 	// Some systems may expect thumbnails in another (old?) location. Use that old location if it exists and the new location does not exist
 	// TODO: Find a more robust mechanism
-	if !helpers.Exists(ThumbnailsDirNormal) && helpers.Exists(home+"/.thumbnails/normal/") {
-		log.Println("Using", ThumbnailsDirNormal, "as the location for thumbnails")
-		ThumbnailsDirNormal = home + "/.thumbnails/normal/"
-	}
+	// if !helpers.Exists(ThumbnailsDirNormal) && helpers.Exists(home+"/.thumbnails/normal/") {
+	// 	log.Println("Using", ThumbnailsDirNormal, "as the location for thumbnails")
+	// 	ThumbnailsDirNormal = home + "/.thumbnails/normal/"
+	// }
 
 	// Create $HOME/.local/share/appimagekit/no_desktopintegration
 	// so that AppImages know they should not do desktop integration themselves

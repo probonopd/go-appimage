@@ -47,13 +47,9 @@ func NewAppImage(path string) (ai *AppImage, err error) {
 	ai.uri = strings.TrimSpace(string(uri.File(filepath.Clean(ai.Path))))
 	ai.md5 = ai.calculateMD5filenamepart() // Need this also for non-existing AppImages for removal
 	ai.desktopfilename = "appimagekit_" + ai.md5 + ".desktop"
-	ai.desktopfilepath = xdg.DataHome + "/applications/" + "appimagekit_" + ai.md5 + ".desktop"
+	ai.desktopfilepath = filepath.Join(desktopCache, "appimagekit_"+ai.md5+".desktop")
 	ai.thumbnailfilename = ai.md5 + ".png"
-	if strings.HasSuffix(ThumbnailsDirNormal, "/") {
-		ai.thumbnailfilepath = ThumbnailsDirNormal + ai.thumbnailfilename
-	} else {
-		ai.thumbnailfilepath = ThumbnailsDirNormal + "/" + ai.thumbnailfilename
-	}
+	ai.thumbnailfilepath = filepath.Join(thumbnailCache, ai.thumbnailfilepath)
 	if err != nil {
 		return ai, err
 	}

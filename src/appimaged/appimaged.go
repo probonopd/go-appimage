@@ -72,6 +72,8 @@ var commit string
 
 var watchedDirectories []string
 
+var cacheDir = filepath.Join(xdg.CacheHome, "appimaged")
+
 var home, _ = os.UserHomeDir()
 var candidateDirectories = []string{
 	xdg.UserDirs.Download,
@@ -194,6 +196,12 @@ func main() {
 	go monitorUdisks()
 
 	watchDirectories()
+
+	toDefer, err := startFuse()
+	if err != nil {
+		log.Panic("can't mount fuse:", err)
+	}
+	defer toDefer()
 
 	// Ticker to periodically check whether MQTT is still connected.
 	// Periodically check whether the MQTT client is
