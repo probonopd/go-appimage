@@ -34,7 +34,7 @@ require (
 )
 
 require (
-	github.com/CalebQ42/fuse v0.1.0 // indirect
+	github.com/CalebQ42/fuse v0.1.0
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/emirpasic/gods v1.12.0 // indirect
@@ -54,6 +54,7 @@ require (
 	github.com/rustyoz/genericlexer v0.0.0-20190224115003-eb82fd2987bd // indirect
 	github.com/rustyoz/svg v0.0.0-20200706102315-fe1aeca2ba20 // indirect
 	github.com/sabhiram/pngr v0.0.0-20180419043407-2df49b015d4b // indirect
+	github.com/seaweedfs/fuse v1.2.2
 	github.com/sergi/go-diff v1.0.0 // indirect
 	github.com/src-d/gcfg v1.4.0 // indirect
 	github.com/therootcompany/xz v1.0.1 // indirect

@@ -112,6 +112,8 @@ github.com/sabhiram/png-embed v0.0.0-20180421025336-149afe9a3ccb h1:AuqP2DCYGHIP
 github.com/sabhiram/png-embed v0.0.0-20180421025336-149afe9a3ccb/go.mod h1:GwEonSgMIDQak3yZSNNKyrfVKJ23krN3Y/r51V8Ytr8=
 github.com/sabhiram/pngr v0.0.0-20180419043407-2df49b015d4b h1:ks2d0TH6CtUISoThcRTP2jECmBMH3r/Dy1Q0GdfoD9E=
 github.com/sabhiram/pngr v0.0.0-20180419043407-2df49b015d4b/go.mod h1:BzaQ/DolG+VD2GwnmGuSO5gx07vyW/CWNfkfVW71mSw=
+github.com/seaweedfs/fuse v1.2.2 h1:01l8OjIdyATRNqVc/gDPgFobuC8ubQF3hRKOPColROw=
+github.com/seaweedfs/fuse v1.2.2/go.mod h1:iwbDQv5BZACY54r6AO/6xsLNuMaYcBKSkLTZVfmK594=
 github.com/sergi/go-diff v1.0.0 h1:Kpca3qRNrduNnOQeazBd0ysaKrUJiIuISHxogkT9RPQ=
 github.com/sergi/go-diff v1.0.0/go.mod h1:0CfEIISq7TuYL3j771MWULgwwjU+GofnZX9QAmXWZgo=
 github.com/shirou/gopsutil v3.21.11+incompatible h1:+1+c1VGhc88SSonWP6foOcLhvnKlUeu/erjjvaPEYiI=
