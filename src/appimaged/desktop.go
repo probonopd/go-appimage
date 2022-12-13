@@ -229,6 +229,7 @@ func writeDesktopFile(ai AppImage) {
 	buf := new(bytes.Buffer)
 	cfg.WriteTo(buf)
 	out := fixDesktopFile(buf.Bytes())
+	log.Println(ai.Name, ai.desktopfilepath)
 	os.Remove(ai.desktopfilepath)
 	deskFil, err := os.Create(ai.desktopfilepath)
 	if err != nil {

@@ -134,7 +134,6 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 			iconBuf = out
 		}
 	}
-	helpers.LogError("thumbnail", err)
 
 	// Set thumbnail permissions to 0600 as mandated by
 	// https://specifications.freedesktop.org/thumbnail-spec/thumbnail-spec-latest.html#AEN245

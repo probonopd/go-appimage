@@ -1,7 +1,7 @@
 #!/bin/bash
 
-set -e
-set -x
+# set -e
+# set -x
 
 # Now accepting arguments!
 # If you want a non-native architecture, specify those first, then which
@@ -163,7 +163,11 @@ NoDisplay=true
 EOF
   fi
   chmod +x $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/*
-  $BUILDDIR/appimagetool-x86_64.AppDir/usr/bin/appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
+  if [ $PROG == "appimagetool" ]; then
+    $BUILDDIR/appimagetool-x86_64.AppDir/usr/bin/appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
+  else
+    $BUILDDIR/appimagetool-$VERSION-x86_64.AppImage $BUILDDIR/$PROG-$ARCH.AppDir
+  fi
 }
 
 #############################################################
@@ -243,7 +247,7 @@ cd $BUILDDIR
 
 # Install zig, it comes with musl libc
 if [ ! -e $BUILDDIR/zig ]; then
-  wget -c -q "https://ziglang.org/builds/zig-linux-x86_64-0.10.0-dev.2112+0df28f9d4.tar.xz"
+  wget -c -q "https://ziglang.org/builds/zig-linux-x86_64-0.11.0-dev.740+4d2372139.tar.xz"
   tar xf zig-linux-*.tar.xz
   rm zig-linux-*.tar.xz
   mv zig-linux-* zig

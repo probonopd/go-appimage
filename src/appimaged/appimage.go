@@ -49,7 +49,7 @@ func NewAppImage(path string) (ai *AppImage, err error) {
 	ai.desktopfilename = "appimagekit_" + ai.md5 + ".desktop"
 	ai.desktopfilepath = filepath.Join(desktopCache, "appimagekit_"+ai.md5+".desktop")
 	ai.thumbnailfilename = ai.md5 + ".png"
-	ai.thumbnailfilepath = filepath.Join(thumbnailCache, ai.thumbnailfilepath)
+	ai.thumbnailfilepath = filepath.Join(thumbnailCache, ai.thumbnailfilename)
 	if err != nil {
 		return ai, err
 	}
