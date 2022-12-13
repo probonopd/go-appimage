@@ -179,10 +179,7 @@ func CheckIfFolderExists(filepath string) bool {
 // Returns true if it does, false otherwise.
 func CheckIfFileOrFolderExists(filepath string) bool {
 	_, err := os.Stat(filepath)
-	if os.IsNotExist(err) {
-		return false
-	}
-	return true
+	return !os.IsNotExist(err)
 }
 
 // CheckIfExecFileExists checks whether a desktop file
@@ -206,22 +203,37 @@ func CheckIfExecFileExists(desktopfilepath string) bool {
 	return true
 }
 
-// DeleteDesktopFilesWithNonExistingTargets deletes desktop files
-// in xdg.DataHome + "/applications/"
-// that point to non-existing Exec= entries
-func DeleteDesktopFilesWithNonExistingTargets() {
+func DeleteLegacyFiles() {
 	files, e := os.ReadDir(xdg.DataHome + "/applications/")
 	LogError("desktop", e)
 	if e != nil {
 		return
 	}
-
 	for _, file := range files {
 		if strings.HasSuffix(file.Name(), ".desktop") && strings.HasPrefix(file.Name(), "appimagekit_") {
-			exists := CheckIfExecFileExists(xdg.DataHome + "/applications/" + file.Name())
-			if exists == false {
-				log.Println("Deleting", xdg.DataHome+"/applications/"+file.Name())
-				e = os.Remove(xdg.DataHome + "/applications/" + file.Name())
+			log.Println("desktop file", xdg.DataHome+"/applications/"+file.Name())
+			e = os.Remove(xdg.DataHome + "/applications/" + file.Name())
+			LogError("desktop", e)
+			// e = os.Remove(filepath.Join(xdg.CacheHome, "thumbnails", "normal", strings.TrimSuffix(strings.TrimPrefix(file.Name(), "appimagekit_"), ".desktop")) + ".png")
+			// LogError("desktop", e)
+		}
+	}
+}
+
+// DeleteDesktopFilesWithNonExistingTargets deletes desktop files
+// in desktopCache that point to non-existing Exec= entries
+func DeleteDesktopFilesWithNonExistingTargets(desktopCache string) {
+	files, e := os.ReadDir(desktopCache)
+	LogError("desktop", e)
+	if e != nil {
+		return
+	}
+	for _, file := range files {
+		if strings.HasSuffix(file.Name(), ".desktop") && strings.HasPrefix(file.Name(), "appimagekit_") {
+			exists := CheckIfExecFileExists(filepath.Join(desktopCache, file.Name()))
+			if !exists {
+				log.Println("Deleting", filepath.Join(desktopCache, file.Name()))
+				e = os.Remove(filepath.Join(desktopCache, file.Name()))
 				LogError("desktop", e)
 			}
 		}
@@ -230,9 +242,9 @@ func DeleteDesktopFilesWithNonExistingTargets() {
 
 // GetValuesForAllDesktopFiles gets the values for a given key from all desktop files
 // in xdg.DataHome + "/applications/"
-func GetValuesForAllDesktopFiles(key string) []string {
+func GetValuesForAllDesktopFiles(desktopCache, key string) []string {
 	var results []string
-	files, e := os.ReadDir(xdg.DataHome + "/applications/")
+	files, e := os.ReadDir(desktopCache)
 	LogError("GetValuesForAllDesktopFiles", e)
 	if e != nil {
 		return results
@@ -240,10 +252,10 @@ func GetValuesForAllDesktopFiles(key string) []string {
 
 	for _, file := range files {
 		if strings.HasSuffix(file.Name(), ".desktop") {
-			exists := CheckIfExecFileExists(xdg.DataHome + "/applications/" + file.Name())
-			if exists == true {
+			exists := CheckIfExecFileExists(filepath.Join(desktopCache, file.Name()))
+			if exists {
 				cfg, e := ini.LoadSources(ini.LoadOptions{IgnoreInlineComment: true}, // Do not cripple lines hat contain ";"
-					xdg.DataHome+"/applications/"+file.Name())
+					filepath.Join(desktopCache, file.Name()))
 				LogError("GetValuesForAllDesktopFiles", e)
 				dst := cfg.Section("Desktop Entry").Key(key).String()
 				if dst != "" {

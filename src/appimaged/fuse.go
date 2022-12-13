@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"os"
 	"path/filepath"
 
@@ -18,7 +17,6 @@ func startFuse() (toDefer func(), err error) {
 		thumbnailCache,
 		filepath.Join(xdg.DataHome, "applications/appimaged"),
 	}
-	log.Println("hi", filepath.Join(xdg.DataHome, "applications/appimaged"))
 	for _, v := range makeSureExist {
 		err = os.MkdirAll(v, 0755)
 		if err != nil && !os.IsExist(err) {

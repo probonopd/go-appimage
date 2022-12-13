@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io/fs"
 
 	"github.com/acobaugh/osrelease"
 	"github.com/adrg/xdg"
@@ -88,20 +89,20 @@ func checkPrerequisites() {
 	// Clean pre-existing desktop files and thumbnails
 	// This is useful for debugging
 	if *cleanPtr {
-		var files []string
-		files, err = filepath.Glob(filepath.Join(xdg.DataHome+"/applications/", "appimagekit_*"))
+		var files []fs.DirEntry
+		files, err = os.ReadDir(desktopCache)
 		helpers.LogError("main:", err)
 		for _, file := range files {
 			if *verbosePtr {
 				log.Println("Deleting", file)
 			}
-			err = os.Remove(file)
+			err = os.Remove(filepath.Join(desktopCache, file.Name()))
 			helpers.LogError("main:", err)
 		}
 		if *verbosePtr {
-			log.Println("Deleted", len(files), "desktop files from", xdg.DataHome+"/applications/")
+			log.Println("Deleted", len(files), "desktop files from", desktopCache)
 		} else {
-			log.Println("Deleted", len(files), "desktop files from", xdg.DataHome+"/applications/; use -v to see details")
+			log.Println("Deleted", len(files), "desktop files from", desktopCache+"; use -v to see details")
 		}
 	}
 
@@ -498,6 +499,8 @@ After=syslog.target network.target
 [Service]
 Type=simple
 ExecStart=` + thisai.Path + `
+ExecStop=umount ` + filepath.Join(xdg.DataHome, "applications/appimaged") + `
+ExecReload=umount ` + filepath.Join(xdg.DataHome, "applications/appimaged") + `
 
 LimitNOFILE=65536
 

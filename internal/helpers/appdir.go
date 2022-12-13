@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"gopkg.in/ini.v1"
@@ -149,7 +150,7 @@ func (appdir AppDir) CreateIconDirectories() error {
 	iconSizes := []int{512, 256, 128, 48, 32, 24, 22, 16, 8}
 	var err error = nil
 	for _, iconSize := range iconSizes {
-		err = os.MkdirAll(appdir.Path+"/usr/share/icons/hicolor/"+string(iconSize)+"x"+string(iconSize)+"/apps", 0755)
+		err = os.MkdirAll(appdir.Path+"/usr/share/icons/hicolor/"+strconv.Itoa(iconSize)+"x"+strconv.Itoa(iconSize)+"/apps", 0755)
 	}
 	return err
 }
@@ -163,7 +164,7 @@ func (appdir AppDir) CopyMainIconToRoot(iconName string) error {
 		log.Println("Top-level icon already exists, leaving untouched")
 	} else {
 		for _, iconSize := range iconPreferenceOrder {
-			candidate := appdir.Path + "/usr/share/icons/hicolor/" + string(iconSize) + "x" + string(iconSize) + "/apps/" + iconName + ".png"
+			candidate := appdir.Path + "/usr/share/icons/hicolor/" + strconv.Itoa(iconSize) + "x" + strconv.Itoa(iconSize) + "/apps/" + iconName + ".png"
 			if Exists(candidate) {
 				CopyFile(candidate, appdir.Path+"/"+iconName+".png")
 			}

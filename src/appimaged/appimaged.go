@@ -165,7 +165,8 @@ func main() {
 	log.Println("main: Running from", helpers.Here())
 	log.Println("main: xdg.DataHome =", xdg.DataHome)
 
-	helpers.DeleteDesktopFilesWithNonExistingTargets()
+	helpers.DeleteLegacyFiles()
+	helpers.DeleteDesktopFilesWithNonExistingTargets(desktopCache)
 
 	log.Println("Overwrite:", *overwritePtr)
 	log.Println("Clean:", *overwritePtr)
@@ -186,6 +187,13 @@ func main() {
 		}
 	}
 
+	// Create fuse mount for desktop files.
+	toDefer, err := startFuse()
+	if err != nil {
+		log.Panic("can't mount fuse:", err)
+	}
+	defer toDefer()
+
 	// Try to register ourselves as a thumbnailer for AppImages, in the hope that
 	// DBus notifications will be generated for AppImages as thumbnail-able files
 	// FIXME: Currently getting: No such interface 'org.freedesktop.thumbnails' on object at path /org/freedesktop/thumbnails/Manager1
@@ -196,12 +204,6 @@ func main() {
 	go monitorUdisks()
 
 	watchDirectories()
-
-	toDefer, err := startFuse()
-	if err != nil {
-		log.Panic("can't mount fuse:", err)
-	}
-	defer toDefer()
 
 	// Ticker to periodically check whether MQTT is still connected.
 	// Periodically check whether the MQTT client is
@@ -360,7 +362,7 @@ func watchDirectories() {
 
 	watchDirectoriesReally(watchedDirectories)
 
-	helpers.DeleteDesktopFilesWithNonExistingTargets()
+	helpers.DeleteDesktopFilesWithNonExistingTargets(desktopCache)
 	// So this should also catch AppImages which were formerly hidden in some subdirectory
 	// where the whole directory was deleted
 }
