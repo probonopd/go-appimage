@@ -6,7 +6,7 @@ This is an experimental implementation of the optional AppImage daemon, `appimag
 
 Assuming you are using a 64-bit Intel machine (amd64, also known as x86_64), you can use our pre-compiled binaries. To try it out, boot a Ubuntu, Debian, Fedora, openSUSE, elementary OS, KDE neon,... Live ISO and run:
 
-```
+```bash
 # Remove pre-existing similar tools
 systemctl --user stop appimaged.service || true
 sudo apt-get -y remove appimagelauncher || true
@@ -27,20 +27,21 @@ chmod +x ~/Applications/appimaged-*.AppImage
 
 ## Removal
 
-```
-systemctl --user disable appimaged.service || true
-systemctl --user stop appimaged.service || true
+```bash
+systemctl --user disable --now appimaged.service || true
 rm ~/.config/systemd/user/appimaged.service
 rm ~/.local/share/applications/appimagekit*.desktop
 rm ~/Applications/appimaged-*-x86_64.AppImage
 ```
 
 ## Notes
+
 Do not remove "~/Applications/appimaged*.AppImage". The service is running from this location (unless you want to do the uninstallation process)
 
 The extension of AppImage files MUST be case-sensitive to be recognized by appimaged service.
 
 Folders being watched for AppImage files:
+
 * /usr/local/bin
 * /opt
 * ~/Applications
@@ -48,7 +49,7 @@ Folders being watched for AppImage files:
 * ~/Downloads
 * $PATH, which frequently includes /bin, /sbin, /usr/bin, /usr/sbin, /usr/local/bin, /usr/local/sbin, and other locations
 
-https://github.com/probonopd/go-appimage/releases/tag/continuous has builds for 32-bit Intel, 32-bit ARM (e.g., Raspberry Pi), and 64-bit ARM.
+<https://github.com/probonopd/go-appimage/releases/tag/continuous> has builds for 32-bit Intel, 32-bit ARM (e.g., Raspberry Pi), and 64-bit ARM.
 
 ## Features
 
@@ -79,9 +80,6 @@ Envisioned
 
 If for whatever reason you would like to build from source:
 
-```
-sudo apt-get -y install gcc 
-if [ -z $GOPATH ] ; then export GOPATH=$HOME/go ; fi
-go get github.com/probonopd/go-appimage/src/appimaged 
-go build -trimpath -ldflags="-s -w" github.com/probonopd/go-appimage/src/appimaged
+```bash
+scripts/build.sh appimaged
 ```
