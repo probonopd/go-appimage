@@ -267,7 +267,8 @@ func ensureRunningFromLiveSystem() {
 func TerminateOtherInstances() {
 	user, err := user.Current()
 	if err != nil {
-		panic(err)
+		helpers.LogError("term other instances", err)
+		return
 	}
 	myself, _ := os.Readlink("/proc/self/exe")
 	fmt.Println("This process based on /proc/self/exe:", myself)
