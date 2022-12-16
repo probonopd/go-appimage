@@ -3,7 +3,7 @@ module github.com/probonopd/go-appimage
 go 1.19
 
 require (
-	github.com/CalebQ42/squashfs v0.6.2
+	github.com/CalebQ42/squashfs v0.7.0
 	github.com/acobaugh/osrelease v0.1.0
 	github.com/adrg/xdg v0.4.0
 	github.com/alokmenghrajani/gpgeez v0.0.0-20161206084504-1a06f1c582f9
@@ -28,7 +28,7 @@ require (
 	github.com/urfave/cli/v2 v2.17.1
 	go.lsp.dev/uri v0.3.0
 	golang.org/x/crypto v0.0.0-20221005025214-4161e89ecf1b
-	golang.org/x/sys v0.0.0-20221006211917-84dc82d7e875
+	golang.org/x/sys v0.2.0
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/src-d/go-git.v4 v4.13.1
 )
@@ -44,10 +44,10 @@ require (
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/kevinburke/ssh_config v0.0.0-20190725054713-01f96b0aa0cd // indirect
-	github.com/klauspost/compress v1.15.9 // indirect
+	github.com/klauspost/compress v1.15.12 // indirect
 	github.com/miekg/dns v1.1.27 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
-	github.com/pierrec/lz4/v4 v4.1.15 // indirect
+	github.com/pierrec/lz4/v4 v4.1.17 // indirect
 	github.com/rasky/go-lzo v0.0.0-20200203143853-96a758eda86e // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/rustyoz/Mtransform v0.0.0-20190224104252-60c8c35a3681 // indirect
