@@ -247,7 +247,7 @@ cd $BUILDDIR
 
 # Install zig, it comes with musl libc
 if [ ! -e $BUILDDIR/zig ]; then
-  wget -c -q "https://ziglang.org/builds/zig-linux-x86_64-0.10.0-dev.2112+0df28f9d4.tar.xz"
+  wget -c -q "https://ziglang.org/download/0.10.0/zig-linux-x86_64-0.10.0.tar.xz"
   tar xf zig-linux-*.tar.xz
   rm zig-linux-*.tar.xz
   mv zig-linux-* zig
