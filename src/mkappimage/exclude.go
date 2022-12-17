@@ -1,1 +1,0 @@
-../appimagetool/exclude.go

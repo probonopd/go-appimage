@@ -1,1 +1,0 @@
-../appimagetool/genexclude.go

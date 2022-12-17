@@ -19,8 +19,11 @@ import (
 	"strings"
 
 	"github.com/otiai10/copy"
+	"github.com/probonopd/go-appimage/internal/exclude"
 	"github.com/probonopd/go-appimage/internal/helpers"
 )
+
+var excludedLibraries = exclude.ExcludedLibraries
 
 type QMLImport struct {
 	Classname    string `json:"classname,omitempty"`
@@ -236,12 +239,12 @@ func AppDirDeploy(path string) {
 
 	qtVersionDetected := 0
 
-	if containsString(allELFs, "libQt5Core.so.5") == true {
+	if helpers.ContainsString(allELFs, "libQt5Core.so.5") == true {
 		log.Println("Detected Qt 5")
 		qtVersionDetected = 5
 	}
 
-	if containsString(allELFs, "libQtCore.so.4") == true {
+	if helpers.ContainsString(allELFs, "libQtCore.so.4") == true {
 		log.Println("Detected Qt 4")
 		qtVersionDetected = 4
 	}
@@ -408,7 +411,7 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 // deployElf deploys an ELF (executable or shared library) to the AppDir
 // if it is not on the exclude list and it is not yet at the target location
 func deployElf(lib string, appdir helpers.AppDir, err error) {
-	for _, excludePrefix := range ExcludedLibraries {
+	for _, excludePrefix := range excludedLibraries {
 		if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true && !options.standalone {
 			log.Println("Skipping", lib, "because it is on the excludelist")
 			return
@@ -513,7 +516,7 @@ func deployCopyrightFiles(appdir helpers.AppDir) {
 	for _, lib := range allELFs {
 
 		shouldDoIt := true
-		for _, excludePrefix := range ExcludedLibraries {
+		for _, excludePrefix := range excludedLibraries {
 			if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true && options.standalone == false {
 				log.Println("Skipping copyright file for ", lib, "because it is on the excludelist")
 				shouldDoIt = false
@@ -797,7 +800,7 @@ func deployGtkDirectory(appdir helpers.AppDir, gtkVersion int) {
 // appendLib appends library in path to allELFs and adds its location as well as any pre-existing rpaths to libraryLocations
 func appendLib(path string) {
 
-	for _, excludedlib := range ExcludedLibraries {
+	for _, excludedlib := range excludedLibraries {
 		if filepath.Base(path) == excludedlib && !options.standalone {
 			// log.Println("Skipping", excludedlib, "because it is on the excludelist")
 			return

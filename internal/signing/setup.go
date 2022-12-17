@@ -8,7 +8,7 @@
 // * Commit the encrypted file
 // * even git push?
 
-package main
+package signing
 
 import (
 	"bufio"
@@ -16,7 +16,6 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-
 	"strings"
 	"time"
 
@@ -25,7 +24,7 @@ import (
 	"gopkg.in/src-d/go-git.v4"
 )
 
-func setupSigning(overwriteSecretFiles bool) error {
+func Setup(overwriteSecretFiles bool) error {
 
 	// Check if we are on a clean git repository. Exit as fast as possible if we are not.
 	var gitRepo *git.Repository
@@ -50,10 +49,9 @@ func setupSigning(overwriteSecretFiles bool) error {
 	s, _ := gitWorktree.Status()
 	clean := s.IsClean()
 
-	if clean == false {
+	if !clean {
 		fmt.Println("Repository is not clean. Please commit or stash any changes first.")
 		os.Exit(1)
-
 	}
 
 	// Check for needed files on $PATH
@@ -93,7 +91,7 @@ func setupSigning(overwriteSecretFiles bool) error {
 	fmt.Println("Is your repository on travis.com? Answer 'no' if org (yes/no)")
 	var client *travis.Client
 	var travisSettingsURL string
-	if AskForConfirmation() == true {
+	if AskForConfirmation() {
 		fmt.Println("Assuming your repository is on travis.com")
 		client = travis.NewClient(travis.ApiComUrl, token)
 		travisSettingsURL = "https://travis-ci.com/" + repoSlug + "/settings"
@@ -119,7 +117,7 @@ func setupSigning(overwriteSecretFiles bool) error {
 		existingVars = append(existingVars, *e.Name)
 	}
 
-	if Contains(existingVars, helpers.EnvSuperSecret) == true {
+	if Contains(existingVars, helpers.EnvSuperSecret) {
 		fmt.Println("Environment variable", helpers.EnvSuperSecret, "already exists on Travis CI")
 		fmt.Println("You can check it on", travisSettingsURL)
 		fmt.Println("It looks like this repository is already set up for signing. Exiting")
@@ -165,10 +163,19 @@ func setupSigning(overwriteSecretFiles bool) error {
 		fmt.Println("Could not open file for writing secret, exiting")
 		os.Exit(1)
 	}
-	defer f.Close()
+	defer func(f *os.File) {
+		if result := f.Close(); result != nil {
+			if err != nil {
+				err = fmt.Errorf("closing file error %s with another error faced: %w", result, err)
+			}
+		}
+	}(f) // Handle f.Close error
+
 	_, err = f.WriteString(superSecretPassword)
 	if err != nil {
 		fmt.Println("Could not write secret, exiting")
+		// FIXME: because os.Exit will decline defer call
+		// maybe replace with panic() which will run all defer and exit with exit code 2
 		os.Exit(1)
 	}
 
@@ -243,7 +250,7 @@ func setupSigning(overwriteSecretFiles bool) error {
 // SetTravisEnv sets a private variable on Travis CI
 func SetTravisEnv(client *travis.Client, repoSlug string, existingVars []string, name string, value string, travisSettingsURL string) {
 	body := travis.EnvVarBody{Name: name, Value: value, Public: false}
-	if Contains(existingVars, name) == false {
+	if !Contains(existingVars, name) {
 		fmt.Println("Set environment variable", name, "on Travis CI...")
 		_, resp, err := client.EnvVars.CreateByRepoSlug(context.Background(), repoSlug, &body)
 		if err != nil {
@@ -271,7 +278,7 @@ func Contains(s []string, e string) bool {
 func exitIfFileExists(file string, description string, overwriteSecretFile bool) {
 	if _, err := os.Stat(file); err == nil {
 		if !overwriteSecretFile {
-			fmt.Println(description, "'"+file+"'", "already exists, exiting")
+			fmt.Printf("%s '%s' already exists, exiting\n", description, file)
 			os.Exit(1)
 		} else {
 			err := os.Remove(file)
@@ -293,46 +300,23 @@ func exitIfFileExists(file string, description string, overwriteSecretFile bool)
 // From https://gist.github.com/albrow/5882501#file-confirm-go-L9
 func AskForConfirmation() bool {
 	var response string
-	_, err := fmt.Scanln(&response)
-	if err != nil {
-		fmt.Println(err)
-	}
-	okayResponses := []string{"y", "Y", "yes", "Yes", "YES"}
-	nokayResponses := []string{"n", "N", "no", "No", "NO"}
-	if containsString(okayResponses, response) {
-		return true
-	} else if containsString(nokayResponses, response) {
-		return false
-	} else {
-		fmt.Println("Please type yes or no and then press enter:")
-		return AskForConfirmation()
-	}
-}
-
-// posString returns the first index of element in slice.
-// If slice does not contain element, returns -1.
-func posString(slice []string, element string) int {
-	for index, elem := range slice {
-		if elem == element {
-			return index
+	for {
+		if _, err := fmt.Scanln(&response); err != nil {
+			fmt.Println(err)
 		}
-	}
-	return -1
-}
-
-// containsString returns true iff slice contains element that ends with the given string
-func containsString(slice []string, element string) bool {
-
-	for _, item := range slice {
-		if strings.HasSuffix(item, element) == true {
+		switch response {
+		case "y", "Y", "yes", "Yes", "YES":
 			return true
+		case "n", "N", "no", "No", "NO":
+			return false
+		default:
+			fmt.Println("Please type yes or no and then press enter:")
 		}
 	}
-
-	return false
 }
 
 //////////////////////////////// end AskForConfirmation
+
 // TODO: Please fix this extremely dangerous way of generating passwords
 // generatePassword generates a random password consisting
 // consisting of letters, numbers, and selected special characters

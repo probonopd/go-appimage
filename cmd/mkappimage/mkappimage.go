@@ -6,9 +6,16 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/probonopd/go-appimage/internal/helpers"
 	"github.com/urfave/cli/v2"
+
+	"github.com/probonopd/go-appimage/internal/helpers"
+	"github.com/probonopd/go-appimage/pkg/goappimage"
 )
+
+// https://blog.kowalczyk.info/article/vEja/embedding-build-number-in-go-executable.html
+// The build script needs to set, e.g.,
+// go build -ldflags "-X main.commit=$TRAVIS_BUILD_NUMBER"
+var commit string
 
 // listFilesInAppImage lists the files in the AppImage, similar to
 // the ls command in UNIX systems
@@ -38,7 +45,8 @@ func listLongFilesInAppImage(path string) {
 // check if all the necessary dependencies exist,
 // finally check if the provided argument, AppDir is a directly.
 // Call GenerateAppImage with the converted arguments
-// 		Args: c: cli.Context
+//
+//	Args: c: cli.Context
 func bootstrapMkAppImage(c *cli.Context) error {
 
 	// check if the number of arguments are stictly 1, if not
@@ -112,7 +120,7 @@ func bootstrapMkAppImage(c *cli.Context) error {
 		}
 
 		// now generate the appimage
-		GenerateAppImage(
+		if err := goappimage.GenerateAppImage(
 			fileToAppDir,
 			fileToAppImageOutput,
 			shouldGuessUpdateInformation,
@@ -121,8 +129,9 @@ func bootstrapMkAppImage(c *cli.Context) error {
 			shouldValidateAppstream,
 			receivedUpdateInformation,
 			"mkappimage",
-		)
-
+		); err != nil {
+			log.Fatalln("ERROR: in AppImage generation", err)
+		}
 	} else {
 		if c.Bool("list") || c.Bool("listlong") {
 			// check if the file provided as argument is an AppImage
@@ -162,7 +171,7 @@ func main() {
 	}
 
 	// let the user know that we are running within a docker container
-	checkRunningWithinDocker()
+	helpers.CheckRunningWithinDocker()
 
 	// build the Command Line interface
 	// https://github.com/urfave/cli/blob/master/docs/v2/manual.md

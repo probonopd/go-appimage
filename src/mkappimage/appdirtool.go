@@ -1,1 +1,0 @@
-../appimagetool/appdirtool.go

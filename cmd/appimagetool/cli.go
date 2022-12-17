@@ -7,8 +7,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/probonopd/go-appimage/internal/helpers"
 	"github.com/urfave/cli/v2"
+
+	"github.com/probonopd/go-appimage/internal/helpers"
+	"github.com/probonopd/go-appimage/internal/signing"
+	"github.com/probonopd/go-appimage/pkg/goappimage"
 )
 
 // array of string, Sections contains
@@ -20,7 +23,8 @@ var Sections = []string{".upd_info", ".sha256_sig", ".sig_key", ".digest_md5"}
 
 // bootstrapAppImageDeploy wrapper function to deploy an AppImage
 // from Desktop file
-// 		Args: c: cli.Context
+//
+//	Args: c: cli.Context
 func bootstrapAppImageDeploy(c *cli.Context) error {
 	// make sure the user provided one and one only desktop
 	if c.NArg() != 1 {
@@ -38,7 +42,8 @@ func bootstrapAppImageDeploy(c *cli.Context) error {
 }
 
 // bootstrapValidateAppImage wrapper function to validate a AppImage
-// 		Args: c: cli.Context
+//
+//	Args: c: cli.Context
 func bootstrapValidateAppImage(c *cli.Context) error {
 
 	// make sure that we received only 1 file path
@@ -79,14 +84,16 @@ func bootstrapValidateAppImage(c *cli.Context) error {
 
 // bootstrapSetupSigning wrapper function to setup signing in
 // the current Git repository
-// 		Args: c: cli.Context
+//
+//	Args: c: cli.Context
 func bootstrapSetupSigning(c *cli.Context) error {
-	return setupSigning(c.Bool("overwrite"))
+	return signing.Setup(c.Bool("overwrite"))
 }
 
 // bootstrapAppImageSections is a function which converts cli.Context to
 // string based arguments. Wrapper function to show the sections of the AppImage
-// 		Args: c: cli.Context
+//
+//	Args: c: cli.Context
 func bootstrapAppImageSections(c *cli.Context) error {
 	// check if the number of arguments are stictly 1, if not
 	// return
@@ -135,7 +142,8 @@ func bootstrapAppImageSections(c *cli.Context) error {
 // check if all the necessary dependencies exist,
 // finally check if the provided argument, AppDir is a directly.
 // Call GenerateAppImage with the converted arguments
-// 		Args: c: cli.Context
+//
+//	Args: c: cli.Context
 func bootstrapAppImageBuild(c *cli.Context) error {
 
 	// check if the number of arguments are stictly 1, if not
@@ -164,7 +172,7 @@ func bootstrapAppImageBuild(c *cli.Context) error {
 		// updateinformation: 			"" 	(empty string, we want to guess the update information from
 		//								scratch, and if we fail to guess it, then no update metadata for
 		// 								the appimage)
-		GenerateAppImage(
+		if err = goappimage.GenerateAppImage(
 			fileToAppDir, "",
 			true,
 			"",
@@ -172,7 +180,9 @@ func bootstrapAppImageBuild(c *cli.Context) error {
 			true,
 			"",
 			"appimagetool",
-		)
+		); err != nil {
+			log.Fatalln("ERROR: in AppImage generation", err)
+		}
 	} else {
 		// TODO: If it is a file, then check if it is an AppImage and if yes, extract it
 		log.Fatal("Supplied argument is not a directory \n" +
@@ -199,7 +209,7 @@ func main() {
 	}
 
 	// let the user know that we are running within a docker container
-	checkRunningWithinDocker()
+	helpers.CheckRunningWithinDocker()
 
 	// build the Command Line interface
 	// https://github.com/urfave/cli/blob/master/docs/v2/manual.md
@@ -220,7 +230,7 @@ func main() {
 
 	// Add the location of the executable to the $PATH
 	helpers.AddHereToPath()
-	
+
 	// fmt.Println("PATH:", os.Getenv("PATH"))
 
 	// Check for needed files on $PATH
@@ -231,12 +241,12 @@ func main() {
 	if err != nil {
 		os.Exit(1)
 	}
-	
+
 	// Check whether we have a sufficient version of mksquashfs for -offset
 	if helpers.CheckIfSquashfsVersionSufficient("mksquashfs") == false {
 		os.Exit(1)
 	}
-	
+
 	// define subcommands, like 'deploy', 'validate', ...
 	app.Commands = []*cli.Command{
 		{
