@@ -121,6 +121,9 @@ func main() {
 	// Always show version
 	fmt.Println(filepath.Base(os.Args[0]), version)
 
+	// Add $PATH to candidateDirectories
+	candidateDirectories = append(candidateDirectories, strings.Split(os.Getenv("PATH"), ":")...)
+
 	for _, dir := range candidateDirectories {
 		if helpers.Exists(dir) {
 			watchedDirectories = append(watchedDirectories, dir)
