@@ -170,9 +170,7 @@ func (ai AppImage) SquashfsReader() (*squashfs.Reader, error) {
 	if err != nil {
 		return nil, err
 	}
-	stat, _ := aiFil.Stat()
-	aiRdr := io.NewSectionReader(aiFil, ai.offset, stat.Size()-ai.offset)
-	squashRdr, err := squashfs.NewReader(aiRdr)
+	squashRdr, err := squashfs.NewReaderAtOffset(aiFil, ai.offset)
 	if err != nil {
 		return nil, err
 	}
