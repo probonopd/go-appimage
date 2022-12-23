@@ -12,7 +12,7 @@ systemctl --user stop appimaged.service || true
 sudo apt-get -y remove appimagelauncher || true
 
 # Clear cache
-rm "$HOME"/.local/share/applications/appimage*
+rm -r "$HOME"/.cache/appimaged
 
 # Optionally, install Firejail (if you want sandboxing functionality)
 
@@ -30,7 +30,7 @@ chmod +x ~/Applications/appimaged-*.AppImage
 ```bash
 systemctl --user disable --now appimaged.service || true
 rm ~/.config/systemd/user/appimaged.service
-rm ~/.local/share/applications/appimagekit*.desktop
+rm -r ~/.cache/appimaged
 rm ~/Applications/appimaged-*-x86_64.AppImage
 ```
 

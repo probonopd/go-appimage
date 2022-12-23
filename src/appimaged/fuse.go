@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,17 +14,29 @@ import (
 )
 
 func startFuse() (toDefer func(), err error) {
+	desktopPath := filepath.Join(xdg.DataHome, "applications/appimaged")
 	makeSureExist := []string{
 		cacheDir,
 		desktopCache,
 		thumbnailCache,
-		filepath.Join(xdg.DataHome, "applications/appimaged"),
 	}
 	for _, v := range makeSureExist {
 		err = os.MkdirAll(v, 0755)
 		if err != nil && !os.IsExist(err) {
 			return
 		}
+	}
+
+	//Create desktopPath. If it already exists, make sure it's unmounted (from appimaged that wasn't properly closed)
+	err = os.Mkdir(desktopPath, 0755)
+	if os.IsExist(err) {
+		if *verbosePtr {
+			log.Println(desktopPath, "already exists, trying to umount in case appimaged was previously incorrectly closed")
+			log.Println("running:", "umount", desktopPath)
+		}
+		exec.Command("umount", desktopPath).Run()
+	} else if err != nil {
+		return
 	}
 	if _, err = exec.LookPath("fusermount3"); err == nil {
 		var deskCon *fuse.Conn
