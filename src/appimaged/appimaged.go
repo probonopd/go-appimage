@@ -13,9 +13,9 @@ import (
 
 	"github.com/adrg/xdg"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/prometheus/procfs"
 
 	"github.com/probonopd/go-appimage/internal/helpers"
-	"github.com/prometheus/procfs"
 )
 
 // TODO: Understand whether we can make clever use of
@@ -45,7 +45,7 @@ var cleanPtr = flag.Bool("c", true, "Clean pre-existing desktop files")
 var quietPtr = flag.Bool("q", false, "Do not send desktop notifications")
 var noZeroconfPtr = flag.Bool("nz", false, "Do not announce this service on the network using Zeroconf")
 
-var integrationChannel chan *AppImage = make(chan *AppImage, 50)
+var updateChannel chan struct{} = make(chan struct{}, 10)
 
 var thisai *AppImage // A reference to myself
 
@@ -73,7 +73,7 @@ var commit string
 var watchedDirectories []string
 
 var home, _ = os.UserHomeDir()
-var candidateDirectories = []string{
+var candidateDirectories = append(strings.Split(os.Getenv("PATH"), ":"), []string{
 	xdg.UserDirs.Download,
 	xdg.UserDirs.Desktop,
 	home + "/.local/bin",
@@ -81,7 +81,7 @@ var candidateDirectories = []string{
 	home + "/Applications",
 	"/opt",
 	"/usr/local/bin",
-}
+}...)
 
 func main() {
 	thisai, _ = NewAppImage(helpers.Args0())
@@ -120,15 +120,6 @@ func main() {
 
 	// Always show version
 	fmt.Println(filepath.Base(os.Args[0]), version)
-
-	// Add $PATH to candidateDirectories
-	candidateDirectories = append(candidateDirectories, strings.Split(os.Getenv("PATH"), ":")...)
-
-	for _, dir := range candidateDirectories {
-		if helpers.Exists(dir) {
-			watchedDirectories = append(watchedDirectories, dir)
-		}
-	}
 
 	checkPrerequisites()
 
@@ -187,6 +178,15 @@ func main() {
 		}
 	}
 
+	checkDirectories()
+	for _, dir := range watchedDirectories {
+		err = AddWatchDir(dir)
+		if err != nil {
+			log.Println("can't watch", dir, err)
+		}
+	}
+	go StartWatch()
+
 	// Try to register ourselves as a thumbnailer for AppImages, in the hope that
 	// DBus notifications will be generated for AppImages as thumbnail-able files
 	// FIXME: Currently getting: No such interface 'org.freedesktop.thumbnails' on object at path /org/freedesktop/thumbnails/Manager1
@@ -195,8 +195,6 @@ func main() {
 
 	// React to partitions being mounted and unmounted
 	go monitorUdisks()
-
-	watchDirectories()
 
 	// Ticker to periodically check whether MQTT is still connected.
 	// Periodically check whether the MQTT client is
@@ -216,12 +214,18 @@ func main() {
 		}
 	}()
 
+	var updateMenuTimer *time.Timer
+
 	go func() {
-		for app, open := <-integrationChannel; open; app, open = <-integrationChannel {
-			log.Println("Integrating or unintegrating:", app.Name)
-			err := moveDesktopFiles(app)
-			if err != nil {
-				helpers.LogError("integrate", err)
+		// Handles application menu updates.
+		// At most, updates the application menu every second.
+		for {
+			<-updateChannel
+			if updateMenuTimer == nil {
+				updateMenuTimer = time.AfterFunc(time.Second, func() {
+					updateMenu()
+					updateMenuTimer = nil
+				})
 			}
 		}
 	}()
@@ -248,22 +252,8 @@ func checkMQTTConnected(MQTTclient mqtt.Client) {
 	}
 }
 
-// Periodically move desktop files from their temporary location
-// into the menu, so that the menu does not get rebuilt all the time
-func moveDesktopFiles(ai *AppImage) error {
-	integrate := ai.IntegrateOrUnintegrate()
-	if !integrate {
-		return nil
-	}
-
-	if !ai.startup {
-		// If one single application has been integrated, then the user probably cares about it
-		// e.g., has downloaded it.
-		// TODO: Find out which application was added, and show its icon, make the notification clickable
-		// to open the application
-		sendDesktopNotification("Added "+ai.Name, "", 5000)
-	}
-
+// Periodically update the application menu so that the menu does not get rebuilt all the time
+func updateMenu() error {
 	// Run the various tools that make sure that the added desktop files really show up in the menu.
 	// Of course, almost no 2 systems are similar.
 	updateMenuCommands := []string{
@@ -310,9 +300,7 @@ func moveDesktopFiles(ai *AppImage) error {
 	return nil
 }
 
-func watchDirectories() {
-
-	watchedDirectories = []string{} // Start fresh here, because old ones may have been unmounted in the meantime
+func checkDirectories() {
 
 	// Register AppImages from well-known locations
 	// https://github.com/AppImage/appimaged#monitored-directories
@@ -327,6 +315,29 @@ func watchDirectories() {
 			watchedDirectories = append(watchedDirectories, dir)
 		}
 	}
+	watchedDirectories = append(watchedDirectories, getMountDirectories()...)
+
+	for _, dir := range watchedDirectories {
+		ents, err := os.ReadDir(dir)
+		if err != nil {
+			helpers.LogError("checkDirectories", err)
+		}
+		for _, fil := range ents {
+			path := filepath.Join(dir, fil.Name())
+			if IsPossibleAppImage(path) {
+				log.Println("integrating", path)
+				AddIntegration(path, false)
+			}
+		}
+	}
+
+	helpers.DeleteDesktopFilesWithNonExistingTargets(desktopCache)
+	// So this should also catch AppImages which were formerly hidden in some subdirectory
+	// where the whole directory was deleted
+}
+
+func getMountDirectories() (out []string) {
+	out = make([]string, 0)
 
 	mounts, _ := procfs.GetMounts()
 	// FIXME: This breaks when the partition label has "-", see https://github.com/prometheus/procfs/issues/227
@@ -345,45 +356,10 @@ func watchDirectories() {
 					go sendErrorDesktopNotification("UDisks showexec issue", "Applications cannot run from \n"+mount.MountPoint+". \nSee \nhttps://github.com/storaged-project/udisks/issues/707")
 					printUdisksShowexecHint()
 				} else {
-					watchedDirectories = helpers.AppendIfMissing(watchedDirectories, mount.MountPoint+"/Applications")
+					out = helpers.AppendIfMissing(out, mount.MountPoint+"/Applications")
 				}
 			}
 		}
 	}
-
-	log.Println("Registering AppImages in", watchedDirectories)
-
-	watchDirectoriesReally(watchedDirectories)
-
-	helpers.DeleteDesktopFilesWithNonExistingTargets()
-	// So this should also catch AppImages which were formerly hidden in some subdirectory
-	// where the whole directory was deleted
-}
-
-func watchDirectoriesReally(watchedDirectories []string) {
-	for _, v := range watchedDirectories {
-		go inotifyWatch(v)
-		// For now we don't walk subdirectories.
-		// filepath.Walk scans subfolders too,
-		// os.ReadDir does not.
-		infos, err := os.ReadDir(v)
-		if err != nil {
-			helpers.PrintError("watchDirectoriesReally", err)
-			continue
-		}
-		for _, info := range infos {
-			if info.IsDir() {
-				// go inotifyWatch(v + "/" + info.Name())
-			} else if !info.IsDir() {
-				var ai *AppImage
-				ai, err = NewAppImage(v + "/" + info.Name())
-				if err != nil {
-					continue
-				}
-				ai.startup = true
-				integrationChannel <- ai
-			}
-		}
-		helpers.LogError("main: watchDirectoriesReally", err)
-	}
+	return
 }

@@ -116,18 +116,18 @@ func monitorUdisks() {
 	} else {
 		satisfied = true
 	}
-	retried := false
+	retries := 0
 retry:
 	// FIXME: For whatever reason this does NOT work with org.kde.Solid.Device
 	// (which we actually care about), so we check the next best thing
 	e = conn.Object("org.kde.Solid.PowerManagement", "/").Call("org.freedesktop.DBus.Introspectable.Introspect", 0).Store(&s)
 	if e != nil {
-		if retried {
+		if retries >= 5 {
 			log.Println("Notice: Cannot introspect org.kde.Solid on this system", e)
 		} else {
 			log.Println("org.kde.Solid.PowerManagement might not be started yet. Waiting a moment then retrying")
 			time.Sleep(500 * time.Millisecond)
-			retried = true
+			retries++
 			goto retry
 		}
 	} else {
@@ -164,9 +164,43 @@ retry:
 	log.Println("monitor: Monitoring DBus session bus")
 
 	for v := range c {
-		log.Println("udisks:", v.Headers, v.Body)
+		log.Println("udisks headers:", v.Headers)
+		log.Println("udisks body:", v.Body)
 		// log.Println("udisks:", v.Headers[3])
-		watchDirectories()
+		checkMounts()
 	}
+}
 
+func checkMounts() {
+	oldDirs := watchedDirectories[len(candidateDirectories):]
+	newDirs := getMountDirectories()
+old:
+	for old := 0; old < len(oldDirs); old++ {
+		for new := range newDirs {
+			if oldDirs[old] == newDirs[new] {
+				oldDirs = append(oldDirs[:old], oldDirs[old+1:]...)
+				newDirs = append(newDirs[:new], newDirs[new+1:]...)
+				old--
+				continue old
+			}
+		}
+	}
+	for _, dir := range oldDirs {
+		RemoveIntegrationsFromDir(dir)
+		for i := range watchedDirectories {
+			if watchedDirectories[i] == dir {
+				watchedDirectories = append(watchedDirectories[:i], watchedDirectories[i+1:]...)
+				break
+			}
+		}
+		RemoveWatchDir(dir)
+		log.Println("umounted: ", dir)
+	}
+	watchedDirectories = append(watchedDirectories, newDirs...)
+	for _, dir := range newDirs {
+		AddIntegrationsFromDir(dir)
+		err := AddWatchDir(dir)
+		helpers.PrintError("add watch", err)
+		log.Println("now watching ", dir)
+	}
 }

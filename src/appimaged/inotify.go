@@ -23,49 +23,121 @@ package main
 
 import (
 	"log"
+	"path/filepath"
+	"strings"
+	"time"
 
-	"github.com/rjeczalik/notify"
+	"github.com/fsnotify/fsnotify"
+	"github.com/probonopd/go-appimage/internal/helpers"
+	"github.com/probonopd/go-appimage/src/goappimage"
 )
 
-// Can we watch files with a certain file name extension only
-// and how would this improve performance?
+var watcher *fsnotify.Watcher
 
-func inotifyWatch(path string) {
-	// Make the channel buffered to ensure no event is dropped. Notify will drop
-	// an event if the receiver is not able to keep up the sending pace.
-	c := make(chan notify.EventInfo, 1)
-
-	// Set up a watchpoint listening for inotify-specific events within a
-	// current working directory. Dispatch each InCloseWrite and InMovedTo
-	// events separately to c.
-	if err := notify.Watch(path, c, notify.InCloseWrite, notify.InMovedTo,
-		notify.InMovedFrom, notify.InDelete,
-		notify.InDeleteSelf); err != nil {
-		log.Println(err) // Don't be fatal if a directory cannot be read (e.g., no read rights)
-	}
-	defer notify.Stop(c)
-
-	for {
-		// Block until an event is received.
-		switch ei := <-c; ei.Event() {
-		case notify.InDeleteSelf:
-			log.Println("TODO:", ei.Path(), "was deleted, un-integrate all AppImages that were conteined herein")
-			fallthrough
-			// log.Println("ToBeIntegratedOrUnintegrated now contains:", ToBeIntegratedOrUnintegrated)
-		case notify.InDelete:
-			fallthrough
-		case notify.InMovedFrom:
-			ai, _ := NewAppImage(ei.Path())
-			ai.startup = false
-			integrationChannel <- ai
-		default:
-			log.Println("inotifyWatch:", ei.Path(), ei.Event())
-			ai, err := NewAppImage(ei.Path())
-			if err == nil {
-				ai.startup = false
-				integrationChannel <- ai
-			}
-			// log.Println("ToBeIntegratedOrUnintegrated now contains:", ToBeIntegratedOrUnintegrated)
+// Add the directory to the directory watcher. Also initializes the watcher if it hasn't been used yet.
+func AddWatchDir(dir string) (err error) {
+	if watcher == nil {
+		watcher, err = fsnotify.NewWatcher()
+		if err != nil {
+			return err
 		}
+	}
+	if !filepath.IsAbs(dir) {
+		dir, err = filepath.Abs(dir)
+		if err != nil {
+			return err
+		}
+	}
+	// Adding a dir that's already added causes an error, so we make sure it's not watched to prevent this.
+	for _, watched := range watcher.WatchList() {
+		if watched == dir {
+			return nil
+		}
+	}
+	return watcher.Add(dir)
+}
+
+func RemoveWatchDir(dir string) {
+	watcher.Remove(dir)
+}
+
+// Starts actually waiting for filesystem events. This will be run in a goroutine, so we don't want to return anything.
+func StartWatch() {
+mainLoop:
+	for {
+		select {
+		case ev, ok := <-watcher.Events:
+			if !ok {
+				return
+			}
+			log.Println("fsnotify event:", ev)
+			for _, dir := range watchedDirectories {
+				// Deleting or creating a watched directory gives fsnotify.Rename.
+				if dir == ev.Name && ev.Has(fsnotify.Rename) {
+					if helpers.Exists(dir) {
+						AddIntegrationsFromDir(dir)
+					} else {
+						RemoveIntegrationsFromDir(dir)
+					}
+					continue mainLoop
+				}
+
+			}
+			if !IsPossibleAppImage(ev.Name) {
+				continue
+			}
+			if ev.Has(fsnotify.Write) {
+				// Many write operations could be sent for the same file in a short amount of time.
+				// writeWait will keep track of things and take appropriate actions when writing is done.
+				writeWait(ev.Name)
+				continue
+			}
+			_, ok = integrations[ev.Name]
+			if ok {
+				if ev.Has(fsnotify.Rename) || ev.Has(fsnotify.Remove) {
+					// TODO: Add UpdateIntegration for renames instead of removing and readding it.
+					RemoveIntegration(ev.Name, true)
+				}
+				continue
+			}
+			if ev.Has(fsnotify.Create) {
+				// A create signal may be followed by write signals, so we wait for them to come through (if they do)
+				writeWait(ev.Name)
+			}
+		case err, ok := <-watcher.Errors:
+			if !ok {
+				return
+			}
+			helpers.PrintError("watcher", err)
+		}
+	}
+}
+
+// Only pay attention to files that are probably an appimage based on it's extention.
+func IsPossibleAppImage(path string) bool {
+	return strings.HasSuffix(strings.ToLower(path), ".appimage") || strings.HasSuffix(strings.ToLower(path), ".app")
+}
+
+var timers = make(map[string]*time.Timer)
+
+// Largely from https://github.com/fsnotify/fsnotify/blob/v1.6.0/cmd/fsnotify/dedup.go
+func writeWait(path string) {
+	t, ok := timers[path]
+	if !ok {
+		timers[path] = time.AfterFunc(100*time.Millisecond, func() { writeEnd(path) })
+	} else {
+		t.Reset(100 * time.Millisecond)
+	}
+}
+
+func writeEnd(path string) {
+	// We make sure the path is an AppImage in the first place
+	_, ok := integrations[path]
+	if goappimage.IsAppImage(path) {
+		if !ok {
+			AddIntegration(path, true)
+		}
+	} else if ok {
+		RemoveIntegration(path, true)
 	}
 }

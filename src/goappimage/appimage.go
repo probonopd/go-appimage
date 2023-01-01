@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/CalebQ42/fuse"
 	"github.com/CalebQ42/squashfs"
 	"github.com/probonopd/go-appimage/internal/helpers"
 	"gopkg.in/ini.v1"
@@ -38,6 +39,18 @@ type AppImage struct {
 	imageType  int
 }
 
+func IsAppImage(path string) bool {
+	if strings.HasSuffix(path, ".temp") ||
+		strings.HasSuffix(path, "~") ||
+		strings.HasSuffix(path, ".part") ||
+		strings.HasSuffix(path, ".partial") ||
+		strings.HasSuffix(path, ".zs-old") ||
+		strings.HasSuffix(path, ".crdownload") {
+		return false
+	}
+	return determineImageType(path) != -1
+}
+
 // NewAppImage creates an AppImage object from the location defined by path.
 // Returns an error if the given path is not an appimage, or is a temporary file.
 // In all instances, will still return the AppImage.
@@ -53,7 +66,7 @@ func NewAppImage(path string) (ai *AppImage, err error) {
 		strings.HasSuffix(path, ".crdownload") {
 		return ai, errors.New("given path is a temporary file")
 	}
-	ai.imageType = ai.determineImageType()
+	ai.imageType = determineImageType(path)
 	// Don't waste more time if the file is not actually an AppImage
 	if ai.imageType < 0 {
 		return ai, errors.New("given path is NOT an AppImage")
@@ -128,14 +141,14 @@ func (ai AppImage) calculateNiceName() string {
 
 // Check whether we have an AppImage at all.
 // Return image type, or -1 if it is not an AppImage
-func (ai AppImage) determineImageType() int {
+func determineImageType(path string) int {
 	// log.Println("appimage: ", ai.path)
-	f, err := os.Open(ai.Path)
+	f, err := os.Open(path)
 	// printError("appimage", err)
 	if err != nil {
 		return -1 // If we were not able to open the file, then we report that it is not an AppImage
 	}
-	info, err := os.Stat(ai.Path)
+	info, err := os.Stat(path)
 	if err != nil {
 		return -1
 	}
@@ -175,6 +188,16 @@ func (ai AppImage) SquashfsReader() (*squashfs.Reader, error) {
 		return nil, err
 	}
 	return squashRdr, nil
+}
+
+// Mounts a type 2 AppImage to the given mount point using fuse3.
+// To umount run con.Close() and to wait for the mount to end do <-con.Ready
+func (ai AppImage) Mount(mountPoint string) (*fuse.Conn, error) {
+	rdr, err := ai.SquashfsReader()
+	if err != nil {
+		return nil, err
+	}
+	return rdr.Mount(mountPoint)
 }
 
 // Type is the type of the AppImage. Should be either 1 or 2.
