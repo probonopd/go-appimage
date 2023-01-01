@@ -10,6 +10,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.4.0
 	github.com/eclipse/paho.mqtt.golang v1.4.1
 	github.com/esiqveland/notify v0.11.1
+	github.com/fsnotify/fsnotify v1.6.0
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/grandcat/zeroconf v1.0.0
@@ -19,7 +20,6 @@ require (
 	github.com/otiai10/copy v1.7.0
 	github.com/probonopd/go-zsyncmake v0.0.0-20181008012426-5db478ac2be7
 	github.com/prometheus/procfs v0.8.0
-	github.com/rjeczalik/notify v0.9.2
 	github.com/sabhiram/png-embed v0.0.0-20180421025336-149afe9a3ccb
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/shuheiktgw/go-travis v0.3.1

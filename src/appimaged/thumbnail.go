@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"image"
 	"image/png"
@@ -9,7 +10,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"time"
 
 	_ "embed"
 
@@ -69,10 +69,10 @@ icon:
 
 // This reads the icon from the appimage then makes necessary changes or uses the default icon as necessary.
 // All this is now done in memory instead of constantly writing the changes to disk.
-func (ai AppImage) extractDirIconAsThumbnail() {
+func (ai AppImage) extractDirIconAsThumbnail() error {
 	// log.Println("thumbnail: extract DirIcon as thumbnail")
 	if ai.Type() <= 0 {
-		return
+		return errors.New("not an appimage")
 	}
 
 	// TODO: Detect Modifications by reading the 'Thumb::MTime' key as per
@@ -149,14 +149,17 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	fmt.Println("Writing thumb to ", ai.thumbnailfilepath)
 	err = os.WriteFile(ai.thumbnailfilepath, iconBuf, 0600)
 	helpers.LogError("thumbnail", err)
+	if err != nil {
+		return err
+	}
 
 	/* Also set mtime of the thumbnail file to the mtime of the AppImage. Quite possibly this is not needed.
 	TODO: Perhaps we can remove it.
 	See https://specifications.freedesktop.org/thumbnail-spec/thumbnail-spec-latest.html#MODIFICATIONS  */
-	if appImageInfo, e := os.Stat(ai.Path); e == nil {
-		e = os.Chtimes(ai.thumbnailfilepath, time.Now().Local(), appImageInfo.ModTime())
-		helpers.LogError("thumbnail", e)
-	}
+	// if appImageInfo, e := os.Stat(ai.Path); e == nil {
+	// 	e = os.Chtimes(ai.thumbnailfilepath, time.Now().Local(), appImageInfo.ModTime())
+	// 	helpers.LogError("thumbnail", e)
+	// }
 
 	// In Xfce, the new thumbnail is not shown in the file manager until we touch the file
 	// In fact, touching it from within this program makes the thumbnail not work at all
@@ -167,6 +170,7 @@ func (ai AppImage) extractDirIconAsThumbnail() {
 	// err = os.Chtimes(ai.path, now, now)
 	// printError("thumbnail", err)
 	// cmd = exec.Command("touch", ai.thumbnailfilepath)
+	return nil
 }
 
 // Convert a given file into a PNG; its dependencies add about 2 MB to the executable

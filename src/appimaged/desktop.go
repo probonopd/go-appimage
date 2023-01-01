@@ -24,7 +24,7 @@ var desktopCache = filepath.Join(cacheDir, "desktop")
 // Call this with "go" because we have intentional delay in here (we are waiting for
 // external thumbnailers to complete), which means it does not return
 // for a while
-func writeDesktopFile(ai AppImage) {
+func writeDesktopFile(ai AppImage) error {
 
 	// log.Println(md5s)
 	// XDG directories
@@ -234,12 +234,13 @@ func writeDesktopFile(ai AppImage) {
 	deskFil, err := os.Create(ai.desktopfilepath)
 	if err != nil {
 		log.Printf("Fail to create file: %v", err)
-		return
+		return err
 	}
 	_, err = deskFil.Write(out)
 	if err != nil {
 		log.Printf("Fail to write file: %v", err)
 	}
+	return err
 }
 
 // Return true if a path to a file is writable
