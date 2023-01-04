@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/CalebQ42/fuse"
 	"github.com/CalebQ42/squashfs"
 	"github.com/probonopd/go-appimage/internal/helpers"
 	"gopkg.in/ini.v1"
@@ -188,16 +187,6 @@ func (ai AppImage) SquashfsReader() (*squashfs.Reader, error) {
 		return nil, err
 	}
 	return squashRdr, nil
-}
-
-// Mounts a type 2 AppImage to the given mount point using fuse3.
-// To umount run con.Close() and to wait for the mount to end do <-con.Ready
-func (ai AppImage) Mount(mountPoint string) (*fuse.Conn, error) {
-	rdr, err := ai.SquashfsReader()
-	if err != nil {
-		return nil, err
-	}
-	return rdr.Mount(mountPoint)
 }
 
 // Type is the type of the AppImage. Should be either 1 or 2.
