@@ -127,6 +127,7 @@ retry:
 		} else {
 			log.Println("org.kde.Solid.PowerManagement might not be started yet. Waiting a moment then retrying")
 			time.Sleep(500 * time.Millisecond)
+			retried = true
 			goto retry
 		}
 	} else {
