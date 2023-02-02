@@ -13,6 +13,7 @@ import (
 
 	_ "embed"
 
+	"github.com/adrg/xdg"
 	issvg "github.com/h2non/go-is-svg"
 	"github.com/probonopd/go-appimage/internal/helpers"
 	pngembed "github.com/sabhiram/png-embed" // For embedding metadata into PNG
@@ -20,7 +21,7 @@ import (
 	"github.com/srwiley/rasterx"
 )
 
-var thumbnailCache = filepath.Join(cacheDir, "thumbnails")
+var thumbnailCache = filepath.Join(xdg.CacheHome, "thumbnails", "normal")
 
 /*
 	The thumbnail cache directory is prefixed with $XDG_CACHE_DIR/ and the leading dot removed
