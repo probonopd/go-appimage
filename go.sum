@@ -1,9 +1,7 @@
 github.com/CalebQ42/fuse v0.1.0 h1:KLCNjun7zcd2kBNVFfH+SWJyhuwJdE0nhw5/q8K8HGQ=
 github.com/CalebQ42/fuse v0.1.0/go.mod h1:pJpoKG03HJKVhsp8o0YQYqmfbFsr3Eowt90yQGQVO+4=
-github.com/CalebQ42/squashfs v0.7.2 h1:sqbfrSVb49aenCDPek+k4EisOH18+wKE0tTtGKjmboA=
-github.com/CalebQ42/squashfs v0.7.2/go.mod h1:xLd45WKaJTaH3OFLrh8VxsEN0MOvn9m+cSMdAUh/6oE=
-github.com/CalebQ42/squashfs v0.7.5 h1:gu+y5+I269nKpOxLjuk2iy9CSkWESc4izXlBjpmmiB0=
-github.com/CalebQ42/squashfs v0.7.5/go.mod h1:xLd45WKaJTaH3OFLrh8VxsEN0MOvn9m+cSMdAUh/6oE=
+github.com/CalebQ42/squashfs v0.7.8 h1:rXA2eS2RXogl1yEGDHrjXjKlYUESPeTp7kv0u1Kz/kE=
+github.com/CalebQ42/squashfs v0.7.8/go.mod h1:b+/k1eXs5cc8m3BfXGf4tQyQPIsVSqJhhHzae1FpbhI=
 github.com/acobaugh/osrelease v0.1.0 h1:Yb59HQDGGNhCj4suHaFQQfBps5wyoKLSSX/J/+UifRE=
 github.com/acobaugh/osrelease v0.1.0/go.mod h1:4bFEs0MtgHNHBrmHCt67gNisnabCRAlzdVasCEGHTWY=
 github.com/adrg/xdg v0.4.0 h1:RzRqFcjH4nE5C6oTAxhBtoE2IRyjBSa62SCbyPidvls=
