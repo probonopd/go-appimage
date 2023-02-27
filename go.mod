@@ -28,7 +28,7 @@ require (
 	github.com/urfave/cli/v2 v2.17.1
 	go.lsp.dev/uri v0.3.0
 	golang.org/x/crypto v0.0.0-20221005025214-4161e89ecf1b
-	golang.org/x/sys v0.0.0-20221006211917-84dc82d7e875
+	golang.org/x/sys v0.5.0
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/src-d/go-git.v4 v4.13.1
 )
@@ -63,9 +63,9 @@ require (
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	golang.org/x/image v0.0.0-20211028202545-6944b10bf410 // indirect
-	golang.org/x/net v0.0.0-20220624214902-1bab6f366d9e // indirect
+	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f // indirect
-	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	gopkg.in/src-d/go-billy.v4 v4.3.2 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
