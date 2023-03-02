@@ -163,7 +163,11 @@ NoDisplay=true
 EOF
   fi
   chmod +x $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/*
-  $BUILDDIR/appimagetool-x86_64.AppDir/usr/bin/appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
+  if [ $PROG == "appimagetool" ]; then
+    $BUILDDIR/appimagetool-x86_64.AppDir/usr/bin/appimagetool $BUILDDIR/$PROG-$ARCH.AppDir
+  else
+    $BUILDDIR/appimagetool-$VERSION-x86_64.AppImage $BUILDDIR/$PROG-$ARCH.AppDir
+  fi
 }
 
 #############################################################

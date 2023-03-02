@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/md5"
 	"encoding/hex"
+	"errors"
 	"net/url"
 
 	"gopkg.in/ini.v1"
@@ -30,7 +31,6 @@ type AppImage struct {
 	thumbnailfilename string
 	thumbnailfilepath string
 	updateinformation string
-	startup           bool //used so we don't notify applications being added on startup
 	// offset            int64
 	// rawcontents       string
 	// niceName          string
@@ -47,13 +47,9 @@ func NewAppImage(path string) (ai *AppImage, err error) {
 	ai.uri = strings.TrimSpace(string(uri.File(filepath.Clean(ai.Path))))
 	ai.md5 = ai.calculateMD5filenamepart() // Need this also for non-existing AppImages for removal
 	ai.desktopfilename = "appimagekit_" + ai.md5 + ".desktop"
-	ai.desktopfilepath = xdg.DataHome + "/applications/" + "appimagekit_" + ai.md5 + ".desktop"
+	ai.desktopfilepath = filepath.Join(xdg.DataHome, "applications", ai.desktopfilename)
 	ai.thumbnailfilename = ai.md5 + ".png"
-	if strings.HasSuffix(ThumbnailsDirNormal, "/") {
-		ai.thumbnailfilepath = ThumbnailsDirNormal + ai.thumbnailfilename
-	} else {
-		ai.thumbnailfilepath = ThumbnailsDirNormal + "/" + ai.thumbnailfilename
-	}
+	ai.thumbnailfilepath = filepath.Join(ThumbnailsDirNormal, ai.thumbnailfilename)
 	if err != nil {
 		return ai, err
 	}
@@ -98,17 +94,15 @@ func (ai AppImage) Validate() error {
 	return nil
 }
 
-// Do not call this directly. Instead, call IntegrateOrUnintegrate
-// Integrate an AppImage into the system (put in menu, extract thumbnail)
-// Can take a long time, hence run with "go"
-func (ai AppImage) _integrate() {
+// Do not call this directly. Instead, call AddIntegration
+func (ai AppImage) _integrate() error {
 
 	// log.Println("integrate called on:", ai.path)
 
 	// Return immediately if the filename extension is not .AppImage or .app
 	if !strings.HasSuffix(strings.ToUpper(ai.Path), ".APPIMAGE") && !strings.HasSuffix(strings.ToUpper(ai.Path), ".APP") {
 		// log.Println("No .AppImage suffix:", ai.path)
-		return
+		return errors.New("incorrect extension")
 	}
 
 	ai.setExecBit()
@@ -127,7 +121,7 @@ func (ai AppImage) _integrate() {
 					if CheckIfConnectedToNetwork() {
 						go SubscribeMQTT(MQTTclient, ai.updateinformation)
 					}
-					return
+					return nil
 				}
 			}
 		}
@@ -140,7 +134,10 @@ func (ai AppImage) _integrate() {
 	// 	return
 	// }
 
-	writeDesktopFile(ai) // Do not run with "go" as it would interfere with extractDirIconAsThumbnail
+	err := writeDesktopFile(ai) // Do not run with "go" as it would interfere with extractDirIconAsThumbnail
+	if err != nil {
+		return err
+	}
 
 	// Subscribe to MQTT messages for this application
 	if ai.updateinformation != "" {
@@ -161,38 +158,26 @@ func (ai AppImage) _integrate() {
 			diff := thumbnailFileInfo.ModTime().Sub(appImageInfo.ModTime())
 			if diff > (time.Duration(0) * time.Second) {
 				// Do nothing if the thumbnail file is already newer than the AppImage file
-				return
+				return nil
 			}
 		}
 	}
 	// }
 
-	ai.extractDirIconAsThumbnail() // Do not run with "go" as it would interfere with writeDesktopFile
-
+	return ai.extractDirIconAsThumbnail() // Do not run with "go" as it would interfere with writeDesktopFile
 }
 
-// Do not call this directly. Instead, call IntegrateOrUnintegrate
-func (ai AppImage) _removeIntegration() {
+// Do not call this directly. Instead, call RemoveIntegration.
+// We're simply trying to remove the files so we don't REALLY care about any errors that might or might not be returned.
+func (ai AppImage) _unintegrate() {
 	log.Println("appimage: Remove integration", ai.Path)
-	err := os.Remove(ai.thumbnailfilepath)
-	if err == nil {
-		log.Println("appimage: Deleted", ai.thumbnailfilepath)
-	} else {
-		log.Println("appimage:", err, ai.thumbnailfilepath)
-	}
-
+	os.Remove(ai.thumbnailfilepath)
+	os.Remove(ai.desktopfilepath)
 	// Unsubscribe to MQTT messages for this application
 	if ai.updateinformation != "" {
 		go UnSubscribeMQTT(MQTTclient, ai.updateinformation)
 	}
 
-	err = os.Remove(ai.desktopfilepath)
-	if err == nil {
-		log.Println("appimage: Deleted", ai.desktopfilepath)
-		sendDesktopNotification("Removed", ai.Path, 3000)
-	} else {
-		log.Println("appimage:", err, ai.desktopfilename)
-	}
 }
 
 // IntegrateOrUnintegrate integrates or unintegrates
@@ -200,15 +185,15 @@ func (ai AppImage) _removeIntegration() {
 // depending on whether the file exists on disk. NEVER call this directly,
 // ONLY have this called from a function that limits parallelism and ensures
 // uniqueness of the AppImages to be processed
-func (ai AppImage) IntegrateOrUnintegrate() bool {
-	if _, err := os.Stat(ai.Path); os.IsNotExist(err) {
-		ai._removeIntegration()
-	} else {
-		ai._integrate()
-		return true
-	}
-	return false
-}
+// func (ai AppImage) IntegrateOrUnintegrate() bool {
+// 	if _, err := os.Stat(ai.Path); os.IsNotExist(err) {
+// 		ai._removeIntegration()
+// 	} else {
+// 		ai._integrate()
+// 		return true
+// 	}
+// 	return false
+// }
 
 // ReadUpdateInformation reads updateinformation from an AppImage
 // Returns updateinformation string and error

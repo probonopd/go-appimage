@@ -89,7 +89,7 @@ func checkPrerequisites() {
 	// This is useful for debugging
 	if *cleanPtr {
 		var files []string
-		files, err = filepath.Glob(filepath.Join(xdg.DataHome+"/applications/", "appimagekit_*"))
+		files, err = filepath.Glob(filepath.Join(xdg.DataHome, "applications", "appimagekit_*"))
 		helpers.LogError("main:", err)
 		for _, file := range files {
 			if *verbosePtr {
@@ -267,7 +267,8 @@ func ensureRunningFromLiveSystem() {
 func TerminateOtherInstances() {
 	user, err := user.Current()
 	if err != nil {
-		panic(err)
+		helpers.LogError("term other instances", err)
+		return
 	}
 	myself, _ := os.Readlink("/proc/self/exe")
 	fmt.Println("This process based on /proc/self/exe:", myself)

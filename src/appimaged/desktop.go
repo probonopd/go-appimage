@@ -22,7 +22,7 @@ import (
 // Call this with "go" because we have intentional delay in here (we are waiting for
 // external thumbnailers to complete), which means it does not return
 // for a while
-func writeDesktopFile(ai AppImage) {
+func writeDesktopFile(ai AppImage) error {
 
 	// log.Println(md5s)
 	// XDG directories
@@ -51,8 +51,7 @@ func writeDesktopFile(ai AppImage) {
 	if !cfg.Section("Desktop Entry").HasKey("Type") {
 		cfg.Section("Desktop Entry").Key("Type").SetValue("Application")
 	}
-	thumbnail := ThumbnailsDirNormal + ai.md5 + ".png"
-	cfg.Section("Desktop Entry").Key("Icon").SetValue(thumbnail)
+	cfg.Section("Desktop Entry").Key("Icon").SetValue(ai.thumbnailfilepath)
 	// Construct the Name entry based on the actual filename
 	// so that renaming the file in the file manager results in a changed name in the menu
 	// FIXME: If the thumbnail is not generated here but by another external thumbnailer, it may not be fast enough
@@ -232,12 +231,13 @@ func writeDesktopFile(ai AppImage) {
 	deskFil, err := os.Create(ai.desktopfilepath)
 	if err != nil {
 		log.Printf("Fail to create file: %v", err)
-		return
+		return err
 	}
 	_, err = deskFil.Write(out)
 	if err != nil {
 		log.Printf("Fail to write file: %v", err)
 	}
+	return err
 }
 
 // Return true if a path to a file is writable
