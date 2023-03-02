@@ -331,7 +331,7 @@ func checkDirectories() {
 		}
 	}
 
-	helpers.DeleteDesktopFilesWithNonExistingTargets(desktopCache)
+	helpers.DeleteDesktopFilesWithNonExistingTargets()
 	// So this should also catch AppImages which were formerly hidden in some subdirectory
 	// where the whole directory was deleted
 }
