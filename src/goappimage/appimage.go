@@ -54,7 +54,7 @@ func IsAppImage(path string) bool {
 // Returns an error if the given path is not an appimage, or is a temporary file.
 // In all instances, will still return the AppImage.
 func NewAppImage(path string) (ai *AppImage, err error) {
-	ai = &AppImage{Path: path, imageType: -1}
+	ai = &AppImage{Path: path, imageType: determineImageType(path)}
 	// If we got a temp file, exit immediately
 	// E.g., ignore typical Internet browser temporary files used during download
 	if strings.HasSuffix(path, ".temp") ||
@@ -65,7 +65,6 @@ func NewAppImage(path string) (ai *AppImage, err error) {
 		strings.HasSuffix(path, ".crdownload") {
 		return ai, errors.New("given path is a temporary file")
 	}
-	ai.imageType = determineImageType(path)
 	// Don't waste more time if the file is not actually an AppImage
 	if ai.imageType < 0 {
 		return ai, errors.New("given path is NOT an AppImage")

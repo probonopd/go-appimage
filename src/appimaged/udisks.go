@@ -124,7 +124,7 @@ retry:
 	if e != nil {
 		if retried {
 			log.Println("Notice: Cannot introspect org.kde.Solid on this system", e)
-		} else {
+		} else if !satisfied {
 			log.Println("org.kde.Solid.PowerManagement might not be started yet. Waiting a moment then retrying")
 			time.Sleep(500 * time.Millisecond)
 			retried = true

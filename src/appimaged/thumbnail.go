@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 
 	_ "embed"
 
@@ -26,7 +27,7 @@ import (
 (since $XDG_CACHE_DIR is normally $HOME/.cache).
 The glib ChangeLog indicates the path for large sizes was "fixed" (Added $XDG_CACHE_DIR) starting with 2.35.3
 */
-var ThumbnailsDirNormal = xdg.CacheHome + "/thumbnails/normal/"
+var ThumbnailsDirNormal = filepath.Join(xdg.CacheHome, "thumbnails/normal")
 
 //go:embed embed/appimage.png
 var defaultIcon []byte

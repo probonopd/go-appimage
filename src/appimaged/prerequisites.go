@@ -89,7 +89,7 @@ func checkPrerequisites() {
 	// This is useful for debugging
 	if *cleanPtr {
 		var files []string
-		files, err = filepath.Glob(filepath.Join(xdg.DataHome+"/applications/", "appimagekit_*"))
+		files, err = filepath.Glob(filepath.Join(xdg.DataHome, "applications", "appimagekit_*"))
 		helpers.LogError("main:", err)
 		for _, file := range files {
 			if *verbosePtr {
@@ -391,7 +391,7 @@ func setupToRunThroughSystemd() {
 				os.Exit(0)
 			}
 		}
-		
+
 	}
 
 }

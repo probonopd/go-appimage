@@ -73,15 +73,18 @@ var commit string
 var watchedDirectories []string
 
 var home, _ = os.UserHomeDir()
-var candidateDirectories = append(strings.Split(os.Getenv("PATH"), ":"), []string{
-	xdg.UserDirs.Download,
-	xdg.UserDirs.Desktop,
-	home + "/.local/bin",
-	home + "/bin",
-	home + "/Applications",
-	"/opt",
-	"/usr/local/bin",
-}...)
+var candidateDirectories = append(
+	strings.Split(os.Getenv("PATH"), ":"),
+	[]string{
+		xdg.UserDirs.Download,
+		xdg.UserDirs.Desktop,
+		home + "/.local/bin",
+		home + "/bin",
+		home + "/Applications",
+		"/opt",
+		"/usr/local/bin",
+	}...,
+)
 
 func main() {
 	thisai, _ = NewAppImage(helpers.Args0())
@@ -301,7 +304,6 @@ func updateMenu() error {
 }
 
 func checkDirectories() {
-
 	// Register AppImages from well-known locations
 	// https://github.com/AppImage/appimaged#monitored-directories
 	home, _ := os.UserHomeDir()
