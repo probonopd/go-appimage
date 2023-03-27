@@ -86,43 +86,50 @@ var candidateDirectories = append(
 	}...,
 )
 
-func main() {
-	thisai, _ = NewAppImage(helpers.Args0())
+func usage() {
+	if commit == "" {
+		commit = "unsupported custom build"
+	}
+	fmt.Println()
+	fmt.Println(filepath.Base(os.Args[0]) + " " + commit + "\n")
+	fmt.Println()
+	fmt.Println("Optional daemon that registers AppImages and integrates them with the system.")
+	fmt.Println()
+	fmt.Println("Sets the executable bit on AppImages, adds them to the system menu,")
+	fmt.Println("and makes it possible to launch the most recent AppImage")
+	fmt.Println("that is registered on the system for a given application.")
+	fmt.Println()
+	fmt.Println("If no commands are given, installs as a systemd service.")
+	fmt.Println("If flags are specified, they will be copied to the systemd service.")
+	fmt.Println()
+	fmt.Println("Flags:")
+	fmt.Println()
+	flag.PrintDefaults()
+	fmt.Println()
+	fmt.Println("Commands:")
+	fmt.Println()
+	fmt.Println("\trun <updateinformation>:")
+	fmt.Println("\t\tRun the most recent AppImage registered for the updateinformation provided")
+	fmt.Println("\tstart <updateinformation>:")
+	fmt.Println("\t\tStart the most recent AppImage registered for the updateinformation provided and exit immediately")
+	fmt.Println("\tupdate <path to AppImage>:")
+	fmt.Println("\t\tUpdate the AppImage using the most recent AppImageUpdate registered")
+	fmt.Println("\twrap <path to executable>:")
+	fmt.Println("\t\tExecute the exeutable and send desktop notifications for any errors")
+	fmt.Println("\tservice")
+	fmt.Println("\t\tStart appimaged daemon")
+}
 
-	// As quickly as possible go there if we are invoked from the command line with a command
+func main() {
+	if commit == "" {
+		commit = "unsupported custom build"
+	}
+	flag.Usage = usage
+	flag.Parse()
 	takeCareOfCommandlineCommands()
 
-	var version string
-	if commit != "" {
-		version = commit
-	} else {
-		version = "unsupported custom build"
-	}
-
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "\n")
-		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" "+version+"\n")
-		fmt.Fprintf(os.Stderr, "\n")
-		fmt.Fprintf(os.Stderr, "Optional daemon that registers AppImages and integrates them with the system.\n")
-		fmt.Fprintf(os.Stderr, "\n")
-		fmt.Fprintf(os.Stderr, "Sets the executable bit on AppImages, adds them to the system menu,\n")
-		fmt.Fprintf(os.Stderr, "and makes it possible to launch the most recent AppImage\n that isregistered on the system for a given application.\n")
-		fmt.Fprintf(os.Stderr, "\n")
-
-		// FIXME: Someone please tell me how to do this using flag
-		fmt.Fprintf(os.Stderr, "Commands: \n")
-		fmt.Fprintf(os.Stderr, "run <updateinformation>:\n\tRun the most recent AppImage registered\n\tfor the updateinformation provided\n")
-		fmt.Fprintf(os.Stderr, "start <updateinformation>:\n\tStart the most recent AppImage registered\n\tfor the updateinformation provided and exit immediately\n")
-		fmt.Fprintf(os.Stderr, "update <path to AppImage>:\n\tUpdate the AppImage using the most recent\n\tAppImageUpdate registered\n")
-		fmt.Fprintf(os.Stderr, "wrap <path to executable>:\n\tExecute the exeutable and send\n\tdesktop notifications for any errors\n")
-		fmt.Fprintf(os.Stderr, "\n")
-
-		flag.PrintDefaults()
-	}
-	flag.Parse()
-
 	// Always show version
-	fmt.Println(filepath.Base(os.Args[0]), version)
+	fmt.Println(filepath.Base(os.Args[0]), commit)
 
 	checkPrerequisites()
 
