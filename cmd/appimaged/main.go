@@ -122,8 +122,10 @@ func main() {
 	quiet = *quietPtr
 	if flag.NArg() == 0 {
 		InstallSystemd()
+		return
 	} else if flag.Arg(0) != "service" {
 		HandleCommands()
+		return
 	}
 
 	// Always show version
