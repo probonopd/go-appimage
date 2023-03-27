@@ -130,10 +130,8 @@ func main() {
 	verbose = *verbosePtr
 	quiet = *quietPtr
 	if flag.NArg() == 0 {
-		// TODO: Install Systemd
-	} else if flag.Arg(0) == "service" {
-		// TODO: Start service
-	} else {
+		InstallSystemd()
+	} else if flag.Arg(0) != "service" {
 		HandleCommands()
 	}
 
@@ -141,8 +139,6 @@ func main() {
 	fmt.Println(filepath.Base(os.Args[0]), commit)
 
 	checkPrerequisites()
-
-	setupToRunThroughSystemd()
 	// fmt.Println("Setting as autostart...")
 	// setMyselfAsAutostart()
 
@@ -155,18 +151,19 @@ func main() {
 	// overwritePtr = &ptrue
 
 	// Connect to MQTT server and subscribe to the topic for ourselves
-	if CheckIfConnectedToNetwork() {
-		uri, err := url.Parse(helpers.MQTTServerURI)
-		if err != nil {
-			log.Fatal(err)
+	if !*noMqtt {
+		if CheckIfConnectedToNetwork() {
+			uri, err := url.Parse(helpers.MQTTServerURI)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			// go SubscribeMQTT(MQTTclient, "gh-releases-zsync|probonopd|merkaartor|continuous|Merkaartor-*-x86_64.AppImage.zsync")
+			// go SubscribeMQTT(MQTTclient, "gh-releases-zsync|AppImage|AppImageKit|continuous|appimagetool-x86_64.AppImage.zsync")
+
+			MQTTclient = connect("sub", uri)
+			log.Println("MQTT client connected:", MQTTclient.IsConnected())
 		}
-
-		// go SubscribeMQTT(MQTTclient, "gh-releases-zsync|probonopd|merkaartor|continuous|Merkaartor-*-x86_64.AppImage.zsync")
-		// go SubscribeMQTT(MQTTclient, "gh-releases-zsync|AppImage|AppImageKit|continuous|appimagetool-x86_64.AppImage.zsync")
-
-		MQTTclient = connect("sub", uri)
-		log.Println("MQTT client connected:", MQTTclient.IsConnected())
-
 	}
 
 	// go monitorDbusSessionBus() // If used, then nothing else can use DBus anymore? FIXME #####################
@@ -178,8 +175,8 @@ func main() {
 
 	helpers.DeleteDesktopFilesWithNonExistingTargets()
 
-	log.Println("Overwrite:", *overwritePtr)
-	log.Println("Clean:", *overwritePtr)
+	log.Println("Overwrite:", *overwrite)
+	log.Println("Clean:", *overwrite)
 
 	// Disable desktop integration provided by scripts within AppImages
 	// as per https://github.com/AppImage/AppImageSpec/blob/master/draft.md#desktop-integration
@@ -190,7 +187,7 @@ func main() {
 	// TODO: Also react to network interfaces and network connections coming and going,
 	// refer to the official NetworkManager dbus specification:
 	// https://developer.gnome.org/NetworkManager/1.16/spec.html
-	if !*noZeroconfPtr {
+	if !*noZeroconf {
 		if CheckIfConnectedToNetwork() {
 			go registerZeroconfService()
 			go browseZeroconfServices()
@@ -361,7 +358,7 @@ func getMountDirectories() (out []string) {
 	// FIXME: This breaks when the partition label has "-", see https://github.com/prometheus/procfs/issues/227
 
 	for _, mount := range mounts {
-		if *verbosePtr {
+		if verbose {
 			log.Println("main: MountPoint", mount.MountPoint)
 		}
 		if !strings.HasPrefix(mount.MountPoint, "/sys") && // Is /dev needed for openSUSE Live?

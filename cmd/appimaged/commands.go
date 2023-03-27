@@ -20,13 +20,10 @@ func HandleCommands() {
 		runFromUpdateInfo(flag.Args()[1:], true)
 	case "start":
 		runFromUpdateInfo(flag.Args()[1:], false)
-	case "service":
-		return
 	default:
 		fmt.Println("Invalid command")
 		os.Exit(1)
 	}
-	os.Exit(0)
 }
 
 func runFromUpdateInfo(args []string, wait bool) {

@@ -535,7 +535,7 @@ func FindMostRecentFile(files []string) string {
 }
 
 // Check for needed files on $PATH. Returns err
-func CheckForNeededTools(tools []string) error {
+func CheckForNeededTools(tools ...string) error {
 	for _, t := range tools {
 		_, err := exec.LookPath(t)
 		if err != nil {
@@ -549,10 +549,7 @@ func CheckForNeededTools(tools []string) error {
 // IsCommandAvailable returns true if a file is on the $PATH
 func IsCommandAvailable(name string) bool {
 	_, err := exec.LookPath(name)
-	if err == nil {
-		return true
-	}
-	return false
+	return err == nil
 }
 
 // SliceContains returns true if the []string contains string,

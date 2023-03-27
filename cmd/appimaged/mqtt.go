@@ -66,7 +66,7 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 	}
 	topic := helpers.MQTTNamespace + "/" + queryEscapedUpdateInformation + "/#"
 
-	if *verbosePtr {
+	if verbose {
 		log.Println("mqtt: Waiting for messages on topic", helpers.MQTTNamespace+"/"+queryEscapedUpdateInformation+"/version")
 	} else {
 		log.Println("Subscribing to updates for", updateinformation)

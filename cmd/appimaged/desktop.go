@@ -221,7 +221,7 @@ func writeDesktopFile(ai AppImage) error {
 	as := strings.Join(actions, ";")
 	cfg.Section("Desktop Entry").Key("Actions").SetValue(as)
 
-	if *verbosePtr {
+	if verbose {
 		log.Println("desktop: Saving to", ai.desktopfilepath)
 	}
 	buf := new(bytes.Buffer)

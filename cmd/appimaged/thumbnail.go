@@ -143,7 +143,7 @@ func (ai AppImage) extractDirIconAsThumbnail() error {
 	err = os.MkdirAll(ThumbnailsDirNormal, os.ModePerm)
 	helpers.LogError("thumbnail", err)
 
-	if *verbosePtr {
+	if verbose {
 		log.Println("thumbnail: Writing icon to", ai.thumbnailfilepath)
 	}
 	err = os.WriteFile(ai.thumbnailfilepath, iconBuf, 0600)

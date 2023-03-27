@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/acobaugh/osrelease"
 	"github.com/adrg/xdg"
 
 	//	"github.com/amenzhinsky/go-polkit"
@@ -23,23 +22,12 @@ import (
 )
 
 func checkPrerequisites() {
-
-	// Ensure we are running on a Live system
-	// Maybe in the distant future this may go away but for now we want everyone
-	// who tests or works on this to help making it a 1st class experience on Live systems
-	// becase we deeply care about those. Yes, AppImage is "opinionated".
-	// Once the experience on Live systems is as intended, we may lift this restriction.
-	// We want to prevent people from working on this code without caring about
-	// Live systems.
-	ensureRunningFromLiveSystem()
-
 	// Check for needed files on $PATH
 	helpers.AddHereToPath() // Add the location of the executable to the $PATH
 	// Add the watched directories to the $PATH
 	helpers.AddDirsToPath(watchedDirectories)
 
-	tools := []string{"bsdtar", "unsquashfs", "desktop-file-validate"}
-	err := helpers.CheckForNeededTools(tools)
+	err := helpers.CheckForNeededTools("bsdtar", "desktop-file-validate")
 	if err != nil {
 		os.Exit(1)
 	}
@@ -87,18 +75,18 @@ func checkPrerequisites() {
 
 	// Clean pre-existing desktop files and thumbnails
 	// This is useful for debugging
-	if *cleanPtr {
+	if *clean {
 		var files []string
 		files, err = filepath.Glob(filepath.Join(xdg.DataHome, "applications", "appimagekit_*"))
 		helpers.LogError("main:", err)
 		for _, file := range files {
-			if *verbosePtr {
+			if verbose {
 				log.Println("Deleting", file)
 			}
 			err = os.Remove(file)
 			helpers.LogError("main:", err)
 		}
-		if *verbosePtr {
+		if verbose {
 			log.Println("Deleted", len(files), "desktop files from", xdg.DataHome+"/applications/")
 		} else {
 			log.Println("Deleted", len(files), "desktop files from", xdg.DataHome+"/applications/; use -v to see details")
@@ -220,47 +208,6 @@ func exitIfBinfmtExists(path string) {
 	}
 }
 
-// ensureRunningFromLiveSystem checks if we are running on one of the supported Live systems
-// and exits the process if we are not
-func ensureRunningFromLiveSystem() {
-	keywords := []string{"casper", "live", "Live", ".iso"}
-	b, _ := os.ReadFile("/proc/cmdline")
-	str := string(b)
-	found := false
-	for _, k := range keywords {
-		if strings.Contains(str, k) {
-			found = true
-		}
-	}
-	_, gcEnvIsThere := os.LookupEnv("GOCACHE")
-
-	osrelease, err := osrelease.Read()
-	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-	}
-
-	// Selectively allow whitelisted target systems we have tested this on
-	testedSystems := []string{"deepin", "clear-linux-os"}
-	for _, testedSystem := range testedSystems {
-		if osrelease["ID"] == testedSystem {
-			return
-		}
-	}
-
-	// Allow to run if we have been called by systemd with our special environment variable
-	if os.Getenv("LAUNCHED_BY_SYSTEMD") != "" {
-		return
-	}
-
-	if !found && !gcEnvIsThere {
-		// The following temporarily relaxes the Live system restriction
-		sendDesktopNotification("Not running on one of the supported Live systems", "This configuration is currently unsupported but may still work, please give feedback.", -1)
-		// We may want to go back to the more restrictive behavior in the future
-		// sendDesktopNotification("Not running on one of the supported Live systems", "Grab a Ubuntu, Debian, Fedora, openSUSE,... Live ISO (or a derivative, like Deepin, elementary OS, GeckoLinux, KDE neon, Linux Mint, Pop!_OS...) and try from there.", -1)
-		// os.Exit(1)
-	}
-}
-
 // TerminateOtherInstances sends the SIGTERM signal to all other processes of the same user
 // that have the same process name as the current one in their name
 // FIXME: Since this is not working properly yet, we are just printing for now but not acting
@@ -328,7 +275,7 @@ systemctl restart udisks2
 // either because systemd was not yet set up to launch it, or because
 // another (newer?) version has been launched manually by the user outside
 // of systemd
-func setupToRunThroughSystemd() {
+func InstallSystemd() {
 
 	// When this process is being launched, then check whether we have been
 	// launched by systemd. If the system is using systemd this process has
@@ -338,60 +285,52 @@ func setupToRunThroughSystemd() {
 
 	if !CheckIfRunningSystemd() {
 		log.Println("This system is not running systemd")
-		log.Println("This is not a problem; skipping checking the systemd service")
 		return
 	}
+	log.Println("Manually launched, not by systemd. Check if enabled in systemd...")
 
-	if !CheckIfInvokedBySystemd() {
-
-		log.Println("Manually launched, not by systemd. Check if enabled in systemd...")
-
-		if _, err := os.Stat("/etc/systemd/user/appimaged.service"); os.IsNotExist(err) {
-			log.Println("/etc/systemd/user/appimaged.service does not exist")
-			installServiceFileInHome()
-		}
-
-		prc := exec.Command("systemctl", "--user", "status", "appimaged")
-		out, err := prc.CombinedOutput()
+	if _, err := os.Stat("/etc/systemd/user/appimaged.service"); os.IsNotExist(err) {
+		log.Println("/etc/systemd/user/appimaged.service does not exist")
+		installServiceFileInHome()
+	}
+	prc := exec.Command("systemctl", "--user", "status", "appimaged")
+	out, err := prc.CombinedOutput()
+	if err != nil {
+		log.Println(prc.String())
+		log.Println(err)
+		// Note that if the service is stopped, we get an error exit code
+		// with "exit status 3", hence this must not be fatal here
+	}
+	output := strings.TrimSpace(string(out))
+	if strings.Contains(output, " enabled; ") {
+		log.Println("Restarting via systemd...")
+		prc := exec.Command("systemctl", "--user", "restart", "appimaged")
+		_, err := prc.CombinedOutput()
 		if err != nil {
 			log.Println(prc.String())
 			log.Println(err)
-			// Note that if the service is stopped, we get an error exit code
-			// with "exit status 3", hence this must not be fatal here
-		}
-		output := strings.TrimSpace(string(out))
-
-		if strings.Contains(output, " enabled; ") {
-			log.Println("Restarting via systemd...")
-			prc := exec.Command("systemctl", "--user", "restart", "appimaged")
-			_, err := prc.CombinedOutput()
-			if err != nil {
-				log.Println(prc.String())
-				log.Println(err)
-			} else {
-				os.Exit(0)
-			}
 		} else {
-			log.Println("Enabling systemd service...")
-			prc := exec.Command("systemctl", "--user", "enable", "appimaged")
-			_, err := prc.CombinedOutput()
-			if err != nil {
-				log.Println(prc.String())
-				log.Println(err)
-			}
-			log.Println("Starting systemd service...")
-			prc = exec.Command("systemctl", "--user", "restart", "appimaged")
-			_, err = prc.CombinedOutput()
-			if err != nil {
-				log.Println(prc.String())
-				log.Println(err)
-			} else {
-				log.Println("appimaged should now be running via systemd. To check this, run")
-				log.Println("/usr/bin/systemctl -l --no-pager --user status appimaged")
-				os.Exit(0)
-			}
+			os.Exit(0)
 		}
-
+	} else {
+		log.Println("Enabling systemd service...")
+		prc := exec.Command("systemctl", "--user", "enable", "appimaged")
+		_, err := prc.CombinedOutput()
+		if err != nil {
+			log.Println(prc.String())
+			log.Println(err)
+		}
+		log.Println("Starting systemd service...")
+		prc = exec.Command("systemctl", "--user", "restart", "appimaged")
+		_, err = prc.CombinedOutput()
+		if err != nil {
+			log.Println(prc.String())
+			log.Println(err)
+		} else {
+			log.Println("appimaged should now be running via systemd. To check this, run")
+			log.Println("/usr/bin/systemctl -l --no-pager --user status appimaged")
+			os.Exit(0)
+		}
 	}
 
 }
@@ -399,7 +338,6 @@ func setupToRunThroughSystemd() {
 // CheckIfRunningSystemd returns true if pid 1 is (a symlink to) systemd,
 // otherwise false
 func CheckIfRunningSystemd() bool {
-
 	prc := exec.Command("ps", "-p", "1", "-o", "comm=")
 	out, err := prc.Output()
 	if err != nil {
@@ -410,56 +348,6 @@ func CheckIfRunningSystemd() bool {
 	if strings.TrimSpace(string(out)) == "systemd" {
 		return true
 	}
-	return false
-}
-
-// CheckIfInvokedBySystemd returns true if this process has been invoked
-// by systemd directly or indirectly, false in case it hasn't, the system is not
-// using systemd, or we are not sure
-// NOTE: INVOCATION_ID is proven to be unreliable, as this variable is exported
-// to a normal shell on e.g., Clear Linux OS
-func CheckIfInvokedBySystemd() bool {
-
-	if !CheckIfRunningSystemd() {
-		log.Println("This system is not running systemd")
-		return false
-	}
-
-	// https://serverfault.com/a/927481
-	// systemd v232 added the concept of an invocation ID of a unit,
-	// which is passed to the unit in the $INVOCATION_ID
-	// environment variable. You can check if that’s set or not.
-	/*
-		prc := exec.Command("systemctl", "--version") // systemd is not on $PATH e.g., on openSUSE, hence use this
-		out, err := prc.Output()
-		if err != nil {
-			log.Println(prc.String())
-			log.Println(err)
-			return (false)
-		}
-		output := strings.TrimSpace(string(out))
-		systemdVersion, err := strconv.Atoi(strings.Split(strings.Split(output, "\n")[0], " ")[1])
-		if err != nil {
-			log.Println(err)
-			return (false)
-		}
-		log.Println("systemd version:", systemdVersion)
-
-		if systemdVersion < 232 {
-			log.Println("systemd version lower than 232, hence we cannot determine")
-			log.Println("whether we have been launched by it using $INVOCATION_ID")
-		}
-
-		if invocationId, ok := os.LookupEnv("INVOCATION_ID"); ok {
-			log.Println("Launched by systemd: INVOCATION_ID", invocationId)
-			return true
-		}
-	*/
-	if _, ok := os.LookupEnv("LAUNCHED_BY_SYSTEMD"); ok {
-		log.Println("Launched by systemd: LAUNCHED_BY_SYSTEMD is present")
-		return true
-	}
-	log.Println("Probably not launched by systemd (please file an issue if this is wrong)")
 	return false
 }
 
@@ -492,22 +380,37 @@ func installServiceFileInHome() {
 			return
 		}
 	}
-
-	log.Println("thisai.path:", thisai.Path)
+	exe := thisai.Path
+	if verbose {
+		exe += " -v"
+	}
+	if quiet {
+		exe += " -q"
+	}
+	if *overwrite {
+		exe += " -o"
+	}
+	if *clean {
+		exe += " -c"
+	}
+	if *noZeroconf {
+		exe += " -nz"
+	}
+	if *noMqtt {
+		exe += " -u"
+	}
 	d1 := []byte(`[Unit]
 Description=AppImage system integration daemon
 After=syslog.target network.target
 
 [Service]
 Type=simple
-ExecStart=` + thisai.Path + `
+ExecStart=` + exe + ` service
 
 LimitNOFILE=65536
 
 RestartSec=3
 Restart=always
-
-Environment=LAUNCHED_BY_SYSTEMD=1
 
 [Install]
 WantedBy=default.target`)

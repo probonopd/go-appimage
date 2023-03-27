@@ -69,7 +69,7 @@ func (ai AppImage) calculateMD5filenamepart() string {
 func (ai AppImage) setExecBit() {
 	err := os.Chmod(ai.Path, 0755)
 	if err == nil {
-		if *verbosePtr {
+		if verbose {
 			log.Println("appimage: Set executable bit on", ai.Path)
 		}
 	}
@@ -79,7 +79,7 @@ func (ai AppImage) setExecBit() {
 // Validate checks the quality of an AppImage and sends desktop notification, returns error or nil
 // TODO: Add more checks and reuse this in appimagetool
 func (ai AppImage) Validate() error {
-	if *verbosePtr {
+	if verbose {
 		log.Println("Validating AppImage", ai.Path)
 	}
 	// Check validity of the updateinformation in this AppImage, if it contains some
@@ -109,7 +109,7 @@ func (ai AppImage) _integrate() error {
 
 	// For performance reasons, we stop working immediately
 	// in case a desktop file already exists at that location
-	if !*overwritePtr {
+	if !*overwrite {
 		// Compare mtime of desktop file and AppImage, similar to
 		// https://specifications.freedesktop.org/thumbnail-spec/thumbnail-spec-latest.html#MODIFICATIONS
 		if desktopFileInfo, err := os.Stat(ai.desktopfilepath); err == nil {
@@ -216,7 +216,7 @@ func LaunchMostRecentAppImage(updateinformation string, args []string) {
 	if updateinformation == "" {
 		return
 	}
-	if !*quietPtr {
+	if !quiet {
 		aipath := FindMostRecentAppImageWithMatchingUpdateInformation(updateinformation)
 		log.Println("Launching", aipath, args)
 		cmd := []string{aipath}
