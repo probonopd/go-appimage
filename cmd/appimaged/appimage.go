@@ -208,27 +208,6 @@ func (ai AppImage) ReadUpdateInformation() (string, error) {
 	return ui, nil
 }
 
-// LaunchMostRecentAppImage launches an the most recent application for a given
-// updateinformation that we found among the integrated AppImages.
-// Kinda like poor man's Launch Services. Probably we should make as much use of it as possible.
-// Downside: Applications without updateinformation cannot be used in this way.
-func LaunchMostRecentAppImage(updateinformation string, args []string) {
-	if updateinformation == "" {
-		return
-	}
-	if !quiet {
-		aipath := FindMostRecentAppImageWithMatchingUpdateInformation(updateinformation)
-		log.Println("Launching", aipath, args)
-		cmd := []string{aipath}
-		cmd = append(cmd, args...)
-		err := helpers.RunCmdTransparently(cmd)
-		if err != nil {
-			helpers.PrintError("LaunchMostRecentAppImage", err)
-		}
-
-	}
-}
-
 // FindMostRecentAppImageWithMatchingUpdateInformation finds the most recent registered AppImage
 // that havs matching upate information embedded
 func FindMostRecentAppImageWithMatchingUpdateInformation(updateinformation string) string {

@@ -381,7 +381,7 @@ func installServiceFileInHome() {
 	if verbose {
 		exe += " -v"
 	}
-	if quiet {
+	if *quiet {
 		exe += " -q"
 	}
 	if *overwrite {

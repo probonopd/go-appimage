@@ -129,6 +129,9 @@ func sendUpdateDesktopNotification(ai *AppImage, version string, _ string) {
 }
 
 func sendDesktopNotification(title string, body string, durationms int32) {
+	if *quiet {
+		return
+	}
 
 	conn, err := dbus.SessionBusPrivate() // When using SessionBusPrivate(), need to follow with Auth(nil) and Hello()
 	if err != nil {

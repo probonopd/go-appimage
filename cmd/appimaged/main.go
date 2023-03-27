@@ -64,11 +64,12 @@ var candidateDirectories = append(
 
 // Flags
 var (
-	verbose, quiet bool
-	overwrite      *bool
-	clean          *bool
-	noZeroconf     *bool
-	noMqtt         *bool
+	verbose    bool
+	quiet      *bool
+	overwrite  *bool
+	clean      *bool
+	noZeroconf *bool
+	noMqtt     *bool
 )
 
 func usage() {
@@ -76,7 +77,7 @@ func usage() {
 		commit = "unsupported custom build"
 	}
 	fmt.Println()
-	fmt.Println(filepath.Base(os.Args[0]) + " " + commit + "\n")
+	fmt.Println(filepath.Base(os.Args[0]) + " " + commit)
 	fmt.Println()
 	fmt.Println("Optional daemon that registers AppImages and integrates them with the system.")
 	fmt.Println()
@@ -93,16 +94,16 @@ func usage() {
 	fmt.Println()
 	fmt.Println("Commands:")
 	fmt.Println()
-	fmt.Println("\trun <updateinformation>:")
-	fmt.Println("\t\tRun the most recent AppImage registered for the updateinformation provided")
-	fmt.Println("\tstart <updateinformation>:")
-	fmt.Println("\t\tStart the most recent AppImage registered for the updateinformation provided and exit immediately")
-	fmt.Println("\tupdate <path to AppImage>:")
-	fmt.Println("\t\tUpdate the AppImage using the most recent AppImageUpdate registered")
-	fmt.Println("\twrap <path to executable>:")
-	fmt.Println("\t\tExecute the exeutable and send desktop notifications for any errors")
-	fmt.Println("\tservice")
-	fmt.Println("\t\tStart appimaged daemon")
+	fmt.Println("  run <updateinformation>:")
+	fmt.Println("\tRun the most recent AppImage registered for the updateinformation provided")
+	fmt.Println("  start <updateinformation>:")
+	fmt.Println("\tStart the most recent AppImage registered for the updateinformation provided and exit immediately")
+	fmt.Println("  update <path to AppImage>:")
+	fmt.Println("\tUpdate the AppImage using the most recent AppImageUpdate registered")
+	fmt.Println("  wrap <path to executable>:")
+	fmt.Println("\tExecute the exeutable and send desktop notifications for any errors")
+	fmt.Println("  service")
+	fmt.Println("\tStart appimaged daemon")
 }
 
 func main() {
@@ -112,14 +113,13 @@ func main() {
 	}
 	flag.Usage = usage
 	verbosePtr := flag.Bool("v", false, "Print verbose log messages")
-	quietPtr := flag.Bool("q", false, "Do not send desktop notifications")
+	quiet = flag.Bool("q", false, "Do not send desktop notifications")
 	overwrite = flag.Bool("o", false, "Overwrite existing desktop integration files (slower)")
 	clean = flag.Bool("c", false, "Clean pre-existing desktop files")
 	noZeroconf = flag.Bool("nz", false, "Do not announce this service on the network using Zeroconf")
 	noMqtt = flag.Bool("u", false, "Disable checking for AppImage updates (via MQTT)")
 	flag.Parse()
 	verbose = *verbosePtr
-	quiet = *quietPtr
 	if flag.NArg() == 0 {
 		InstallSystemd()
 		return
