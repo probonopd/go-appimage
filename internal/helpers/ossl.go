@@ -15,6 +15,7 @@ import (
 	"crypto/md5"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 )
@@ -66,17 +67,17 @@ func DecryptBase64(passphrase, encryptedBase64 []byte) ([]byte, error) {
 // Decrypt decrypts a []byte that was encrypted using OpenSSL and AES-256-CBC.
 func Decrypt(passphrase, encrypted []byte) ([]byte, error) {
 	if len(encrypted) < aes.BlockSize {
-		return nil, fmt.Errorf("Cipher data Length less than aes block size")
+		return nil, errors.New("cipher data Length less than aes block size")
 	}
 	saltHeader := encrypted[:aes.BlockSize]
 	if !bytes.Equal(saltHeader[:8], openSSLSaltHeader) {
-		return nil, fmt.Errorf("Does not appear to have been encrypted with OpenSSL, salt header missing.")
+		return nil, errors.New("does not appear to have been encrypted with OpenSSL, salt header missing")
 	}
 	var creds openSSLCreds
 	key, iv := creds.Extract(passphrase, saltHeader[8:])
 
 	if len(encrypted) == 0 || len(encrypted)%aes.BlockSize != 0 {
-		return nil, fmt.Errorf("bad blocksize(%v), aes.BlockSize = %v\n", len(encrypted), aes.BlockSize)
+		return nil, fmt.Errorf("bad blocksize(%v), aes.BlockSize = %v", len(encrypted), aes.BlockSize)
 	}
 	c, err := aes.NewCipher(key)
 	if err != nil {

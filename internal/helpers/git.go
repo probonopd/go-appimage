@@ -18,7 +18,7 @@ func TestGit() {
 
 	var r *git.Repository
 	var err error
-	if s.IsDir() == false {
+	if !s.IsDir() {
 		r, err = git.PlainClone(dir, false, &git.CloneOptions{
 			URL:      "https://github.com/src-d/go-git",
 			Progress: os.Stdout,

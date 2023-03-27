@@ -7,7 +7,6 @@ package helpers
 import (
 	"bytes"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -95,18 +94,22 @@ func createKeyPair() {
 // returns the entity that has signed the AppImage and error
 // based on https://stackoverflow.com/a/34008326
 func CheckSignature(path string) (*openpgp.Entity, error) {
-	var ent *openpgp.Entity
-	err := errors.New("could not verify AppImage signature") // Be pessimistic by default, unless we can positively verify the signature
 	pubkeybytes, err := GetSectionData(path, ".sig_key")
+	if err != nil {
+		return nil, err
+	}
 
 	keyring, err := openpgp.ReadArmoredKeyRing(bytes.NewReader(pubkeybytes))
 	if err != nil {
-		return ent, err
+		return nil, err
 	}
 
 	sigbytes, err := GetSectionData(path, ".sha256_sig")
+	if err != nil {
+		return nil, err
+	}
 
-	ent, err = openpgp.CheckArmoredDetachedSignature(keyring, strings.NewReader(CalculateSHA256Digest(path)), bytes.NewReader(sigbytes))
+	ent, err := openpgp.CheckArmoredDetachedSignature(keyring, strings.NewReader(CalculateSHA256Digest(path)), bytes.NewReader(sigbytes))
 	if err != nil {
 		return ent, err
 	}

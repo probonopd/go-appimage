@@ -42,7 +42,7 @@ func GetCommitMessageForLatestCommit(ui UpdateInformation) (string, error) {
 
 	} else {
 
-		return "", errors.New("Not yet implemented for this transport mechanism")
+		return "", errors.New("not yet implemented for this transport mechanism")
 	}
 }
 
@@ -88,7 +88,7 @@ func GetCommitMessageForThisCommitOnTravis() (string, error) {
 
 	parts := strings.Split(repoSlug, "/")
 	if len(parts) < 2 {
-		return "", errors.New("Cannot split repo_slug")
+		return "", errors.New("cannot split repo_slug")
 	}
 
 	commit, _, err := client.Git.GetCommit(context.Background(), parts[0], parts[1], TravisCommit)
