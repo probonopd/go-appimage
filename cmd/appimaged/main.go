@@ -31,20 +31,6 @@ import (
 
 var quit = make(chan struct{})
 
-var verbosePtr = flag.Bool("v", false, "Print verbose log messages")
-
-// The following are disabled for now, because the path to this program can
-// change (e.g., when the user updates it). Lacking a system-wide Launch Services
-// like way to figure out the path to this program, we overwrite for now.
-// TODO: Instead of overwriting the desktop files and getting all
-// information from AppImages (slow), we could just rewrite the path to this
-// program in all desktop files. That should be much faster.
-var overwritePtr = flag.Bool("o", false, "Overwrite existing desktop integration files (slower)")
-var cleanPtr = flag.Bool("c", true, "Clean pre-existing desktop files")
-
-var quietPtr = flag.Bool("q", false, "Do not send desktop notifications")
-var noZeroconfPtr = flag.Bool("nz", false, "Do not announce this service on the network using Zeroconf")
-
 var updateChannel chan struct{} = make(chan struct{}, 10)
 
 var thisai *AppImage // A reference to myself
@@ -86,6 +72,15 @@ var candidateDirectories = append(
 	}...,
 )
 
+// Flags
+var (
+	verbose, quiet bool
+	overwrite      *bool
+	clean          *bool
+	noZeroconf     *bool
+	noMqtt         *bool
+)
+
 func usage() {
 	if commit == "" {
 		commit = "unsupported custom build"
@@ -125,8 +120,22 @@ func main() {
 		commit = "unsupported custom build"
 	}
 	flag.Usage = usage
+	var verbosePtr = flag.Bool("v", false, "Print verbose log messages")
+	var quietPtr = flag.Bool("q", false, "Do not send desktop notifications")
+	flag.BoolVar(overwrite, "o", false, "Overwrite existing desktop integration files (slower)")
+	flag.BoolVar(clean, "c", false, "Clean pre-existing desktop files")
+	flag.BoolVar(noZeroconf, "nz", false, "Do not announce this service on the network using Zeroconf")
+	flag.BoolVar(noMqtt, "u", false, "Disable checking for AppImage updates (via MQTT)")
 	flag.Parse()
-	takeCareOfCommandlineCommands()
+	verbose = *verbosePtr
+	quiet = *quietPtr
+	if flag.NArg() == 0 {
+		// TODO: Install Systemd
+	} else if flag.Arg(0) == "service" {
+		// TODO: Start service
+	} else {
+		HandleCommands()
+	}
 
 	// Always show version
 	fmt.Println(filepath.Base(os.Args[0]), commit)
