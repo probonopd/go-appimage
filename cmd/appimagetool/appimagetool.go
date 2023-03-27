@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"os/exec"
@@ -42,7 +43,7 @@ func checkRunningWithinDocker() bool {
 	res, err := os.ReadFile("/proc/1/cgroup")
 	if err == nil {
 		// Do not exit if os.ReadFile("/proc/1/cgroup") fails. This happens, e.g., on FreeBSD
-		if strings.HasPrefix(string(res), "/lxc") || strings.HasPrefix(string(res), "/docker") || helpers.Exists("/.dockerenv") == true {
+		if strings.HasPrefix(string(res), "/lxc") || strings.HasPrefix(string(res), "/docker") || helpers.Exists("/.dockerenv") {
 			log.Println("Running inside Docker. Please make sure that the environment variables from Travis CI")
 			log.Println("available inside Docker if you are running on Travis CI.")
 			log.Println("This can be achieved by using something along the lines of 'docker run --env-file <(env)'.")
@@ -204,28 +205,29 @@ func GenerateAppImage(
 	// If no $ARCH variable is set check all .so that we can find to determine the architecture
 	var archs []string
 	if os.Getenv("ARCH") == "" {
-		res, err := helpers.GetElfArchitecture(appdir + "/AppRun")
+		var res string
+		res, err = helpers.GetElfArchitecture(appdir + "/AppRun")
 		if err == nil {
 			archs = helpers.AppendIfMissing(archs, res)
 			log.Println("Architecture from AppRun:", res)
 		} else {
-			err := filepath.Walk(appdir, func(path string, info os.FileInfo, err error) error {
+			err = filepath.Walk(appdir, func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					helpers.PrintError("Determine architecture", err)
 					return err
-				} else if info.IsDir() == false && strings.Contains(info.Name(), ".so.") {
+				} else if !info.IsDir() && strings.Contains(info.Name(), ".so.") {
 					arch, err := helpers.GetElfArchitecture(path)
 					if err != nil {
 						// we received an error when analyzing the arch
 						helpers.PrintError("Determine architecture", err)
 						return err
-					} else if helpers.SliceContains(archs, arch) == false {
+					} else if !helpers.SliceContains(archs, arch) {
 						log.Println("Architecture of", info.Name()+":", arch)
 						archs = helpers.AppendIfMissing(archs, arch)
 					} else {
 						// FIXME: we found some data, but still it was not a part of the
 						// known architectures
-						errArchNotKnown := errors.New("Could not detect a valid architecture")
+						errArchNotKnown := errors.New("could not detect a valid architecture")
 						return errArchNotKnown
 					}
 				}
@@ -268,13 +270,14 @@ func GenerateAppImage(
 		// write the file to the current directory
 		target = nameWithUnderscores + "-" + version + "-" + arch + ".AppImage"
 	} else {
-		targetFileInfo, err := os.Stat(target)
+		var targetFileInfo fs.FileInfo
+		targetFileInfo, err = os.Stat(target)
 		if os.IsNotExist(err) {
 			// the file does not exist.
 			// check the parent directory exists
 			targetDir := filepath.Dir(destination)
 			if !helpers.CheckIfFolderExists(targetDir) {
-				log.Fatal(fmt.Sprintf("%s does not exist", targetDir))
+				log.Fatalf("%s does not exist", targetDir)
 				return
 			}
 			// the parent directory exists. Make a fullpath to the destination appimage
@@ -304,7 +307,7 @@ func GenerateAppImage(
 	// since thumbails need to be in png format
 	supportedIconExtensions := []string{".png", ".xpm", ".svg"}
 	for i := range supportedIconExtensions {
-		if helpers.CheckIfFileExists(appdir+"/"+iconname+supportedIconExtensions[i]) == true {
+		if helpers.CheckIfFileExists(appdir + "/" + iconname + supportedIconExtensions[i]) {
 			iconfile = appdir + "/" + iconname + supportedIconExtensions[i]
 			break
 		} else if helpers.CheckIfFileExists(appdir + "/usr/share/icons/hicolor/256x256/apps/" + iconname + supportedIconExtensions[i]) {
@@ -321,7 +324,7 @@ func GenerateAppImage(
 	// TODO: Check validity and size of png"
 
 	// Deleting pre-existing .DirIcon
-	if helpers.CheckIfFileExists(appdir+"/.DirIcon") == true {
+	if helpers.CheckIfFileExists(appdir + "/.DirIcon") {
 		log.Println("Deleting pre-existing .DirIcon")
 		_ = os.Remove(appdir + "/.DirIcon")
 	}
@@ -348,7 +351,7 @@ func GenerateAppImage(
 	appstreamfile := appdir + "/usr/share/metainfo/" + strings.Replace(filepath.Base(desktopfile), ".desktop", ".appdata.xml", -1)
 	if !checkAppStreamMetadata {
 		log.Println("WARNING: Skipping AppStream metadata check...")
-	} else if helpers.CheckIfFileExists(appstreamfile) == false {
+	} else if !helpers.CheckIfFileExists(appstreamfile) {
 		log.Println("WARNING: AppStream upstream metadata is missing, please consider creating it in")
 		fmt.Println("         " + appstreamfile)
 		fmt.Println("         Please see https://www.freedesktop.org/software/appstream/docs/chap-Quickstart.html#sect-Quickstart-DesktopApps")
@@ -356,7 +359,7 @@ func GenerateAppImage(
 		fmt.Println("         https://appimagecommunity.github.io/simple-appstream-generator/")
 	} else {
 		fmt.Println("Trying to validate AppStream information with the appstreamcli tool")
-		_, err := exec.LookPath("appstreamcli")
+		_, err = exec.LookPath("appstreamcli")
 		if err != nil {
 			fmt.Println("Required helper tool appstreamcli missing")
 			os.Exit(1)
@@ -370,17 +373,17 @@ func GenerateAppImage(
 
 	if len(runtimeFile) < 1 {
 		runtimeDir := filepath.Clean(helpers.Here() + "/../share/AppImageKit/runtime/")
-		if _, err := os.Stat(runtimeDir); os.IsNotExist(err) {
+		if _, err = os.Stat(runtimeDir); os.IsNotExist(err) {
 			runtimeDir = helpers.Here()
 		}
 		runtimeFile = runtimeDir + "/runtime-" + arch
-		if helpers.CheckIfFileExists(runtimeFile) == false {
+		if !helpers.CheckIfFileExists(runtimeFile) {
 			log.Println("Cannot find " + runtimeFile + ", exiting")
 			log.Println("It should have been bundled, but you can get it from https://github.com/AppImage/AppImageKit/releases/continuous")
 			// TODO: Download it from there?
 			os.Exit(1)
 		}
-	} else if helpers.CheckIfFileExists(runtimeFile) == false {
+	} else if !helpers.CheckIfFileExists(runtimeFile) {
 		log.Println("Cannot find " + runtimeFile + ", exiting")
 		os.Exit(1)
 	}
@@ -400,7 +403,8 @@ func GenerateAppImage(
 
 	// Turns out that using time.Now() is more precise than a Unix timestamp (seconds precision).
 	// Hence we convert back from the Unix timestamp to be consistent.
-	if n, err := strconv.Atoi(fstime); err == nil {
+	n, err = strconv.Atoi(fstime)
+	if err == nil {
 		FSTime = time.Unix(int64(n), 0)
 	} else {
 		fmt.Println("Time conversion error:", fstime, "is not an integer.")
@@ -410,7 +414,7 @@ func GenerateAppImage(
 	// Exit if we cannot set the permissions of the AppDir,
 	// this is important e.g., for Firejail
 	// https://github.com/AppImage/AppImageKit/issues/1032#issuecomment-596225173
-	info, err := os.Stat(appdir) // TODO: Walk all directories instead of just looking at the AppDir itself
+	info, _ := os.Stat(appdir) // TODO: Walk all directories instead of just looking at the AppDir itself
 	m := info.Mode()
 	if m&(1<<2) == 0 {
 		// Other users don't have read permission, https://stackoverflow.com/a/45430141
@@ -442,7 +446,7 @@ func GenerateAppImage(
 	_ = os.Chmod(target, 0755)
 
 	// Get the filesize in bytes of the resulting AppImage
-	fi, err = os.Stat(target)
+	_, err = os.Stat(target)
 	if err != nil {
 		helpers.PrintError("Could not get size of AppImage", err)
 		os.Exit(1)
@@ -479,7 +483,7 @@ func GenerateAppImage(
 		fmt.Println("Running on Travis CI")
 		if os.Getenv("TRAVIS_PULL_REQUEST") != "false" {
 			fmt.Println("Will not calculate update information for GitHub because this is a pull request")
-		} else if ghTokenFound == false || ghToken == "" {
+		} else if !ghTokenFound || ghToken == "" {
 			fmt.Println("Will not calculate update information for GitHub because $GITHUB_TOKEN is missing")
 			fmt.Println("please set it in the Travis CI Repository Settings for this project.")
 			fmt.Println("You can get one from https://github.com/settings/tokens")
@@ -568,9 +572,9 @@ func GenerateAppImage(
 	// The actual signing
 
 	// Decrypt the private key which we need for signing
-	if helpers.CheckIfFileExists(helpers.EncPrivkeyFileName) == true {
+	if helpers.CheckIfFileExists(helpers.EncPrivkeyFileName) {
 		_, ok := os.LookupEnv(helpers.EnvSuperSecret)
-		if ok != true {
+		if !ok {
 			fmt.Println("Environment variable", helpers.EnvSuperSecret, "not present, cannot sign")
 			os.Exit(1)
 		}
@@ -595,7 +599,7 @@ func GenerateAppImage(
 	}
 
 	// Sign the AppImage
-	if helpers.CheckIfFileExists(helpers.PrivkeyFileName) == true {
+	if helpers.CheckIfFileExists(helpers.PrivkeyFileName) {
 		fmt.Println("Attempting to sign the AppImage...")
 		err = helpers.SignAppImage(target, digest)
 		if err != nil {
@@ -637,7 +641,7 @@ func GenerateAppImage(
 		zsync.ZsyncMake(target, opts)
 
 		// Check if the zsync file is really there
-		fi, err = os.Stat(target + ".zsync")
+		_, err = os.Stat(target + ".zsync")
 		if err != nil {
 			helpers.PrintError("zsync file not generated", err)
 			os.Exit(1)
@@ -653,7 +657,7 @@ func GenerateAppImage(
 	// Note that UPLOADTOOL* variables will be used in bash script to form a JSON request,
 	// that means some characters like double quotes and new lines need to be escaped
 	// TODO: Instead of trying to somehow force this into uploadtool, do it properly in Go.
-	body, err := helpers.GetCommitMessageForThisCommitOnTravis()
+	body, _ := helpers.GetCommitMessageForThisCommitOnTravis()
 	fmt.Println("Commit message for this commit:", body)
 
 	// If its a TRAVIS CI, then upload the release assets and zsync file

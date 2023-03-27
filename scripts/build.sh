@@ -1,7 +1,7 @@
 #!/bin/bash
 
-set -e
-set -x
+# set -e
+# set -x
 
 # Now accepting arguments!
 # If you want a non-native architecture, specify those first, then which
@@ -95,7 +95,7 @@ build () {
   echo CC: $CC
   which zig
   zig env
-  CGO_ENABLED=1 go build -o $BUILDDIR -v -trimpath -ldflags="-linkmode=external -extldflags \"-static\" -s -w -X main.commit=$COMMIT" $PROJECT/src/$PROG
+  CGO_ENABLED=1 go build -o $BUILDDIR -v -trimpath -ldflags="-linkmode=external -extldflags \"-static\" -s -w -X main.commit=$COMMIT" $PROJECT/cmd/$PROG
   ls -lh $PROG
   file $PROG
   # common appimage steps
@@ -105,8 +105,8 @@ build () {
   ( cd $BUILDDIR/$PROG-$ARCH.AppDir/ ; ln -s usr/bin/$PROG AppRun)
   cp $PROJECT/data/appimage.png $BUILDDIR/$PROG-$ARCH.AppDir/
   if [ $PROG == appimaged ]; then
-    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/bsdtar-$AIARCH -O bsdtar )
-    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/unsquashfs-$AIARCH -O unsquashfs )
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -q -c https://github.com/probonopd/static-tools/releases/download/continuous/bsdtar-$AIARCH -O bsdtar )
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -q -c https://github.com/probonopd/static-tools/releases/download/continuous/unsquashfs-$AIARCH -O unsquashfs )
     cat > $BUILDDIR/$PROG-$ARCH.AppDir/appimaged.desktop <<\EOF
 [Desktop Entry]
 Type=Application
@@ -119,15 +119,15 @@ Terminal=true
 NoDisplay=true
 EOF
   elif [ $PROG == appimagetool ]; then
-    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/appstreamcli-$AIARCH -O appstreamcli )
-    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/desktop-file-validate-$AIARCH -O desktop-file-validate )
-    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/mksquashfs-$AIARCH -O mksquashfs )
-    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/patchelf-$AIARCH -O patchelf )
-    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse2-aarch64 -O runtime-aarch64 )
-    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse2-armhf -O runtime-armhf )
-    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse2-i686 -O runtime-i686 )
-    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse2-x86_64 -O runtime-x86_64 )     
-    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh -O uploadtool )
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -q -c https://github.com/probonopd/static-tools/releases/download/continuous/appstreamcli-$AIARCH -O appstreamcli )
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -q -c https://github.com/probonopd/static-tools/releases/download/continuous/desktop-file-validate-$AIARCH -O desktop-file-validate )
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -q -c https://github.com/probonopd/static-tools/releases/download/continuous/mksquashfs-$AIARCH -O mksquashfs )
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -q -c https://github.com/probonopd/static-tools/releases/download/continuous/patchelf-$AIARCH -O patchelf )
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -q -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse2-aarch64 -O runtime-aarch64 )
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -q -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse2-armhf -O runtime-armhf )
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -q -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse2-i686 -O runtime-i686 )
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -q -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse2-x86_64 -O runtime-x86_64 )     
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -q -c https://github.com/probonopd/uploadtool/raw/master/upload.sh -O uploadtool )
     cat > $BUILDDIR/$PROG-$ARCH.AppDir/appimagetool.desktop <<\EOF
 [Desktop Entry]
 Type=Application
@@ -140,16 +140,16 @@ Terminal=true
 NoDisplay=true
 EOF
   elif [ $PROG == mkappimage ]; then
-    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/desktop-file-validate-$AIARCH -O desktop-file-validate )
-    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/mksquashfs-$AIARCH -O mksquashfs )
-    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/patchelf-$AIARCH -O patchelf )
-    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse2-aarch64 -O runtime-aarch64 )
-    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse2-armhf -O runtime-armhf )
-    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse2-i686 -O runtime-i686 )
-    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse2-x86_64 -O runtime-x86_64 )    
-    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh -O uploadtool )
-    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/bsdtar-$AIARCH -O bsdtar )
-    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/unsquashfs-$AIARCH -O unsquashfs )
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -q -c https://github.com/probonopd/static-tools/releases/download/continuous/desktop-file-validate-$AIARCH -O desktop-file-validate )
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -q -c https://github.com/probonopd/static-tools/releases/download/continuous/mksquashfs-$AIARCH -O mksquashfs )
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -q -c https://github.com/probonopd/static-tools/releases/download/continuous/patchelf-$AIARCH -O patchelf )
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -q -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse2-aarch64 -O runtime-aarch64 )
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -q -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse2-armhf -O runtime-armhf )
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -q -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse2-i686 -O runtime-i686 )
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -q -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse2-x86_64 -O runtime-x86_64 )    
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -q -c https://github.com/probonopd/uploadtool/raw/master/upload.sh -O uploadtool )
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -q -c https://github.com/probonopd/static-tools/releases/download/continuous/bsdtar-$AIARCH -O bsdtar )
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -q -c https://github.com/probonopd/static-tools/releases/download/continuous/unsquashfs-$AIARCH -O unsquashfs )
     cat > $BUILDDIR/$PROG-$ARCH.AppDir/mkappimage.desktop <<\EOF
 [Desktop Entry]
 Type=Application

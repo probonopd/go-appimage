@@ -37,16 +37,6 @@ var thisai *AppImage // A reference to myself
 
 var MQTTclient mqtt.Client
 
-// To keep track of what we already have subscribed. Something like this is needed in order
-// not to be flooded with messages.
-// If possible I would like to get rid of this slice,
-// the mqtt library probably keeps track of this internally?
-// Right now we never remove from this list for logical reasons
-// (multiple AppImages may share the same updateinformation)...
-// Checking whehter other AppImages are left is probably costly.
-// So better find a way to get this information from the mqtt library.
-var subscribedMQTTTopics []string
-
 // This key in the desktop files written by us describes where the AppImage is in the filesystem.
 // We need this because we rewrite Exec= to include things like wrap and Firejail
 const ExecLocationKey = helpers.ExecLocationKey
@@ -116,16 +106,17 @@ func usage() {
 }
 
 func main() {
+	thisai, _ = NewAppImage(helpers.Args0())
 	if commit == "" {
 		commit = "unsupported custom build"
 	}
 	flag.Usage = usage
-	var verbosePtr = flag.Bool("v", false, "Print verbose log messages")
-	var quietPtr = flag.Bool("q", false, "Do not send desktop notifications")
-	flag.BoolVar(overwrite, "o", false, "Overwrite existing desktop integration files (slower)")
-	flag.BoolVar(clean, "c", false, "Clean pre-existing desktop files")
-	flag.BoolVar(noZeroconf, "nz", false, "Do not announce this service on the network using Zeroconf")
-	flag.BoolVar(noMqtt, "u", false, "Disable checking for AppImage updates (via MQTT)")
+	verbosePtr := flag.Bool("v", false, "Print verbose log messages")
+	quietPtr := flag.Bool("q", false, "Do not send desktop notifications")
+	overwrite = flag.Bool("o", false, "Overwrite existing desktop integration files (slower)")
+	clean = flag.Bool("c", false, "Clean pre-existing desktop files")
+	noZeroconf = flag.Bool("nz", false, "Do not announce this service on the network using Zeroconf")
+	noMqtt = flag.Bool("u", false, "Disable checking for AppImage updates (via MQTT)")
 	flag.Parse()
 	verbose = *verbosePtr
 	quiet = *quietPtr

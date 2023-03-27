@@ -127,9 +127,9 @@ fi
 `
 
 type ELF struct {
-	path     string
-	relpaths []string
-	rpath    string
+	path string
+	// rpath    string
+	// relpaths []string
 }
 
 // Key: name of the package, value: location of the copyright file
@@ -180,13 +180,13 @@ func AppDirDeploy(path string) {
 	}
 
 	log.Println("Gathering all required libraries for the AppDir...")
-	determineELFsInDirTree(appdir, appdir.Path)
+	determineELFsInDirTree(appdir.Path)
 
 	// Gdk
 	handleGdk(appdir)
 
 	// GStreamer
-	handleGStreamer(appdir)
+	handleGStreamer()
 
 	// Gtk 3 modules/plugins
 	// If there is a .so with the name libgtk-3 inside the AppDir, then we need to
@@ -198,13 +198,13 @@ func AppDirDeploy(path string) {
 	deployGtkDirectory(appdir, 2)
 
 	// ALSA
-	handleAlsa(appdir)
+	handleAlsa()
 
 	// PulseAudio
-	handlePulseAudio(appdir)
+	handlePulseAudio()
 
 	// ld-linux interpreter
-	ldLinux, err := deployInterpreter(appdir)
+	ldLinux, _ := deployInterpreter(appdir)
 
 	// Glib 2 schemas
 	if helpers.Exists(appdir.Path + "/usr/share/glib-2.0/schemas") {
@@ -220,7 +220,7 @@ func AppDirDeploy(path string) {
 	}
 
 	// AppRun
-	if options.libAppRunHooks == false {
+	if !options.libAppRunHooks {
 		// If libapprun_hooks is not used
 		log.Println("Adding AppRun...")
 		err = os.WriteFile(appdir.Path+"/AppRun", []byte(AppRunData), 0755)
@@ -236,12 +236,12 @@ func AppDirDeploy(path string) {
 
 	qtVersionDetected := 0
 
-	if containsString(allELFs, "libQt5Core.so.5") == true {
+	if containsString(allELFs, "libQt5Core.so.5") {
 		log.Println("Detected Qt 5")
 		qtVersionDetected = 5
 	}
 
-	if containsString(allELFs, "libQtCore.so.4") == true {
+	if containsString(allELFs, "libQtCore.so.4") {
 		log.Println("Detected Qt 4")
 		qtVersionDetected = 4
 	}
@@ -261,7 +261,7 @@ func AppDirDeploy(path string) {
 	// and when modifying the ELFs that were pre-existing in the AppDir so that they become aware of the other locations
 	var libraryLocationsInAppDir []string
 	for _, lib := range libraryLocations {
-		if strings.HasPrefix(lib, appdir.Path) == false {
+		if !strings.HasPrefix(lib, appdir.Path) {
 			lib = appdir.Path + lib
 		}
 		libraryLocationsInAppDir = helpers.AppendIfMissing(libraryLocationsInAppDir, lib)
@@ -290,7 +290,7 @@ func AppDirDeploy(path string) {
 
 	for _, lib := range allELFs {
 
-		deployElf(lib, appdir, err)
+		deployElf(lib, appdir)
 		patchRpathsInElf(appdir, libraryLocationsInAppDir, lib)
 
 		if strings.Contains(lib, "libQt5Core.so.5") {
@@ -303,7 +303,7 @@ func AppDirDeploy(path string) {
 
 func deployFontconfig(appdir helpers.AppDir) error {
 	var err error
-	if helpers.Exists(appdir.Path+"/etc/fonts") == false {
+	if !helpers.Exists(appdir.Path + "/etc/fonts") {
 		log.Println("Adding fontconfig symlink... (is this really the right thing to do?)")
 		err = os.MkdirAll(appdir.Path+"/etc/fonts", 0755)
 		if err != nil {
@@ -325,7 +325,7 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 		helpers.PrintError("Could not determine ELF interpreter", err)
 		os.Exit(1)
 	}
-	if helpers.Exists(appdir.Path+"/"+ldLinux) == true {
+	if helpers.Exists(appdir.Path + "/" + ldLinux) {
 		log.Println("Removing pre-existing", ldLinux+"...")
 		err = syscall.Unlink(appdir.Path + "/" + ldLinux)
 		if err != nil {
@@ -335,9 +335,9 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 
 	}
 	if options.standalone {
-		var err error
 		// ld-linux might be a symlink; hence we first need to resolve it
-		src, err := filepath.EvalSymlinks(ldLinux)
+		var src string
+		src, err = filepath.EvalSymlinks(ldLinux)
 		if err != nil {
 			helpers.PrintError("Could not get the location of ld-linux", err)
 			src = ldLinux
@@ -382,10 +382,11 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 		log.Println("Determining gconv (for GCONV_PATH)...")
 		// Search in all of the system's library directories for a directory called gconv
 		// and put it into the a location which matches the GCONV_PATH we export in AppRun
-		gconvs, err := findWithPrefixInLibraryLocations("gconv")
+		var gconvs []string
+		gconvs, err = findWithPrefixInLibraryLocations("gconv")
 		if err == nil {
 			// Target location must match GCONV_PATH exported in AppRun
-			determineELFsInDirTree(appdir, gconvs[0])
+			determineELFsInDirTree(gconvs[0])
 		}
 
 		if err != nil {
@@ -407,18 +408,18 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 
 // deployElf deploys an ELF (executable or shared library) to the AppDir
 // if it is not on the exclude list and it is not yet at the target location
-func deployElf(lib string, appdir helpers.AppDir, err error) {
+func deployElf(lib string, appdir helpers.AppDir) {
 	for _, excludePrefix := range ExcludedLibraries {
-		if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true && !options.standalone {
+		if strings.HasPrefix(filepath.Base(lib), excludePrefix) && !options.standalone {
 			log.Println("Skipping", lib, "because it is on the excludelist")
 			return
 		}
 	}
 
 	log.Println("Working on", lib)
-	if strings.HasPrefix(lib, appdir.Path) == false { // Do not copy if it is already in the AppDir
+	if !strings.HasPrefix(lib, appdir.Path) { // Do not copy if it is already in the AppDir
 		libTargetPath := appdir.Path + "/" + lib
-		if options.libAppRunHooks && checkWhetherPartOfLibc(lib) == true {
+		if options.libAppRunHooks && checkWhetherPartOfLibc(lib) {
 			// This file is part of the libc family of libraries and we want to use libapprun_hooks,
 			// hence copy to a separate directory unlike the rest of the libraries. The reason is
 			// that this familiy of libraries will only be used by libapprun_hooks if the
@@ -429,7 +430,7 @@ func deployElf(lib string, appdir helpers.AppDir, err error) {
 		}
 		log.Println("Copying to libTargetPath:", libTargetPath)
 
-		err = helpers.CopyFile(lib, libTargetPath) // If libapprun_hooks is not used
+		err := helpers.CopyFile(lib, libTargetPath) // If libapprun_hooks is not used
 
 		if err != nil {
 			log.Println(libTargetPath, "could not be copied:", err)
@@ -444,11 +445,11 @@ func patchQtPrfxpath(appdir helpers.AppDir, lib string, libraryLocationsInAppDir
 	log.Println("Patching qt_prfxpath, otherwise can't load platform plugin...")
 	f, err := os.Open(appdir.Path + "/" + lib)
 	// Open file for reading/determining the offset
-	defer f.Close()
 	if err != nil {
 		helpers.PrintError("Could not open libQt5Core.so.5 for reading", err)
 		os.Exit(1)
 	}
+	defer f.Close()
 	f.Seek(0, 0)
 	// Search from the beginning of the file
 	search := []byte("qt_prfxpath=")
@@ -487,14 +488,14 @@ func patchQtPrfxpath(appdir helpers.AppDir, lib string, libraryLocationsInAppDir
 	}
 	f, err = os.OpenFile(appdir.Path+"/"+lib, os.O_WRONLY, 0644)
 	// Open file writable, why is this so complicated
-	defer f.Close()
 	if err != nil {
 		helpers.PrintError("Could not open libQt5Core.so.5 for writing", err)
 		os.Exit(1)
 	}
+	defer f.Close()
 	// Now that we know where in the file the information is, go write it
 	f.Seek(offset, 0)
-	if quirksModePatchQtPrfxPath == false {
+	if !quirksModePatchQtPrfxPath {
 		log.Println("Patching qt_prfxpath in libQt5Core.so.5 to " + relPathToQt)
 		_, err = f.Write([]byte(relPathToQt + "\x00"))
 	} else {
@@ -514,14 +515,14 @@ func deployCopyrightFiles(appdir helpers.AppDir) {
 
 		shouldDoIt := true
 		for _, excludePrefix := range ExcludedLibraries {
-			if strings.HasPrefix(filepath.Base(lib), excludePrefix) == true && options.standalone == false {
+			if strings.HasPrefix(filepath.Base(lib), excludePrefix) && !options.standalone {
 				log.Println("Skipping copyright file for ", lib, "because it is on the excludelist")
 				shouldDoIt = false
 				break
 			}
 		}
 
-		if shouldDoIt == true && strings.HasPrefix(lib, appdir.Path) == false {
+		if shouldDoIt && !strings.HasPrefix(lib, appdir.Path) {
 			// Copy copyright files into the AppImage
 			copyrightFile, err := getCopyrightFile(lib)
 			// It is perfectly fine for this to error - on non-dpkg systems, or if lib was not in a deb package
@@ -533,12 +534,12 @@ func deployCopyrightFiles(appdir helpers.AppDir) {
 		}
 	}
 	log.Println("Done")
-	if options.standalone == true {
+	if options.standalone {
 		log.Println("To check whether it is really self-contained, run:")
 		fmt.Println("LD_LIBRARY_PATH='' find " + appdir.Path + " -type f -exec ldd {} 2>&1 \\; | grep '=>' | grep -v " + appdir.Path)
 	}
 
-	if options.libAppRunHooks == true {
+	if options.libAppRunHooks {
 		log.Println("The option '-m' was used. Hence, you need to manually add AppRun, .env, and libapprun_hooks.so")
 		log.Println("from https://github.com/AppImageCrafters/AppRun/releases/tag/continuous. TODO: Automate this")
 	}
@@ -577,7 +578,7 @@ func handleGdk(appdir helpers.AppDir) {
 				os.Exit(1)
 			} else {
 				for _, loc := range locs {
-					determineELFsInDirTree(appdir, loc)
+					determineELFsInDirTree(loc)
 
 					// We need to patch away the path to libpixbufloader-png.so from the file loaders.cache, similar to:
 					// sed -i -e 's|/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders/||g' usr/lib/x86_64-linux-gnu/gdk-pixbuf-*/*/loaders.cache
@@ -614,7 +615,7 @@ func handleGdk(appdir helpers.AppDir) {
 	}
 }
 
-func handlePulseAudio(appdir helpers.AppDir) {
+func handlePulseAudio() {
 	// TODO: What about the `/usr/lib/pulse-*` directory?
 	for _, lib := range allELFs {
 		if strings.HasPrefix(filepath.Base(lib), "libpulse.so") {
@@ -625,7 +626,7 @@ func handlePulseAudio(appdir helpers.AppDir) {
 				os.Exit(1)
 			} else {
 				log.Println("Bundling dependencies of pulseaudio directory...")
-				determineELFsInDirTree(appdir, locs[0])
+				determineELFsInDirTree(locs[0])
 			}
 
 			break
@@ -644,7 +645,7 @@ func handleNvidia() {
 	}
 }
 
-func handleAlsa(appdir helpers.AppDir) {
+func handleAlsa() {
 	// FIXME: Doesn't seem to get loaded. Is ALSA_PLUGIN_DIR needed and working in ALSA?
 	// Is something like https://github.com/flatpak/freedesktop-sdk-images/blob/1.6/alsa-lib-plugin-path.patch needed in the bundled ALSA?
 	// TODO: What about the `share/alsa` subdirectory? libasound.so.* refers to it as well
@@ -658,7 +659,7 @@ func handleAlsa(appdir helpers.AppDir) {
 				os.Exit(1)
 			} else {
 				log.Println("Bundling dependencies of alsa-lib directory...")
-				determineELFsInDirTree(appdir, locs[0])
+				determineELFsInDirTree(locs[0])
 			}
 
 			break
@@ -666,7 +667,7 @@ func handleAlsa(appdir helpers.AppDir) {
 	}
 }
 
-func handleGStreamer(appdir helpers.AppDir) {
+func handleGStreamer() {
 	for _, lib := range allELFs {
 		if strings.HasPrefix(filepath.Base(lib), "libgstreamer-1.0") {
 			log.Println("Bundling GStreamer 1.0 directory (for GST_PLUGIN_PATH)...")
@@ -676,7 +677,7 @@ func handleGStreamer(appdir helpers.AppDir) {
 				os.Exit(1)
 			} else {
 				log.Println("Bundling dependencies of GStreamer 1.0 directory...")
-				determineELFsInDirTree(appdir, locs[0])
+				determineELFsInDirTree(locs[0])
 			}
 
 			// FIXME: This is not going to scale, every distribution is cooking their own soup,
@@ -686,7 +687,7 @@ func handleGStreamer(appdir helpers.AppDir) {
 			for _, cand := range gstPluginScannerCandidates {
 				if helpers.Exists(cand) {
 					log.Println("Determining gst-plugin-scanner...")
-					determineELFsInDirTree(appdir, cand)
+					determineELFsInDirTree(cand)
 					break
 				}
 			}
@@ -698,7 +699,7 @@ func handleGStreamer(appdir helpers.AppDir) {
 
 func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, path string) {
 
-	if strings.HasPrefix(path, appdir.Path) == false {
+	if !strings.HasPrefix(path, appdir.Path) {
 		path = filepath.Clean(appdir.Path + "/" + path)
 	}
 	var newRpathStringForElf string
@@ -718,19 +719,19 @@ func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, 
 		return
 	}
 
-	if strings.HasPrefix(filepath.Base(path), "ld-") == true {
+	if strings.HasPrefix(filepath.Base(path), "ld-") {
 		log.Println("Not writing rpath in", path, "because its name starts with ld-...")
 		return
 	}
 
 	// Be sure that the file we want to patch exists
-	if helpers.Exists(path) == false {
+	if !helpers.Exists(path) {
 		log.Println(path, "does not exist, hence we cannot set its rpath, exiting")
 		os.Exit(1)
 	}
 
 	// Call patchelf to set the rpath
-	if helpers.Exists(path) == true {
+	if helpers.Exists(path) {
 		// log.Println("Rewriting rpath of", path)
 		cmd := exec.Command("patchelf", "--set-rpath", newRpathStringForElf, path)
 		// log.Println(cmd.Args)
@@ -754,7 +755,7 @@ func deployGtkDirectory(appdir helpers.AppDir, gtkVersion int) {
 			} else {
 				for _, loc := range locs {
 					log.Println("Bundling dependencies of Gtk", strconv.Itoa(gtkVersion), "directory...")
-					determineELFsInDirTree(appdir, loc)
+					determineELFsInDirTree(loc)
 					log.Println("Bundling Default theme for Gtk", strconv.Itoa(gtkVersion), "(for GTK_THEME=Default)...")
 					err = copy.Copy("/usr/share/themes/Default/gtk-"+strconv.Itoa(gtkVersion)+".0", appdir.Path+"/usr/share/themes/Default/gtk-"+strconv.Itoa(gtkVersion)+".0")
 					if err != nil {
@@ -816,7 +817,7 @@ func appendLib(path string) {
 
 	for _, rpath := range rpaths {
 		rpath = filepath.Clean(strings.Replace(rpath, "$ORIGIN", filepath.Dir(path), -1))
-		if helpers.SliceContains(libraryLocations, rpath) == false && rpath != "" {
+		if !helpers.SliceContains(libraryLocations, rpath) && rpath != "" {
 			log.Println("Add", rpath, "to the libraryLocations directories we search for libraries")
 			libraryLocations = helpers.AppendIfMissing(libraryLocations, filepath.Clean(rpath))
 		}
@@ -827,7 +828,7 @@ func appendLib(path string) {
 	allELFs = helpers.AppendIfMissing(allELFs, path)
 }
 
-func determineELFsInDirTree(appdir helpers.AppDir, pathToDirTreeToBeDeployed string) {
+func determineELFsInDirTree(pathToDirTreeToBeDeployed string) {
 	allelfs, err := findAllExecutablesAndLibraries(pathToDirTreeToBeDeployed)
 	if err != nil {
 		helpers.PrintError("findAllExecutablesAndLibraries", err)
@@ -886,7 +887,7 @@ func findAllExecutablesAndLibraries(path string) ([]string, error) {
 	// fmt.Println(" findAllExecutablesAndLibrarieschecking", path)
 
 	// If we have a file, then there is nothing to walk and we can return it directly
-	if helpers.IsDirectory(path) != true {
+	if !helpers.IsDirectory(path) {
 		allExecutablesAndLibraries = append(allExecutablesAndLibraries, path)
 		return allExecutablesAndLibraries, nil
 	}
@@ -899,12 +900,12 @@ func findAllExecutablesAndLibraries(path string) ([]string, error) {
 		// Add ELF files
 		if info.Mode().IsRegular() {
 			f, err := os.Open(path)
-			defer f.Close()
 			if err == nil {
-				if helpers.CheckMagicAtOffset(f, "454c46", 1) == true {
+				if helpers.CheckMagicAtOffset(f, "454c46", 1) {
 					allExecutablesAndLibraries = helpers.AppendIfMissing(allExecutablesAndLibraries, path)
 				}
 			}
+			defer f.Close()
 		}
 
 		return nil
@@ -915,7 +916,7 @@ func findAllExecutablesAndLibraries(path string) ([]string, error) {
 func getDeps(binaryOrLib string) error {
 	var libs []string
 
-	if helpers.Exists(binaryOrLib) == false {
+	if !helpers.Exists(binaryOrLib) {
 		return errors.New("binary does not exist: " + binaryOrLib)
 	}
 
@@ -934,7 +935,7 @@ func getDeps(binaryOrLib string) error {
 		if err != nil {
 			return err
 		}
-		if helpers.SliceContains(allELFs, s) == true {
+		if helpers.SliceContains(allELFs, s) {
 			continue
 		} else {
 			libPath, err := findLibrary(lib)
@@ -1070,18 +1071,18 @@ func getCopyrightFile(path string) (string, error) {
 
 	var copyrightFile string
 
-	if helpers.IsCommandAvailable("dpkg") == false {
+	if !helpers.IsCommandAvailable("dpkg") {
 		return copyrightFile, errors.New("dpkg not found, hence not deploying copyright files")
 	}
 
-	if helpers.IsCommandAvailable("dpkg-query") == false {
+	if !helpers.IsCommandAvailable("dpkg-query") {
 		return copyrightFile, errors.New("dpkg-query not found, hence not deploying copyright files")
 	}
 
 	// Find out which package the file being deployed belongs to
 	var packageContainingTheSO string
 	pkg, ok := packagesContainingFiles[path]
-	if ok == true {
+	if ok {
 		packageContainingTheSO = pkg
 	} else {
 		cmd := exec.Command("dpkg", "-S", path)
@@ -1098,7 +1099,7 @@ func getCopyrightFile(path string) (string, error) {
 	// We are caching the results so that multiple packages belonging to the same package have to run dpkg-query only once
 	// So first we check whether we already know it
 	cf, ok := copyrightFiles[packageContainingTheSO]
-	if ok == true {
+	if ok {
 		return cf, nil
 	}
 
@@ -1140,13 +1141,13 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		}
 
 		f, err := os.Open(library)
-		defer f.Close()
 		if err != nil {
 			helpers.PrintError("Could not open libQt5Core.so.5", err)
 			os.Exit(1)
 		}
+		defer f.Close()
 
-		qtPrfxpath := getQtPrfxpath(f, err, qtVersion)
+		qtPrfxpath := getQtPrfxpath(f)
 
 		if qtPrfxpath == "" {
 			log.Println("Got empty qtPrfxpath, exiting")
@@ -1155,12 +1156,12 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 
 		log.Println("Looking in", qtPrfxpath+"/plugins")
 
-		if helpers.Exists(qtPrfxpath+"/plugins/platforms/libqxcb.so") == false {
+		if !helpers.Exists(qtPrfxpath + "/plugins/platforms/libqxcb.so") {
 			log.Println("Could not find 'plugins/platforms/libqxcb.so' in qtPrfxpath, exiting")
 			os.Exit(1)
 		}
 
-		determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/platforms/libqxcb.so")
+		determineELFsInDirTree(qtPrfxpath + "/plugins/platforms/libqxcb.so")
 
 		// From here on, mark for deployment certain Qt components if certain conditions are true
 		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1250
@@ -1172,21 +1173,21 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		for _, want := range wants {
 			found := helpers.FilesWithSuffixInDirectoryRecursive(qtPrfxpath, want)
 			if len(found) > 0 {
-				determineELFsInDirTree(appdir, found[0])
+				determineELFsInDirTree(found[0])
 			}
 		}
 
 		// iconengines and imageformats, if Qt5Gui.so.5 is about to be deployed
 		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1259
 		for _, lib := range allELFs {
-			if strings.HasSuffix(lib, "libQt5Gui.so.5") == true {
+			if strings.HasSuffix(lib, "libQt5Gui.so.5") {
 				if helpers.Exists(qtPrfxpath + "/plugins/iconengines/") {
-					determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/iconengines/")
+					determineELFsInDirTree(qtPrfxpath + "/plugins/iconengines/")
 				} else {
 					fmt.Println("Skipping", appdir, qtPrfxpath+"/plugins/iconengines/", "because it does not exist")
 				}
 				if helpers.Exists(qtPrfxpath + "/plugins/imageformats/") {
-					determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/imageformats/")
+					determineELFsInDirTree(qtPrfxpath + "/plugins/imageformats/")
 				} else {
 					fmt.Println("Skipping", appdir, qtPrfxpath+"/plugins/imageformats/", "because it does not exist")
 				}
@@ -1197,12 +1198,12 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		// Platform OpenGL context, if one of several libraries is about to be deployed
 		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1282
 		for _, lib := range allELFs {
-			if strings.HasSuffix(lib, "libQt5Gui.so.5") == true ||
-				strings.HasSuffix(lib, "libQt5OpenGL.so.5") == true ||
-				strings.HasSuffix(lib, "libQt5XcbQpa.so.5") == true ||
-				strings.HasSuffix(lib, "libxcb-glx.so") == true {
+			if strings.HasSuffix(lib, "libQt5Gui.so.5") ||
+				strings.HasSuffix(lib, "libQt5OpenGL.so.5") ||
+				strings.HasSuffix(lib, "libQt5XcbQpa.so.5") ||
+				strings.HasSuffix(lib, "libxcb-glx.so") {
 				{
-					determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/xcbglintegrations/")
+					determineELFsInDirTree(qtPrfxpath + "/plugins/xcbglintegrations/")
 					break
 				}
 			}
@@ -1211,8 +1212,8 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		// CUPS print support plugin, if libQt5PrintSupport.so.5 is about to be deployed
 		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1299
 		for _, lib := range allELFs {
-			if strings.HasSuffix(lib, "libQt5PrintSupport.so.5") == true {
-				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/printsupport/libcupsprintersupport.so")
+			if strings.HasSuffix(lib, "libQt5PrintSupport.so.5") {
+				determineELFsInDirTree(qtPrfxpath + "/plugins/printsupport/libcupsprintersupport.so")
 				break
 			}
 		}
@@ -1220,8 +1221,8 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		// Network bearers, if libQt5Network.so.5 is about to be deployed
 		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1304
 		for _, lib := range allELFs {
-			if strings.HasSuffix(lib, "libQt5Network.so.5") == true {
-				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/bearer/")
+			if strings.HasSuffix(lib, "libQt5Network.so.5") {
+				determineELFsInDirTree(qtPrfxpath + "/plugins/bearer/")
 				break
 			}
 		}
@@ -1229,8 +1230,8 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		// Sql drivers, if libQt5Sql.so.5 is about to be deployed
 		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1312
 		for _, lib := range allELFs {
-			if strings.HasSuffix(lib, "libQt5Sql.so.5") == true {
-				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/sqldrivers/")
+			if strings.HasSuffix(lib, "libQt5Sql.so.5") {
+				determineELFsInDirTree(qtPrfxpath + "/plugins/sqldrivers/")
 				break
 			}
 		}
@@ -1238,8 +1239,8 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		// Positioning plugins, if libQt5Positioning.so.5 is about to be deployed
 		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1320
 		for _, lib := range allELFs {
-			if strings.HasSuffix(lib, "libQt5Positioning.so.5") == true {
-				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/position/")
+			if strings.HasSuffix(lib, "libQt5Positioning.so.5") {
+				determineELFsInDirTree(qtPrfxpath + "/plugins/position/")
 				break
 			}
 		}
@@ -1247,9 +1248,9 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		// Multimedia plugins, if libQt5Multimedia.so.5 is about to be deployed
 		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1328
 		for _, lib := range allELFs {
-			if strings.HasSuffix(lib, "libQt5Multimedia.so.5") == true {
-				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/mediaservice/")
-				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/audio/")
+			if strings.HasSuffix(lib, "libQt5Multimedia.so.5") {
+				determineELFsInDirTree(qtPrfxpath + "/plugins/mediaservice/")
+				determineELFsInDirTree(qtPrfxpath + "/plugins/audio/")
 				break
 			}
 		}
@@ -1257,7 +1258,7 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		// WebEngine, if libQt5WebEngineCore.so.5 is about to be deployed
 		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1343
 		for _, lib := range allELFs {
-			if strings.HasSuffix(lib, "libQt5WebEngineCore.so.5") == true {
+			if strings.HasSuffix(lib, "libQt5WebEngineCore.so.5") {
 				log.Println("TODO: Deploying Qt5WebEngine components...")
 				os.Exit(1)
 
@@ -1350,13 +1351,13 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 				os.MkdirAll(filepath.Dir(path.Join(appdir.Path, qmlImport.Path)), 0755)
 				copy.Copy(qmlImport.Path, path.Join(appdir.Path, qmlImport.Path)) // FIXME: Ideally we would not copy here but only after the point where we start copying everything
 				path.Join("sss", "sss")
-				determineELFsInDirTree(appdir, path.Join(appdir.Path, qmlImport.Path))
+				determineELFsInDirTree(path.Join(appdir.Path, qmlImport.Path))
 			}
 		}
 	}
 }
 
-func getQtPrfxpath(f *os.File, err error, qtVersion int) string {
+func getQtPrfxpath(f *os.File) string {
 	f.Seek(0, 0)
 	// Search from the beginning of the file
 	search := []byte("qt_prfxpath=")
@@ -1371,7 +1372,7 @@ func getQtPrfxpath(f *os.File, err error, qtVersion int) string {
 	f.Seek(offset, 0)
 	buf := make([]byte, length)
 	// Make a buffer that is exactly as long as the range we want to read
-	_, err = io.ReadFull(f, buf)
+	_, err := io.ReadFull(f, buf)
 	if err != nil {
 		helpers.PrintError("Unable to read qt_prfxpath", err)
 		os.Exit(1)
@@ -1387,7 +1388,7 @@ func getQtPrfxpath(f *os.File, err error, qtVersion int) string {
 	// Some distributions, including Ubuntu and Alpine,
 	// have qt_prfxpath set to '/usr' but the files are actually in e.g., '/usr/lib/qt5'
 	// In this case, we should NOT patch it
-	if helpers.IsDirectory(qt_prfxpath+"/plugins") == false {
+	if !helpers.IsDirectory(qt_prfxpath + "/plugins") {
 		log.Println("Got qt_prfxpath but it does not contain 'plugins'")
 		results := helpers.FilesWithSuffixInDirectoryRecursive(qt_prfxpath, "libqxcb.so")
 		log.Println("libqxcb.so found:", results)

@@ -14,6 +14,16 @@ import (
 	"github.com/probonopd/go-appimage/internal/helpers"
 )
 
+// To keep track of what we already have subscribed. Something like this is needed in order
+// not to be flooded with messages.
+// If possible I would like to get rid of this slice,
+// the mqtt library probably keeps track of this internally?
+// Right now we never remove from this list for logical reasons
+// (multiple AppImages may share the same updateinformation)...
+// Checking whehter other AppImages are left is probably costly.
+// So better find a way to get this information from the mqtt library.
+var subscribedMQTTTopics []string
+
 func connect(clientId string, uri *url.URL) mqtt.Client {
 	opts := createClientOptions(clientId, uri)
 	client := mqtt.NewClient(opts)
