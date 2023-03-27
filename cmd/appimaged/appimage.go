@@ -17,7 +17,7 @@ import (
 
 	"github.com/adrg/xdg"
 	"github.com/probonopd/go-appimage/internal/helpers"
-	"github.com/probonopd/go-appimage/src/goappimage"
+	"github.com/probonopd/go-appimage/pkg/goappimage"
 	"go.lsp.dev/uri"
 )
 
