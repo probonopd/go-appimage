@@ -64,12 +64,12 @@ var candidateDirectories = append(
 
 // Flags
 var (
-	verbose    bool
-	quiet      *bool
-	overwrite  *bool
-	clean      *bool
-	noZeroconf *bool
-	noMqtt     *bool
+	verbose       bool
+	quiet         *bool
+	overwrite     *bool
+	clean         *bool
+	noZeroconf    *bool
+	updateService *bool
 )
 
 func usage() {
@@ -117,7 +117,7 @@ func main() {
 	overwrite = flag.Bool("o", false, "Overwrite existing desktop integration files (slower)")
 	clean = flag.Bool("c", false, "Clean pre-existing desktop files")
 	noZeroconf = flag.Bool("nz", false, "Do not announce this service on the network using Zeroconf")
-	noMqtt = flag.Bool("u", false, "Disable checking for AppImage updates (via MQTT)")
+	updateService = flag.Bool("u", false, "Enable checking for AppImage updates (via MQTT)")
 	flag.Parse()
 	verbose = *verbosePtr
 	if flag.NArg() == 0 {
@@ -144,7 +144,7 @@ func main() {
 	// overwritePtr = &ptrue
 
 	// Connect to MQTT server and subscribe to the topic for ourselves
-	if !*noMqtt {
+	if *updateService {
 		if CheckIfConnectedToNetwork() {
 			uri, err := url.Parse(helpers.MQTTServerURI)
 			if err != nil {

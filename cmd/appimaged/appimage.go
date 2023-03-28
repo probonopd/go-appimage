@@ -118,7 +118,7 @@ func (ai AppImage) _integrate() error {
 				if diff > (time.Duration(0) * time.Second) {
 					// Do nothing if the desktop file is already newer than the AppImage file
 					// but subscribe
-					if !*noMqtt && CheckIfConnectedToNetwork() {
+					if *updateService && CheckIfConnectedToNetwork() {
 						go SubscribeMQTT(MQTTclient, ai.updateinformation)
 					}
 					return nil
@@ -141,7 +141,7 @@ func (ai AppImage) _integrate() error {
 
 	// Subscribe to MQTT messages for this application
 	if ai.updateinformation != "" {
-		if !*noMqtt && CheckIfConnectedToNetwork() {
+		if *updateService && CheckIfConnectedToNetwork() {
 			go SubscribeMQTT(MQTTclient, ai.updateinformation)
 		}
 	}
@@ -174,7 +174,7 @@ func (ai AppImage) _unintegrate() {
 	os.Remove(ai.thumbnailfilepath)
 	os.Remove(ai.desktopfilepath)
 	// Unsubscribe to MQTT messages for this application
-	if !*noMqtt && ai.updateinformation != "" {
+	if *updateService && ai.updateinformation != "" {
 		go UnSubscribeMQTT(MQTTclient, ai.updateinformation)
 	}
 

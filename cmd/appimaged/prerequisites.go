@@ -393,7 +393,7 @@ func installServiceFileInHome() {
 	if *noZeroconf {
 		exe += " -nz"
 	}
-	if *noMqtt {
+	if *updateService {
 		exe += " -u"
 	}
 	d1 := []byte(`[Unit]
