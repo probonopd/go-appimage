@@ -102,8 +102,28 @@ fi
 ############################################################################################
 
 cd "$HERE/usr" # Not all applications will need this; TODO: Make this opt-in
-MAIN_BIN=$(find "$HERE/usr/bin" -name "$MAIN" | head -n 1)
+
+# Try to find a binary with the same name as the AppImage or the symlink through which
+# it was invoked, without any suffix
+if [ -z "$ARGV0" ] ; then
+  # AppRun is being executed outside of an AppImage
+  ARGV0="$0"
+fi
+BINARY_NAME=$(basename "$ARGV0")
+if [ "$BINARY_NAME" == "AppRun" ] ; then
+  unset BINARY_NAME
+fi
+
+BINARY_NAME="${BINARY_NAME%.*}" # remove everything after the last "."
+MAIN_BIN=$(find "$HERE/usr/bin" -name "$BINARY_NAME" | head -n 1)
+
+# Fall back to finding the main binary based on the Exec= line in the desktop file
+if [ -z "$MAIN_BIN" ] ; then
+  MAIN_BIN=$(find "$HERE/usr/bin" -name "$MAIN" | head -n 1)
+fi
+
 LD_LINUX=$(find "$HERE" -name 'ld-*.so.*' | head -n 1)
+
 if [ -e "$LD_LINUX" ] ; then
   export GCONV_PATH="$HERE/usr/lib/gconv"
   export FONTCONFIG_FILE="$HERE/etc/fonts/fonts.conf"
