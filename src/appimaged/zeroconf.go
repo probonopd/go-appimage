@@ -26,7 +26,8 @@ func registerZeroconfService() {
 	)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Println("Error registering zeroconf service")
+		return
 	}
 
 	defer service.Shutdown()
@@ -53,7 +54,8 @@ func browseZeroconfServices() {
 	// Discover all services on the network (e.g. _workstation._tcp)
 	resolver, err := zeroconf.NewResolver(nil)
 	if err != nil {
-		log.Fatalln("zeroconf: Failed to initialize resolver:", err.Error())
+		log.Println("zeroconf: Failed to initialize resolver:", err)
+		return
 	}
 
 	entries := make(chan *zeroconf.ServiceEntry)
@@ -63,14 +65,13 @@ func browseZeroconfServices() {
 		}
 		log.Println("zeroconf: No more entries.")
 	}(entries)
-
 	// ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	defer cancel()
 	err = resolver.Browse(ctx, zeroconfServiceType, "local.", entries)
 	if err != nil {
-		log.Println("zeroconf: Failed to browse:", err.Error())
+		log.Println("zeroconf: Failed to browse:", err)
 	}
 
 	<-ctx.Done()

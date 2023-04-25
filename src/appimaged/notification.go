@@ -112,7 +112,8 @@ func sendUpdateDesktopNotification(ai *AppImage, version string, _ string) {
 		notify.WithLogger(log.New(os.Stdout, "notify: ", log.Flags())),
 	)
 	if err != nil {
-		log.Fatalln(err.Error())
+		log.Println("Error creating notifier:", err)
+		return
 	}
 	defer notifier.Close()
 
