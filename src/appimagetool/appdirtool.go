@@ -997,6 +997,9 @@ func getDirsFromSoConf(path string) []string {
 			continue
 		} else if strings.HasPrefix(line, "include ") {
 			p := strings.Split(line, " ")[1]
+			if p[0] != '/' {
+				p = filepath.Dir(path) + "/" + p
+			}
 			files, err := filepath.Glob(p)
 			if err != nil {
 				return out
