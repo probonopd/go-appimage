@@ -298,23 +298,35 @@ func GenerateAppImage(
 
 	var iconfile string
 
-	// Check if we find a png matching the Icon= key in the top-level directory of the AppDir
-	// or at usr/share/icons/hicolor/256x256/apps/ in the AppDir
+	// Check if we find a png matching the Icon= key in various locations
 	// We insist on a png because otherwise we need to costly convert it to png at integration time
 	// since thumbails need to be in png format
 	supportedIconExtensions := []string{".png", ".xpm", ".svg"}
-	for i := range supportedIconExtensions {
-		if helpers.CheckIfFileExists(appdir+"/"+iconname+supportedIconExtensions[i]) == true {
-			iconfile = appdir + "/" + iconname + supportedIconExtensions[i]
-			break
-		} else if helpers.CheckIfFileExists(appdir + "/usr/share/icons/hicolor/256x256/apps/" + iconname + supportedIconExtensions[i]) {
-			iconfile = appdir + "/usr/share/icons/hicolor/256x256/apps/" + iconname + supportedIconExtensions[i]
+	locations := []string{
+		appdir + "/",
+		appdir + "/usr/share/icons/hicolor/256x256/apps/",
+		appdir + "/usr/share/icons/hicolor/scalable/apps/",
+	}
+	for _, extension := range supportedIconExtensions {
+		for _, location := range locations {
+			filename := location + iconname + extension
+			if helpers.CheckIfFileExists(filename) == true {
+				iconfile = filename
+				break
+			}
+		}
+		if iconfile != "" {
 			break
 		}
 	}
 	if iconfile == "" {
-		log.Fatal("Could not find icon file at " + appdir + "/" + iconname + "{.png, .svg, .xpm}" + "\n" +
-			"nor at " + appdir + "/usr/share/icons/hicolor/256x256/apps/" + iconname + "{.png, .svg, .xpm}" + ", exiting\n")
+		var sb strings.Builder
+		sb.WriteString("Could not find icon file " + iconname + "{.png, .xpm, .svg} in:" + "\n")
+		for _, location := range locations {
+			sb.WriteString(" - " + location + "\n")
+		}
+		sb.WriteString("Exiting\n")
+		log.Fatal(sb.String())
 	}
 	log.Println("Icon file:", iconfile)
 
