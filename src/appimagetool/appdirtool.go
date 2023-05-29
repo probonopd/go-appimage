@@ -979,6 +979,10 @@ func findWithPrefixInLibraryLocations(prefix string) ([]string, error) {
 	return found, errors.New("did not find " + prefix)
 }
 
+func isBlank(c rune) bool {
+	return c == ' ' || c == '\t'
+}
+
 // getDirsFromSoConf returns a []string with the directories specified
 // in the ld config file at path, usually '/etc/ld.so.conf',
 // and in its included config files. We need to search in those locations
@@ -995,15 +999,23 @@ func getDirsFromSoConf(path string) []string {
 		line := scanner.Text()
 		if strings.TrimSpace(line) == "" || strings.HasPrefix(line, "#") {
 			continue
-		} else if strings.HasPrefix(line, "include ") {
-			p := strings.Split(line, " ")[1]
-			files, err := filepath.Glob(p)
-			if err != nil {
-				return out
+		} else if strings.HasPrefix(line, "include") && isBlank(([]rune(line))[7]) {
+			incs := strings.FieldsFunc(line[8:], isBlank)
+			for _, p := range incs {
+				if p[0] != '/' {
+					p = filepath.Dir(path) + "/" + p
+				}
+				files, err := filepath.Glob(p)
+				if err != nil {
+					return out
+				}
+				for _, file := range files {
+					out = append(out, getDirsFromSoConf(file)...)
+				}
 			}
-			for _, file := range files {
-				out = append(out, getDirsFromSoConf(file)...)
-			}
+			continue
+		} else if strings.HasPrefix(line, "hwcap") && isBlank(([]rune(line))[5]) {
+			// Ignore hwcap directive, it's also ignore by glibc
 			continue
 		}
 		out = append(out, strings.TrimSpace(line))
