@@ -1,82 +1,86 @@
-// zeroconf.go
+// TODO: Find appimaged instances on the local network, and AppImages could be exchanged/updated over the network "automagically".
+
+// // zeroconf.go
 package main
 
-import (
-	"context"
-	"log"
-	"net"
-	"os"
-	"os/signal"
-	"syscall"
+import "net"
 
-	"github.com/grandcat/zeroconf"
-)
+// import (
+// 	"context"
+// 	"log"
+// 	"net"
+// 	"os"
+// 	"os/signal"
+// 	"syscall"
 
-const zeroconfServiceType = "_appimaged._tcp"
+// 	"github.com/grandcat/zeroconf"
+// )
 
-// Announce appimaged on the local network with Zeroconf
-func registerZeroconfService() {
-	service, err := zeroconf.Register(
-		"appimaged",         // service instance name
-		zeroconfServiceType, // service type and protocol
-		"local.",            // service domain
-		88214,               // service port
-		nil,                 // service metadata
-		nil,                 // register on all network interfaces
-	)
+// const zeroconfServiceType = "_appimaged._tcp"
 
-	if err != nil {
-		log.Println("Error registering zeroconf service")
-		return
-	}
+// // Announce appimaged on the local network with Zeroconf
+// func registerZeroconfService() {
+// 	service, err := zeroconf.Register(
+// 		"appimaged",         // service instance name
+// 		zeroconfServiceType, // service type and protocol
+// 		"local.",            // service domain
+// 		88214,               // service port
+// 		nil,                 // service metadata
+// 		nil,                 // register on all network interfaces
+// 	)
 
-	defer service.Shutdown()
+// 	if err != nil {
+// 		log.Println("Error registering zeroconf service")
+// 		return
+// 	}
 
-	// Keep this running
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+// 	defer service.Shutdown()
 
-	<-sig
+// 	// Keep this running
+// 	sig := make(chan os.Signal, 1)
+// 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 
-	log.Println("zeroconf: Shutting down...")
+// 	<-sig
 
-	// FIXME: ...and then nothing happens,
-	// so we are forcing it... but this feels wrong
-	service.Shutdown()
-	log.Println("zeroconf: Shut down")
-	os.Exit(0)
-}
+// 	log.Println("zeroconf: Shutting down...")
 
-// Browse the local network for Zeroconf services
-// TODO: React to services going away,
-// https://github.com/grandcat/zeroconf/issues/65
-func browseZeroconfServices() {
-	// Discover all services on the network (e.g. _workstation._tcp)
-	resolver, err := zeroconf.NewResolver(nil)
-	if err != nil {
-		log.Println("zeroconf: Failed to initialize resolver:", err)
-		return
-	}
+// 	// FIXME: ...and then nothing happens,
+// 	// so we are forcing it... but this feels wrong
+// 	service.Shutdown()
+// 	log.Println("zeroconf: Shut down")
+// 	os.Exit(0)
+// }
 
-	entries := make(chan *zeroconf.ServiceEntry)
-	go func(results <-chan *zeroconf.ServiceEntry) {
-		for entry := range results {
-			log.Println("zeroconf:", entry)
-		}
-		log.Println("zeroconf: No more entries.")
-	}(entries)
-	// ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
-	ctx, cancel := context.WithCancel(context.Background())
+// // Browse the local network for Zeroconf services
+// // TODO: React to services going away,
+// // https://github.com/grandcat/zeroconf/issues/65
+// func browseZeroconfServices() {
+// 	// Discover all services on the network (e.g. _workstation._tcp)
+// 	resolver, err := zeroconf.NewResolver(nil)
+// 	if err != nil {
+// 		log.Println("zeroconf: Failed to initialize resolver:", err)
+// 		return
+// 	}
 
-	defer cancel()
-	err = resolver.Browse(ctx, zeroconfServiceType, "local.", entries)
-	if err != nil {
-		log.Println("zeroconf: Failed to browse:", err)
-	}
+// 	entries := make(chan *zeroconf.ServiceEntry)
+// 	go func(results <-chan *zeroconf.ServiceEntry) {
+// 		for entry := range results {
+// 			log.Println("zeroconf:", entry)
+// 		}
+// 		log.Println("zeroconf: No more entries.")
+// 	}(entries)
+// 	// ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+// 	ctx, cancel := context.WithCancel(context.Background())
 
-	<-ctx.Done()
+// 	defer cancel()
+// 	err = resolver.Browse(ctx, zeroconfServiceType, "local.", entries)
+// 	if err != nil {
+// 		log.Println("zeroconf: Failed to browse:", err)
+// 	}
 
-}
+// 	<-ctx.Done()
+
+// }
 
 // CheckIfConnectedToNetwork returns true if connected to a network
 func CheckIfConnectedToNetwork() bool {
