@@ -43,7 +43,8 @@ var overwritePtr = flag.Bool("o", false, "Overwrite existing desktop integration
 var cleanPtr = flag.Bool("c", true, "Clean pre-existing desktop files")
 
 var quietPtr = flag.Bool("q", false, "Do not send desktop notifications")
-var noZeroconfPtr = flag.Bool("nz", false, "Do not announce this service on the network using Zeroconf")
+
+// var noZeroconfPtr = flag.Bool("nz", false, "Do not announce this service on the network using Zeroconf")
 
 var updateChannel chan struct{} = make(chan struct{}, 10)
 
@@ -174,12 +175,12 @@ func main() {
 	// TODO: Also react to network interfaces and network connections coming and going,
 	// refer to the official NetworkManager dbus specification:
 	// https://developer.gnome.org/NetworkManager/1.16/spec.html
-	if !*noZeroconfPtr {
-		if CheckIfConnectedToNetwork() {
-			go registerZeroconfService()
-			go browseZeroconfServices()
-		}
-	}
+	// if !*noZeroconfPtr {
+	// 	if CheckIfConnectedToNetwork() {
+	// 		go registerZeroconfService()
+	// 		go browseZeroconfServices()
+	// 	}
+	// }
 
 	checkDirectories()
 	for _, dir := range watchedDirectories {
