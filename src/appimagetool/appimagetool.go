@@ -301,7 +301,11 @@ func GenerateAppImage(
 	// Check if we find a png matching the Icon= key in various locations
 	// We insist on a png because otherwise we need to costly convert it to png at integration time
 	// since thumbails need to be in png format
-	supportedIconExtensions := []string{".png", ".xpm", ".svg"}
+	supportedIconExtensions := []struct {ext string; warning string}{
+		{".png", ""},
+		{".svg", "SVG support is optional"},
+		{".xpm", "XPM icons are deprecated"},
+	}
 	locations := []string{
 		appdir + "/",
 		appdir + "/usr/share/icons/hicolor/256x256/apps/",
@@ -309,13 +313,16 @@ func GenerateAppImage(
 	}
 	for _, extension := range supportedIconExtensions {
 		for _, location := range locations {
-			filename := location + iconname + extension
+			filename := location + iconname + extension.ext
 			if helpers.CheckIfFileExists(filename) == true {
 				iconfile = filename
 				break
 			}
 		}
 		if iconfile != "" {
+			if extension.warning != "" {
+				log.Println("WARNING: Icon file " + iconfile + " was found but " + extension.warning)
+			}
 			break
 		}
 	}
