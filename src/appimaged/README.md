@@ -13,6 +13,7 @@ sudo apt-get -y remove appimagelauncher || true
 
 # Clear cache
 rm "$HOME"/.local/share/applications/appimage*
+[ -f ~/.config/systemd/user/default.target.wants/appimagelauncherd.service ] && rm ~/.config/systemd/user/default.target.wants/appimagelauncherd.service
 
 # Optionally, install Firejail (if you want sandboxing functionality)
 
