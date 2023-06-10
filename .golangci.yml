@@ -1,0 +1,29 @@
+run:
+  timeout: 10m
+linters:
+  enable:
+    - megacheck
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - gosimple
+    - structcheck
+    - varcheck
+    - ineffassign
+    - deadcode
+    - typecheck
+    - bodyclose
+    - rowserrcheck
+    - asciicheck
+    - misspell
+    - lll
+    - prealloc
+    - exportloopref
+    - ifshort
+    - promlinter
+    - unconvert
+    - gosec
+    - dupl
+    - goconst
+#  disable:
