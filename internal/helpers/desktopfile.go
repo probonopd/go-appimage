@@ -14,7 +14,7 @@ func CheckDesktopFile(desktopfile string) error {
 	PrintError("ini.load", err)
 	neededKeys := []string{"Categories", "Name", "Exec", "Type", "Icon"}
 	for _, k := range neededKeys {
-		if d.Section("Desktop Entry").HasKey(k) == false {
+		if !d.Section("Desktop Entry").HasKey(k) {
 			return errors.New(".desktop file is missing a '" + k + "'= key\n")
 		}
 	}
