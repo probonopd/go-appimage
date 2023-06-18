@@ -1,4 +1,16 @@
-on: [push]
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'master'
+    paths-ignore:
+      - '.idea/..'
+      - 'docs/**'
+  pull_request:
+    paths-ignore:
+      - '.idea/..'
+      - 'docs/**'
+
 name: lint
 jobs:
   golangci:
