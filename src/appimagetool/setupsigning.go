@@ -13,6 +13,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -32,47 +33,44 @@ func setupSigning(overwriteSecretFiles bool) error {
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		fmt.Println("os.Getwd:", err)
-		os.Exit(1)
+		return err
 	}
 
 	gitRepo, err = git.PlainOpenWithOptions(cwd, &git.PlainOpenOptions{DetectDotGit: true})
 	if err != nil {
-		fmt.Println("git:", err)
-	}
-
-	if gitRepo == nil {
-		fmt.Println("Could not open git repository at", cwd+". \nPlease execute this command from within a clean git repository.")
-		os.Exit(1)
+		return err
 	}
 
 	gitWorktree, _ := gitRepo.Worktree()
 	s, _ := gitWorktree.Status()
 	clean := s.IsClean()
 
-	if clean == false {
-		fmt.Println("Repository is not clean. Please commit or stash any changes first.")
-		os.Exit(1)
-
+	if !clean {
+		return errors.New("Repository is not clean. Please commit or stash any changes first.")
 	}
 
 	// Check for needed files on $PATH
 	tools := []string{"sh", "git", "openssl"}
 	err = helpers.CheckForNeededTools(tools)
 	if err != nil {
-		os.Exit(1)
+		return err
 	}
 
 	// Exit if the repo already contains the files we are about to add
-	exitIfFileExists(helpers.PubkeyFileName, "Public key", overwriteSecretFiles)
-	exitIfFileExists(helpers.PrivkeyFileName, "Private key", overwriteSecretFiles)
-	exitIfFileExists(helpers.EncPrivkeyFileName, "Encrypted private key", overwriteSecretFiles)
+	if err := exitIfFileExists(helpers.PubkeyFileName, "Public key", overwriteSecretFiles); err != nil {
+		return err
+	}
+	if err := exitIfFileExists(helpers.PrivkeyFileName, "Private key", overwriteSecretFiles); err != nil {
+		return err
+	}
+	if err := exitIfFileExists(helpers.EncPrivkeyFileName, "Encrypted private key", overwriteSecretFiles); err != nil {
+		return err
+	}
 
 	// Get repo_slug.
 	gitRemote, err := gitRepo.Remote("origin")
 	if err != nil {
-		fmt.Println("Could not get git remote")
-		os.Exit(1)
+		return err
 	}
 	components := strings.Split(gitRemote.Config().URLs[0], "/")
 	repoSlug := components[len(components)-2] + "/" + components[len(components)-1]
@@ -85,7 +83,10 @@ func setupSigning(overwriteSecretFiles bool) error {
 	fmt.Println("The GitHub token is used to store the decryption password")
 	fmt.Println("for the private signing key as private variable on Travis CI")
 	fmt.Print("Enter GitHub token: ")
-	text, _ := reader.ReadString('\n')
+	text, err := reader.ReadString('\n')
+	if err != nil {
+		return err
+	}
 	token := strings.TrimSpace(text)
 	// fmt.Println(token)
 
@@ -93,7 +94,7 @@ func setupSigning(overwriteSecretFiles bool) error {
 	fmt.Println("Is your repository on travis.com? Answer 'no' if org (yes/no)")
 	var client *travis.Client
 	var travisSettingsURL string
-	if AskForConfirmation() == true {
+	if AskForConfirmation() {
 		fmt.Println("Assuming your repository is on travis.com")
 		client = travis.NewClient(travis.ApiComUrl, token)
 		travisSettingsURL = "https://travis-ci.com/" + repoSlug + "/settings"
@@ -106,20 +107,19 @@ func setupSigning(overwriteSecretFiles bool) error {
 	// Read existing environment variables on Travis CI
 	esList, resp, err := client.EnvVars.ListByRepoSlug(context.Background(), repoSlug)
 	if err != nil {
-		fmt.Println("client.EnvVars.ListByRepoSlug:", err)
-		os.Exit(1)
+		return err
 	}
 	if resp.StatusCode < 200 || 300 <= resp.StatusCode {
 		fmt.Printf("Could not read existing environment variables on Travis CI for repo %s: invalid http status: %s", repoSlug, resp.Status)
 	}
 
-	var existingVars []string
+	existingVars := make([]string, 0, len(esList))
 	for _, e := range esList {
 		// fmt.Println("* Name:", *e.Name, "Public:", *e.Public, "Id:", *e.Id)
 		existingVars = append(existingVars, *e.Name)
 	}
 
-	if Contains(existingVars, helpers.EnvSuperSecret) == true {
+	if Contains(existingVars, helpers.EnvSuperSecret) {
 		fmt.Println("Environment variable", helpers.EnvSuperSecret, "already exists on Travis CI")
 		fmt.Println("You can check it on", travisSettingsURL)
 		fmt.Println("It looks like this repository is already set up for signing. Exiting")
@@ -138,22 +138,12 @@ func setupSigning(overwriteSecretFiles bool) error {
 
 	// Check if we succeeded until here
 	if _, err := os.Stat(helpers.PrivkeyFileName); err != nil {
-		fmt.Println("Could not create private key, exiting")
-		os.Exit(1)
+		return err
 	}
 
 	// Check if password/secret already exists, delete it if -o was specified, exit otherwise
-	if _, err := os.Stat("secret"); err == nil {
-		if !overwriteSecretFiles {
-			fmt.Println("Secret already exists, exiting")
-			os.Exit(1)
-		} else {
-			err := os.Remove("secret")
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-		}
+	if err := exitIfFileExists("secret", "Secret", overwriteSecretFiles); err != nil {
+		return err
 	}
 
 	// Generate the password which we will store as a
@@ -162,14 +152,12 @@ func setupSigning(overwriteSecretFiles bool) error {
 	superSecretPassword := generatePassword()
 	f, err := os.Create("secret")
 	if err != nil {
-		fmt.Println("Could not open file for writing secret, exiting")
-		os.Exit(1)
+		return err
 	}
 	defer f.Close()
 	_, err = f.WriteString(superSecretPassword)
 	if err != nil {
-		fmt.Println("Could not write secret, exiting")
-		os.Exit(1)
+		return err
 	}
 
 	// Encrypt the private key using the password
@@ -177,14 +165,12 @@ func setupSigning(overwriteSecretFiles bool) error {
 	cmd := "openssl aes-256-cbc -pass file:./secret -in ./" + helpers.PrivkeyFileName + " -out ./" + helpers.EncPrivkeyFileName + " -a"
 	err = helpers.RunCmdStringTransparently(cmd)
 	if err != nil {
-		fmt.Println("Could not encrypt the private key using the password, exiting")
-		os.Exit(1)
+		return err
 	}
 
 	// Check if we succeeded until here
 	if _, err := os.Stat(helpers.EncPrivkeyFileName); err != nil {
-		fmt.Println("Could not encrypt private key, exiting")
-		os.Exit(1)
+		return err
 	}
 
 	// Delete unneeded public key
@@ -208,14 +194,12 @@ func setupSigning(overwriteSecretFiles bool) error {
 
 	_, err = gitWorktree.Add(helpers.EncPrivkeyFileName)
 	if err != nil {
-		fmt.Println("Could not add encrypted private key to git repository")
-		os.Exit(1)
+		return err
 	}
 
 	_, err = gitWorktree.Add(helpers.PubkeyFileName)
 	if err != nil {
-		fmt.Println("Could not add public key to git repository")
-		os.Exit(1)
+		return err
 	}
 
 	// TODO: Can we automate this?
@@ -236,14 +220,13 @@ func setupSigning(overwriteSecretFiles bool) error {
 	*/
 	fmt.Println("Then, run 'git commit' and 'git push'")
 
-	// FIXME: Use real error raising
 	return nil
 }
 
 // SetTravisEnv sets a private variable on Travis CI
 func SetTravisEnv(client *travis.Client, repoSlug string, existingVars []string, name string, value string, travisSettingsURL string) {
 	body := travis.EnvVarBody{Name: name, Value: value, Public: false}
-	if Contains(existingVars, name) == false {
+	if !Contains(existingVars, name) {
 		fmt.Println("Set environment variable", name, "on Travis CI...")
 		_, resp, err := client.EnvVars.CreateByRepoSlug(context.Background(), repoSlug, &body)
 		if err != nil {
@@ -267,20 +250,22 @@ func Contains(s []string, e string) bool {
 	return false
 }
 
+var ErrEarlyExit = errors.New("early exit")
+
 // exitIfFileExists checks if file already exists, deletes it if -o was specified, exit otherwise
-func exitIfFileExists(file string, description string, overwriteSecretFile bool) {
+func exitIfFileExists(file string, description string, overwriteSecretFile bool) error {
 	if _, err := os.Stat(file); err == nil {
 		if !overwriteSecretFile {
 			fmt.Println(description, "'"+file+"'", "already exists, exiting")
-			os.Exit(1)
+			return ErrEarlyExit
 		} else {
 			err := os.Remove(file)
 			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
+				return err
 			}
 		}
 	}
+	return nil
 }
 
 //////////////////////////////// start AskForConfirmation
@@ -309,22 +294,11 @@ func AskForConfirmation() bool {
 	}
 }
 
-// posString returns the first index of element in slice.
-// If slice does not contain element, returns -1.
-func posString(slice []string, element string) int {
-	for index, elem := range slice {
-		if elem == element {
-			return index
-		}
-	}
-	return -1
-}
-
 // containsString returns true iff slice contains element that ends with the given string
 func containsString(slice []string, element string) bool {
 
 	for _, item := range slice {
-		if strings.HasSuffix(item, element) == true {
+		if strings.HasSuffix(item, element) {
 			return true
 		}
 	}
@@ -332,7 +306,7 @@ func containsString(slice []string, element string) bool {
 	return false
 }
 
-//////////////////////////////// end AskForConfirmation
+// ////////////////////////////// end AskForConfirmation
 // TODO: Please fix this extremely dangerous way of generating passwords
 // generatePassword generates a random password consisting
 // consisting of letters, numbers, and selected special characters

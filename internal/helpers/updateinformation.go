@@ -114,15 +114,11 @@ func ValidateUpdateInformation(updateinformation string) error {
 	if detectedTm == "zsync" && u.Scheme == "" { // FIXME: This apparently never triggers, why?
 		return errors.New("Scheme is missing, zsync needs e.,g,. http:// or https://")
 	}
-	if strings.HasSuffix(u.Path, ".zsync") == false {
+	if !strings.HasSuffix(u.Path, ".zsync") {
 		return errors.New(updateinformation + " does not end in .zsync")
 	}
 
 	return nil
-}
-
-func getChangelogHeadlineForUpdateInformation(updateinformation string) string {
-	return ""
 }
 
 // Taken and modified from
@@ -137,7 +133,7 @@ func ReadUpdateInfo(appImagePath string) (string, error) {
 	if updInfoSect == nil {
 		return "", errors.New("ELF missing .upd_info section")
 	}
-	
+
 	sectionData, err := updInfoSect.Data()
 	if err != nil {
 		return "", errors.New("unable to read update information from section")

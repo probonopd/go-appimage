@@ -22,7 +22,7 @@ func NewAppDir(desktopFilePath string) (AppDir, error) {
 	var ad AppDir
 
 	// Check if desktop file exists
-	if Exists(desktopFilePath) == false {
+	if !Exists(desktopFilePath) {
 		return ad, errors.New("Desktop file not found")
 	}
 	ad.DesktopFilePath = desktopFilePath
@@ -54,7 +54,7 @@ func NewAppDir(desktopFilePath string) (AppDir, error) {
 		if err != nil {
 			log.Printf("%v\n", err)
 		}
-		if strings.HasSuffix(info.Name(), ".desktop") == true {
+		if strings.HasSuffix(info.Name(), ".desktop") {
 			ad.DesktopFilePath = ad.Path + "/" + info.Name()
 			counter = counter + 1
 		}
@@ -80,7 +80,7 @@ func NewAppDir(desktopFilePath string) (AppDir, error) {
 		return ad, err
 	}
 
-	if sect.HasKey("Exec") == false {
+	if !sect.HasKey("Exec") {
 		err = errors.New("'Desktop Entry' section has no Exec= key")
 		return ad, err
 	}
@@ -147,27 +147,32 @@ func (appdir AppDir) CreateIconDirectories() error {
 	// Only use the most common sizes in the hope that at least
 	// those will work on all target systems
 	iconSizes := []int{512, 256, 128, 48, 32, 24, 22, 16, 8}
-	var err error = nil
+	var errs []error
 	for _, iconSize := range iconSizes {
-		err = os.MkdirAll(appdir.Path+"/usr/share/icons/hicolor/"+string(iconSize)+"x"+string(iconSize)+"/apps", 0755)
+		err := os.MkdirAll(fmt.Sprintf("%s/usr/share/icons/hicolor/%dx%d/apps", appdir.Path, iconSize, iconSize), 0755)
+		if err != nil {
+			errs = append(errs, err)
+		}
 	}
-	return err
+	return errors.Join(errs...)
 }
 
 // CopyMainIconToRoot copies the most suitable icon for the
 // Icon= entry in DesktopFilePath to the root of the AppDir
 func (appdir AppDir) CopyMainIconToRoot(iconName string) error {
-	var err error = nil
+	var errs []error
 	iconPreferenceOrder := []int{128, 256, 512, 48, 32, 24, 22, 16, 8}
 	if Exists(appdir.Path + "/" + iconName + ".png") {
 		log.Println("Top-level icon already exists, leaving untouched")
 	} else {
 		for _, iconSize := range iconPreferenceOrder {
-			candidate := appdir.Path + "/usr/share/icons/hicolor/" + string(iconSize) + "x" + string(iconSize) + "/apps/" + iconName + ".png"
+			candidate := fmt.Sprintf("%s/usr/share/icons/hicolor/%dx%d/apps/%s.png", appdir.Path, iconSize, iconSize, iconName)
 			if Exists(candidate) {
-				CopyFile(candidate, appdir.Path+"/"+iconName+".png")
+				if err := CopyFile(candidate, appdir.Path+"/"+iconName+".png"); err != nil {
+					errs = append(errs, err)
+				}
 			}
 		}
 	}
-	return err
+	return errors.Join(errs...)
 }
