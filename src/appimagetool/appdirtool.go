@@ -1428,7 +1428,8 @@ func getQtPrfxpath(f *os.File, err error, qtVersion int) string {
 		log.Println("Got qt_prfxpath but it does not contain 'plugins'")
 		results := helpers.FilesWithSuffixInDirectoryRecursive(qt_prfxpath, "libqxcb.so")
 		log.Println("libqxcb.so found:", results)
-		for _, result := range results { // FIXME: Probably we should just pick the first one and go with it
+		if len(results) > 0 {
+			result := results[0]
 			qt_prfxpath = filepath.Dir(filepath.Dir(filepath.Dir(result)))
 			log.Println("Guessed qt_prfxpath to be", qt_prfxpath)
 			quirksModePatchQtPrfxPath = true
