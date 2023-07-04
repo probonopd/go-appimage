@@ -256,9 +256,12 @@ func AppDirDeploy(path string) {
 
 	qtVersionDetected := 0
 
-	if containsString(allELFs, "libQt5Core.so.5") == true {
-		log.Println("Detected Qt 5")
-		qtVersionDetected = 5
+	for i := 5; i <= 99; i++ {
+		if containsString(allELFs, fmt.Sprintf("libQt%dCore.so.%d", i, i)) == true {
+			log.Printf("Detected Qt %d", i)
+			qtVersionDetected = i
+			break
+		}
 	}
 
 	if containsString(allELFs, "libQtCore.so.4") == true {
@@ -313,7 +316,7 @@ func AppDirDeploy(path string) {
 		deployElf(lib, appdir, err)
 		patchRpathsInElf(appdir, libraryLocationsInAppDir, lib)
 
-		if strings.Contains(lib, "libQt5Core.so.5") {
+		if strings.Contains(lib, fmt.Sprintf("libQt%dCore.so.%d", qtVersionDetected, qtVersionDetected)) {
 			patchQtPrfxpath(appdir, lib, libraryLocationsInAppDir, ldLinux)
 		}
 	}
@@ -458,15 +461,17 @@ func deployElf(lib string, appdir helpers.AppDir, err error) {
 	}
 }
 
-// patchQtPrfxpath patches qt_prfxpath of the libQt5Core.so.5 in an AppDir
+// patchQtPrfxpath patches qt_prfxpath of the libQt5Core.so.5/libQt6Core.so.6 in an AppDir
 // so that the Qt installation finds its own components in the AppDir
 func patchQtPrfxpath(appdir helpers.AppDir, lib string, libraryLocationsInAppDir []string, ldLinux string) {
 	log.Println("Patching qt_prfxpath, otherwise can't load platform plugin...")
 	f, err := os.Open(appdir.Path + "/" + lib)
+	// Get the filename of lib withouth the path, e.g., libQt5Core.so.5/libQt6Core.so.6
+	libFilename := filepath.Base(lib)
 	// Open file for reading/determining the offset
 	defer f.Close()
 	if err != nil {
-		helpers.PrintError("Could not open libQt5Core.so.5 for reading", err)
+		helpers.PrintError("Could not open "+libFilename+" for reading", err)
 		os.Exit(1)
 	}
 	f.Seek(0, 0)
@@ -509,16 +514,16 @@ func patchQtPrfxpath(appdir helpers.AppDir, lib string, libraryLocationsInAppDir
 	// Open file writable, why is this so complicated
 	defer f.Close()
 	if err != nil {
-		helpers.PrintError("Could not open libQt5Core.so.5 for writing", err)
+		helpers.PrintError("Could not open "+libFilename+" for writing", err)
 		os.Exit(1)
 	}
 	// Now that we know where in the file the information is, go write it
 	f.Seek(offset, 0)
 	if quirksModePatchQtPrfxPath == false {
-		log.Println("Patching qt_prfxpath in libQt5Core.so.5 to " + relPathToQt)
+		log.Println("Patching qt_prfxpath in " + libFilename + " to " + relPathToQt)
 		_, err = f.Write([]byte(relPathToQt + "\x00"))
 	} else {
-		log.Println("Patching qt_prfxpath in libQt5Core.so.5 to ..")
+		log.Println("Patching qt_prfxpath in " + libFilename + " to ..")
 		_, err = f.Write([]byte(".." + "\x00"))
 	}
 	if err != nil {
@@ -1163,18 +1168,18 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 
 	if qtVersion >= 5 {
 
-		// Actually the libQt5Core.so.5 contains (always?) qt_prfxpath=... which tells us the location in which 'plugins/' is located
+		// Actually the libQt5Core.so.5/libQt6Core.so.6 contains (always?) qt_prfxpath=... which tells us the location in which 'plugins/' is located
 
-		library, err := findLibrary("libQt5Core.so.5")
+		library, err := findLibrary(fmt.Sprintf("libQt%dCore.so.%d", qtVersion, qtVersion))
 		if err != nil {
-			helpers.PrintError("Could not find libQt5Core.so.5", err)
+			helpers.PrintError(fmt.Sprintf("Could not find libQt%dCore.so.%d", qtVersion, qtVersion), err)
 			os.Exit(1)
 		}
 
 		f, err := os.Open(library)
 		defer f.Close()
 		if err != nil {
-			helpers.PrintError("Could not open libQt5Core.so.5", err)
+			helpers.PrintError(fmt.Sprintf("Could not open libQt%dCore.so.%d", qtVersion, qtVersion), err)
 			os.Exit(1)
 		}
 
@@ -1208,10 +1213,10 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 			}
 		}
 
-		// iconengines and imageformats, if Qt5Gui.so.5 is about to be deployed
+		// iconengines and imageformats, if libQt5Gui.so.5/libQt6Gui.so.6 is about to be deployed
 		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1259
 		for _, lib := range allELFs {
-			if strings.HasSuffix(lib, "libQt5Gui.so.5") == true {
+			if strings.HasSuffix(lib, fmt.Sprintf("libQt%dGui.so.%d", qtVersion, qtVersion)) == true {
 				if helpers.Exists(qtPrfxpath + "/plugins/iconengines/") {
 					determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/iconengines/")
 				} else {
@@ -1229,9 +1234,9 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		// Platform OpenGL context, if one of several libraries is about to be deployed
 		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1282
 		for _, lib := range allELFs {
-			if strings.HasSuffix(lib, "libQt5Gui.so.5") == true ||
-				strings.HasSuffix(lib, "libQt5OpenGL.so.5") == true ||
-				strings.HasSuffix(lib, "libQt5XcbQpa.so.5") == true ||
+			if strings.HasSuffix(lib, fmt.Sprintf("libQt%dGui.so.%d", qtVersion, qtVersion)) == true ||
+				strings.HasSuffix(lib, fmt.Sprintf("libQt%dOpenGL.so.%d", qtVersion, qtVersion)) == true ||
+				strings.HasSuffix(lib, fmt.Sprintf("libQt%dXcbQpa.so.%d", qtVersion, qtVersion)) == true ||
 				strings.HasSuffix(lib, "libxcb-glx.so") == true {
 				{
 					determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/xcbglintegrations/")
@@ -1240,56 +1245,56 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 			}
 		}
 
-		// CUPS print support plugin, if libQt5PrintSupport.so.5 is about to be deployed
+		// CUPS print support plugin, if libQt5PrintSupport.so.5/libQt6PrintSupport.so.6 is about to be deployed
 		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1299
 		for _, lib := range allELFs {
-			if strings.HasSuffix(lib, "libQt5PrintSupport.so.5") == true {
+			if strings.HasSuffix(lib, fmt.Sprintf("libQt%dPrintSupport.so.%d", qtVersion, qtVersion)) == true {
 				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/printsupport/libcupsprintersupport.so")
 				break
 			}
 		}
 
-		// Network bearers, if libQt5Network.so.5 is about to be deployed
+		// Network bearers, if libQt5Network.so.5/libQt6Network.so.6 is about to be deployed
 		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1304
 		for _, lib := range allELFs {
-			if strings.HasSuffix(lib, "libQt5Network.so.5") == true {
+			if strings.HasSuffix(lib, fmt.Sprintf("libQt%dNetwork.so.%d", qtVersion, qtVersion)) == true {
 				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/bearer/")
 				break
 			}
 		}
 
-		// Sql drivers, if libQt5Sql.so.5 is about to be deployed
+		// Sql drivers, if libQt5Sql.so.5/libQt6Sql.so.6 is about to be deployed
 		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1312
 		for _, lib := range allELFs {
-			if strings.HasSuffix(lib, "libQt5Sql.so.5") == true {
+			if strings.HasSuffix(lib, fmt.Sprintf("libQt%dSql.so.%d", qtVersion, qtVersion)) == true {
 				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/sqldrivers/")
 				break
 			}
 		}
 
-		// Positioning plugins, if libQt5Positioning.so.5 is about to be deployed
+		// Positioning plugins, if libQt5Positioning.so.5/libQt6Positioning.so.6 is about to be deployed
 		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1320
 		for _, lib := range allELFs {
-			if strings.HasSuffix(lib, "libQt5Positioning.so.5") == true {
+			if strings.HasSuffix(lib, fmt.Sprintf("libQt%dPositioning.so.%d", qtVersion, qtVersion)) == true {
 				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/position/")
 				break
 			}
 		}
 
-		// Multimedia plugins, if libQt5Multimedia.so.5 is about to be deployed
+		// Multimedia plugins, if libQt5Multimedia.so.5/libQt6Multimedia.so.6 is about to be deployed
 		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1328
 		for _, lib := range allELFs {
-			if strings.HasSuffix(lib, "libQt5Multimedia.so.5") == true {
+			if strings.HasSuffix(lib, fmt.Sprintf("libQt%dMultimedia.so.%d", qtVersion, qtVersion)) == true {
 				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/mediaservice/")
 				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/audio/")
 				break
 			}
 		}
 
-		// WebEngine, if libQt5WebEngineCore.so.5 is about to be deployed
+		// WebEngine, if libQt5WebEngineCore.so.5/libQt6WebEngineCore.so.6 is about to be deployed
 		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1343
 		for _, lib := range allELFs {
-			if strings.HasSuffix(lib, "libQt5WebEngineCore.so.5") == true {
+			if strings.HasSuffix(lib, fmt.Sprintf("libQt%dWebEngineCore.so.%d", qtVersion, qtVersion)) == true {
 				log.Println("TODO: Deploying Qt5WebEngine components...")
 				os.Exit(1)
 
