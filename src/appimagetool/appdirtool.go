@@ -940,8 +940,12 @@ func findAllExecutablesAndLibraries(path string) ([]string, error) {
 func getDeps(binaryOrLib string) error {
 	var libs []string
 
+	if helpers.IsDirectory(binaryOrLib) == true {
+		return nil
+	}
+
 	if helpers.Exists(binaryOrLib) == false {
-		return errors.New("binary does not exist: " + binaryOrLib)
+		return nil
 	}
 
 	e, err := elf.Open(binaryOrLib)
