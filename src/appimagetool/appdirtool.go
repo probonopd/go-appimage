@@ -463,7 +463,7 @@ func deployElf(lib string, appdir helpers.AppDir, err error) {
 
 		if err != nil {
 			log.Println(libTargetPath, "could not be copied:", err)
-			os.Exit(1)
+			// os.Exit(1)
 		}
 	}
 }
