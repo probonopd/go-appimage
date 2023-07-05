@@ -751,6 +751,7 @@ func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, 
 	}
 
 	if strings.HasPrefix(filepath.Base(path), "ld-") == true {
+		os.Chmod(path, 0755)
 		log.Println("Not writing rpath in", path, "because its name starts with ld-...")
 		return
 	}
