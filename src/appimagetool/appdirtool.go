@@ -110,7 +110,7 @@ if [ -z "$ARGV0" ] ; then
   ARGV0="$0"
 fi
 BINARY_NAME=$(basename "$ARGV0")
-if [ "$BINARY_NAME" == "AppRun" ] ; then
+if [ "$BINARY_NAME" = "AppRun" ] ; then
   unset BINARY_NAME
 fi
 
