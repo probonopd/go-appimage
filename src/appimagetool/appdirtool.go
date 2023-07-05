@@ -450,6 +450,13 @@ func deployElf(lib string, appdir helpers.AppDir, err error) {
 			log.Println(lib, "is part of libc; copy to", LibcDir, "subdirectory")
 			libTargetPath = appdir.Path + "/" + LibcDir + "/" + lib // If libapprun_hooks is used
 		}
+
+		// Skip copying if the source is a directory
+		if fi, err := os.Stat(lib); err == nil && fi.IsDir() {
+			log.Println(lib, "is a directory, skipping")
+			return
+		}
+
 		log.Println("Copying to libTargetPath:", libTargetPath)
 
 		err = helpers.CopyFile(lib, libTargetPath) // If libapprun_hooks is not used
