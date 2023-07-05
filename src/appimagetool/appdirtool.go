@@ -759,7 +759,7 @@ func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, 
 	// Be sure that the file we want to patch exists
 	if helpers.Exists(path) == false {
 		log.Println(path, "does not exist, hence we cannot set its rpath, exiting")
-		os.Exit(1)
+		// os.Exit(1)
 	}
 
 	// Call patchelf to set the rpath
