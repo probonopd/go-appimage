@@ -706,6 +706,7 @@ func GenerateAppImage(
 
 	fmt.Println("")
 	fmt.Println("The AppImage was created at:")
-	fmt.Println(target)
+	abs, _ := filepath.Abs(target)
+	fmt.Println(abs)
 	fmt.Println("")
 }
