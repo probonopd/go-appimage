@@ -301,7 +301,10 @@ func GenerateAppImage(
 	// Check if we find a png matching the Icon= key in various locations
 	// We insist on a png because otherwise we need to costly convert it to png at integration time
 	// since thumbails need to be in png format
-	supportedIconExtensions := []struct {ext string; warning string}{
+	supportedIconExtensions := []struct {
+		ext     string
+		warning string
+	}{
 		{".png", ""},
 		{".svg", "SVG support is optional"},
 		{".xpm", "XPM icons are deprecated"},
@@ -676,26 +679,33 @@ func GenerateAppImage(
 	fmt.Println("Commit message for this commit:", body)
 
 	// If its a TRAVIS CI, then upload the release assets and zsync file
-	if os.Getenv("TRAVIS_REPO_SLUG") != "" {
-		cmd := exec.Command("uploadtool", target, target+".zsync")
-		fmt.Println(cmd.String())
-		out, err := cmd.CombinedOutput()
-		fmt.Printf("%s", string(out))
-		if err != nil {
-			helpers.PrintError("uploadtool", err)
-			os.Exit(1)
+	if os.Getenv("TRAVIS_REPO_SLUG") != "" || os.Getenv("GITHUB_TOKEN") != "" {
+		if _, err := os.Stat(target + ".zsync"); err == nil {
+			cmd := exec.Command("uploadtool", target, target+".zsync")
+			fmt.Println(cmd.String())
+			out, err := cmd.CombinedOutput()
+			fmt.Printf("%s", string(out))
+			if err != nil {
+				helpers.PrintError("uploadtool", err)
+				os.Exit(1)
+			}
+
+			// If upload succeeded, publish MQTT message
+			// TODO: Message AppImageHub instead, which in turn messages the clients
+
+			helpers.PublishMQTTMessage(updateinformation, pl)
 		}
-
-		// If upload succeeded, publish MQTT message
-		// TODO: Message AppImageHub instead, which in turn messages the clients
-
-		helpers.PublishMQTTMessage(updateinformation, pl)
 	}
 
-	// everything went well.
+	// Everything went well.
 	fmt.Println("Success")
 	fmt.Println("")
 	fmt.Println("Please consider submitting your AppImage to AppImageHub, the crowd-sourced")
 	fmt.Println("central directory of available AppImages, by opening a pull request")
 	fmt.Println("at https://github.com/AppImage/appimage.github.io")
+
+	fmt.Println("")
+	fmt.Println("The AppImage was created at:")
+	fmt.Println(target)
+	fmt.Println("")
 }
