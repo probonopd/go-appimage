@@ -545,24 +545,24 @@ func patchQtPrfxpath(appdir helpers.AppDir, lib string, libraryLocationsInAppDir
 	} else {
 		log.Println("Relative path from ld-linux to Qt prefix directory in the AppDir:", relPathToQt)
 	}
-	f, err = os.OpenFile(appdir.Path+"/"+lib, os.O_WRONLY, 0644)
+	f, err = os.OpenFile(libPath, os.O_WRONLY, 0644)
 	// Open file writable, why is this so complicated
 	defer f.Close()
 	if err != nil {
-		helpers.PrintError("Could not open "+libFilename+" for writing", err)
+		helpers.PrintError("Could not open "+libPath+" for writing", err)
 		os.Exit(1)
 	}
 	// Now that we know where in the file the information is, go write it
 	f.Seek(offset, 0)
 	if quirksModePatchQtPrfxPath == false {
-		log.Println("Patching qt_prfxpath in " + libFilename + " to " + relPathToQt)
+		log.Println("Patching qt_prfxpath in " + libPath + " to " + relPathToQt)
 		_, err = f.Write([]byte(relPathToQt + "\x00"))
 	} else {
-		log.Println("Patching qt_prfxpath in " + libFilename + " to ..")
+		log.Println("Patching qt_prfxpath in " + libPath + " to ..")
 		_, err = f.Write([]byte(".." + "\x00"))
 	}
 	if err != nil {
-		helpers.PrintError("Could not patch qt_prfxpath in "+appdir.Path+"/"+lib, err)
+		helpers.PrintError("Could not patch qt_prfxpath in "+libPath, err)
 	}
 }
 
