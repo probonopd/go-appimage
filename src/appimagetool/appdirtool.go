@@ -474,15 +474,31 @@ func deployElf(lib string, appdir helpers.AppDir, err error) {
 func patchQtPrfxpath(appdir helpers.AppDir, lib string, libraryLocationsInAppDir []string, ldLinux string) {
 	log.Println("Patching qt_prfxpath, otherwise can't load platform plugin...")
 
+	libPath := lib
 	// Determine libPath:
 	// if lib is inside the AppDir, use that; otherwise,
-	// if appdir.Path + "/" + lib exists, use that
-	libPath := lib
-	if strings.HasPrefix(lib, appdir.Path) == false {
-		if _, err := os.Stat(appdir.Path + "/" + lib); err == nil {
-			libPath = appdir.Path + "/" + lib
+	// if appdir.Path + "/" + lib exists, use that. IMPORTANT: Use the absolute, not relative paths!
+	absoluteAppDirPath, err := filepath.Abs(appdir.Path)
+	if err != nil {
+		helpers.PrintError("Could not determine absolute path of AppDir", err)
+		os.Exit(1)
+	}
+	absoluteLibPath, err := filepath.Abs(lib)
+	if err != nil {
+		helpers.PrintError("Could not determine absolute path of lib", err)
+		os.Exit(1)
+	}
+	if strings.HasPrefix(absoluteLibPath, absoluteAppDirPath) {
+		libPath = absoluteLibPath
+	} else {
+		if _, err := os.Stat(absoluteAppDirPath + "/" + lib); err == nil {
+			libPath = absoluteAppDirPath + "/" + lib
+		} else {
+			helpers.PrintError("Could not determine absolute path of lib", err)
+			os.Exit(1)
 		}
 	}
+	log.Println("libPath:", libPath)
 
 	f, err := os.Open(libPath)
 	// Get the filename of lib withouth the path, e.g., libQt5Core.so.5/libQt6Core.so.6
