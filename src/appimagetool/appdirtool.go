@@ -1453,6 +1453,11 @@ func getQtPrfxpath(f *os.File, err error, qtVersion int) string {
 			qt_prfxpath = filepath.Dir(filepath.Dir(filepath.Dir(result)))
 			log.Println("Guessed qt_prfxpath to be", qt_prfxpath)
 			quirksModePatchQtPrfxPath = true
+		} else {
+			log.Println("ERROR: Could not determine the path to Qt automatically")
+			log.Println("Please set $QTDIR to the path to Qt (the directory that contains plugins/, qml/, etc.)")
+			log.Println("and try again")
+			os.Exit(1)
 		}
 	}
 
