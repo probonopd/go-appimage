@@ -317,6 +317,7 @@ func AppDirDeploy(path string) {
 		patchRpathsInElf(appdir, libraryLocationsInAppDir, lib)
 
 		if strings.Contains(lib, fmt.Sprintf("libQt%dCore.so.%d", qtVersionDetected, qtVersionDetected)) {
+			fmt.Println("Patching Qt prefix path in " + lib)
 			patchQtPrfxpath(appdir, lib, libraryLocationsInAppDir, ldLinux)
 		}
 	}
@@ -472,7 +473,18 @@ func deployElf(lib string, appdir helpers.AppDir, err error) {
 // so that the Qt installation finds its own components in the AppDir
 func patchQtPrfxpath(appdir helpers.AppDir, lib string, libraryLocationsInAppDir []string, ldLinux string) {
 	log.Println("Patching qt_prfxpath, otherwise can't load platform plugin...")
-	f, err := os.Open(appdir.Path + "/" + lib)
+
+	// Determine libPath:
+	// if lib is inside the AppDir, use that; otherwise,
+	// if appdir.Path + "/" + lib exists, use that
+	libPath := lib
+	if strings.HasPrefix(lib, appdir.Path) == false {
+		if _, err := os.Stat(appdir.Path + "/" + lib); err == nil {
+			libPath = appdir.Path + "/" + lib
+		}
+	}
+
+	f, err := os.Open(libPath)
 	// Get the filename of lib withouth the path, e.g., libQt5Core.so.5/libQt6Core.so.6
 	libFilename := filepath.Base(lib)
 	// Open file for reading/determining the offset
