@@ -648,8 +648,6 @@ func GenerateAppImage(
 		fmt.Println("The AppImage was created, but is lacking update information.")
 		fmt.Println("Possibly it was built on a local developer machine.")
 		fmt.Println("Such an AppImage is fine for local use but should not be distributed.")
-		fmt.Println("Please build on one of the supported CI systems like Travis CI")
-		fmt.Println("if you want your AppImage to be updatable\nand have update notifications published.")
 		os.Exit(0)
 	}
 
