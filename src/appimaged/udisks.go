@@ -171,8 +171,21 @@ retry:
 	}
 }
 
+func getOldMountDirectories() (out []string) {
+outer:
+	for _, dir := range watchedDirectories {
+		for _, candidate := range candidateDirectories {
+			if dir == candidate {
+				continue outer
+			}
+		}
+		out = append(out, dir)
+	}
+	return
+}
+
 func checkMounts() {
-	oldDirs := watchedDirectories[len(candidateDirectories):]
+	oldDirs := getOldMountDirectories()
 	newDirs := getMountDirectories()
 old:
 	for old := 0; old < len(oldDirs); old++ {
