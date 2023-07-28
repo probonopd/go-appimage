@@ -182,6 +182,22 @@ func main() {
 	// 	}
 	// }
 
+	//Start listening for menu update request
+	var updateMenuTimer *time.Timer
+	go func() {
+		// Handles application menu updates.
+		// At most, updates the application menu every second.
+		for {
+			<-updateChannel
+			if updateMenuTimer == nil {
+				updateMenuTimer = time.AfterFunc(time.Second, func() {
+					updateMenu()
+					updateMenuTimer = nil
+				})
+			}
+		}
+	}()
+
 	checkDirectories()
 	for _, dir := range watchedDirectories {
 		err = AddWatchDir(dir)
@@ -214,22 +230,6 @@ func main() {
 			case <-quit:
 				ticker2.Stop()
 				return
-			}
-		}
-	}()
-
-	var updateMenuTimer *time.Timer
-
-	go func() {
-		// Handles application menu updates.
-		// At most, updates the application menu every second.
-		for {
-			<-updateChannel
-			if updateMenuTimer == nil {
-				updateMenuTimer = time.AfterFunc(time.Second, func() {
-					updateMenu()
-					updateMenuTimer = nil
-				})
 			}
 		}
 	}()
