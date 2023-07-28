@@ -307,7 +307,6 @@ func updateMenu() error {
 func checkDirectories() {
 	// Register AppImages from well-known locations
 	// https://github.com/AppImage/appimaged#monitored-directories
-	home, _ := os.UserHomeDir()
 	err := os.MkdirAll(home+"/Applications", 0755)
 	if err != nil {
 		helpers.PrintError("main", err)

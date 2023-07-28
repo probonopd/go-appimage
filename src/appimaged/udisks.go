@@ -172,13 +172,14 @@ retry:
 }
 
 func getOldMountDirectories() (out []string) {
+outer:
 	for _, dir := range watchedDirectories {
 		for _, candidate := range candidateDirectories {
-			if dir != candidate {
-				out = append(out, dir)
-				break
+			if dir == candidate {
+				continue outer
 			}
 		}
+		out = append(out, dir)
 	}
 	return
 }
