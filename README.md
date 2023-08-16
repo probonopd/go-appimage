@@ -1,4 +1,4 @@
-# Go AppImage [![Build Status](https://travis-ci.com/probonopd/go-appimage.svg?branch=master)](https://travis-ci.com/probonopd/go-appimage)
+# Go AppImage ![](https://github.com/probonopd/go-appimage/actions/workflows/build.yaml/badge.svg)
 
 An implementation of [AppImage](https://appimage.org) tools written in Go by the inventor of the AppImage format.
 
