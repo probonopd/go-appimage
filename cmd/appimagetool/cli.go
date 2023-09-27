@@ -20,7 +20,8 @@ var Sections = []string{".upd_info", ".sha256_sig", ".sig_key", ".digest_md5"}
 
 // bootstrapAppImageDeploy wrapper function to deploy an AppImage
 // from Desktop file
-// 		Args: c: cli.Context
+//
+//	Args: c: cli.Context
 func bootstrapAppImageDeploy(c *cli.Context) error {
 	// make sure the user provided one and one only desktop
 	if c.NArg() != 1 {
@@ -38,7 +39,8 @@ func bootstrapAppImageDeploy(c *cli.Context) error {
 }
 
 // bootstrapValidateAppImage wrapper function to validate a AppImage
-// 		Args: c: cli.Context
+//
+//	Args: c: cli.Context
 func bootstrapValidateAppImage(c *cli.Context) error {
 
 	// make sure that we received only 1 file path
@@ -79,14 +81,16 @@ func bootstrapValidateAppImage(c *cli.Context) error {
 
 // bootstrapSetupSigning wrapper function to setup signing in
 // the current Git repository
-// 		Args: c: cli.Context
+//
+//	Args: c: cli.Context
 func bootstrapSetupSigning(c *cli.Context) error {
 	return setupSigning(c.Bool("overwrite"))
 }
 
 // bootstrapAppImageSections is a function which converts cli.Context to
 // string based arguments. Wrapper function to show the sections of the AppImage
-// 		Args: c: cli.Context
+//
+//	Args: c: cli.Context
 func bootstrapAppImageSections(c *cli.Context) error {
 	// check if the number of arguments are stictly 1, if not
 	// return
@@ -135,7 +139,8 @@ func bootstrapAppImageSections(c *cli.Context) error {
 // check if all the necessary dependencies exist,
 // finally check if the provided argument, AppDir is a directly.
 // Call GenerateAppImage with the converted arguments
-// 		Args: c: cli.Context
+//
+//	Args: c: cli.Context
 func bootstrapAppImageBuild(c *cli.Context) error {
 
 	// check if the number of arguments are stictly 1, if not
@@ -220,7 +225,7 @@ func main() {
 
 	// Add the location of the executable to the $PATH
 	helpers.AddHereToPath()
-	
+
 	// fmt.Println("PATH:", os.Getenv("PATH"))
 
 	// Check for needed files on $PATH
@@ -231,12 +236,12 @@ func main() {
 	if err != nil {
 		os.Exit(1)
 	}
-	
+
 	// Check whether we have a sufficient version of mksquashfs for -offset
-	if helpers.CheckIfSquashfsVersionSufficient("mksquashfs") == false {
+	if !helpers.CheckIfSquashfsVersionSufficient("mksquashfs") {
 		os.Exit(1)
 	}
-	
+
 	// define subcommands, like 'deploy', 'validate', ...
 	app.Commands = []*cli.Command{
 		{

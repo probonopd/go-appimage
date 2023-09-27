@@ -5,9 +5,9 @@ An implementation of [AppImage](https://appimage.org) tools written in Go by the
 * [`appimagetool`](https://github.com/probonopd/go-appimage/blob/master/cmd/appimagetool/README.md), a tool to deploy dependencies into AppDirs (including things like Qt, Gtk, GStreamer,...) and to convert AppDirs into AppImages
 * [`appimaged`](https://github.com/probonopd/go-appimage/blob/master/cmd/appimaged/README.md), an optional daemon that integrates AppImages into the system, shows their icons, and makes them executable
 
-Download them from https://github.com/probonopd/go-appimage/releases/tag/continuous.
+Download them from <https://github.com/probonopd/go-appimage/releases/tag/continuous>.
 
-__NOTE:__ You might be looking for https://github.com/AppImage/AppImageKit instead in case you are looking for current production code.
+__NOTE:__ You might be looking for <https://github.com/AppImage/AppImageKit> instead in case you are looking for current production code.
 
 ## Why Go?
 
@@ -22,8 +22,8 @@ I am playing around with Go because
 ## TODO
 
 * Get rid of C code embedded in Go
-* Get rid of external tools from https://github.com/probonopd/static-tools and replace with native Go
+* Get rid of external tools from <https://github.com/probonopd/static-tools> and replace with native Go
 
 ## Conventions
 
-* https://github.com/golang-standards/project-layout/tree/master/pkg
+* <https://github.com/golang-standards/project-layout/tree/master/pkg>

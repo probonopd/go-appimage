@@ -50,7 +50,7 @@ func setupSigning(overwriteSecretFiles bool) error {
 	s, _ := gitWorktree.Status()
 	clean := s.IsClean()
 
-	if clean == false {
+	if !clean {
 		fmt.Println("Repository is not clean. Please commit or stash any changes first.")
 		os.Exit(1)
 
@@ -93,7 +93,7 @@ func setupSigning(overwriteSecretFiles bool) error {
 	fmt.Println("Is your repository on travis.com? Answer 'no' if org (yes/no)")
 	var client *travis.Client
 	var travisSettingsURL string
-	if AskForConfirmation() == true {
+	if AskForConfirmation() {
 		fmt.Println("Assuming your repository is on travis.com")
 		client = travis.NewClient(travis.ApiComUrl, token)
 		travisSettingsURL = "https://travis-ci.com/" + repoSlug + "/settings"
@@ -119,7 +119,7 @@ func setupSigning(overwriteSecretFiles bool) error {
 		existingVars = append(existingVars, *e.Name)
 	}
 
-	if Contains(existingVars, helpers.EnvSuperSecret) == true {
+	if Contains(existingVars, helpers.EnvSuperSecret) {
 		fmt.Println("Environment variable", helpers.EnvSuperSecret, "already exists on Travis CI")
 		fmt.Println("You can check it on", travisSettingsURL)
 		fmt.Println("It looks like this repository is already set up for signing. Exiting")
@@ -137,18 +137,18 @@ func setupSigning(overwriteSecretFiles bool) error {
 	helpers.CreateAndValidateKeyPair()
 
 	// Check if we succeeded until here
-	if _, err := os.Stat(helpers.PrivkeyFileName); err != nil {
+	if _, err = os.Stat(helpers.PrivkeyFileName); err != nil {
 		fmt.Println("Could not create private key, exiting")
 		os.Exit(1)
 	}
 
 	// Check if password/secret already exists, delete it if -o was specified, exit otherwise
-	if _, err := os.Stat("secret"); err == nil {
+	if _, err = os.Stat("secret"); err == nil {
 		if !overwriteSecretFiles {
 			fmt.Println("Secret already exists, exiting")
 			os.Exit(1)
 		} else {
-			err := os.Remove("secret")
+			err = os.Remove("secret")
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
@@ -182,7 +182,7 @@ func setupSigning(overwriteSecretFiles bool) error {
 	}
 
 	// Check if we succeeded until here
-	if _, err := os.Stat(helpers.EncPrivkeyFileName); err != nil {
+	if _, err = os.Stat(helpers.EncPrivkeyFileName); err != nil {
 		fmt.Println("Could not encrypt private key, exiting")
 		os.Exit(1)
 	}
@@ -243,7 +243,7 @@ func setupSigning(overwriteSecretFiles bool) error {
 // SetTravisEnv sets a private variable on Travis CI
 func SetTravisEnv(client *travis.Client, repoSlug string, existingVars []string, name string, value string, travisSettingsURL string) {
 	body := travis.EnvVarBody{Name: name, Value: value, Public: false}
-	if Contains(existingVars, name) == false {
+	if !Contains(existingVars, name) {
 		fmt.Println("Set environment variable", name, "on Travis CI...")
 		_, resp, err := client.EnvVars.CreateByRepoSlug(context.Background(), repoSlug, &body)
 		if err != nil {
@@ -311,20 +311,20 @@ func AskForConfirmation() bool {
 
 // posString returns the first index of element in slice.
 // If slice does not contain element, returns -1.
-func posString(slice []string, element string) int {
-	for index, elem := range slice {
-		if elem == element {
-			return index
-		}
-	}
-	return -1
-}
+// func posString(slice []string, element string) int {
+// 	for index, elem := range slice {
+// 		if elem == element {
+// 			return index
+// 		}
+// 	}
+// 	return -1
+// }
 
 // containsString returns true iff slice contains element that ends with the given string
 func containsString(slice []string, element string) bool {
 
 	for _, item := range slice {
-		if strings.HasSuffix(item, element) == true {
+		if strings.HasSuffix(item, element) {
 			return true
 		}
 	}
@@ -332,7 +332,7 @@ func containsString(slice []string, element string) bool {
 	return false
 }
 
-//////////////////////////////// end AskForConfirmation
+// ////////////////////////////// end AskForConfirmation
 // TODO: Please fix this extremely dangerous way of generating passwords
 // generatePassword generates a random password consisting
 // consisting of letters, numbers, and selected special characters
