@@ -179,10 +179,7 @@ func CheckIfFolderExists(filepath string) bool {
 // Returns true if it does, false otherwise.
 func CheckIfFileOrFolderExists(filepath string) bool {
 	_, err := os.Stat(filepath)
-	if os.IsNotExist(err) {
-		return false
-	}
-	return true
+	return !os.IsNotExist(err)
 }
 
 // CheckIfExecFileExists checks whether a desktop file
@@ -218,8 +215,7 @@ func DeleteDesktopFilesWithNonExistingTargets() {
 
 	for _, file := range files {
 		if strings.HasSuffix(file.Name(), ".desktop") && strings.HasPrefix(file.Name(), "appimagekit_") {
-			exists := CheckIfExecFileExists(xdg.DataHome + "/applications/" + file.Name())
-			if exists == false {
+			if !CheckIfExecFileExists(xdg.DataHome + "/applications/" + file.Name()) {
 				log.Println("Deleting", xdg.DataHome+"/applications/"+file.Name())
 				e = os.Remove(xdg.DataHome + "/applications/" + file.Name())
 				LogError("desktop", e)
@@ -240,8 +236,7 @@ func GetValuesForAllDesktopFiles(key string) []string {
 
 	for _, file := range files {
 		if strings.HasSuffix(file.Name(), ".desktop") {
-			exists := CheckIfExecFileExists(xdg.DataHome + "/applications/" + file.Name())
-			if exists == true {
+			if CheckIfExecFileExists(xdg.DataHome + "/applications/" + file.Name()) {
 				cfg, e := ini.LoadSources(ini.LoadOptions{IgnoreInlineComment: true}, // Do not cripple lines hat contain ";"
 					xdg.DataHome+"/applications/"+file.Name())
 				LogError("GetValuesForAllDesktopFiles", e)
@@ -328,7 +323,7 @@ func CheckIfSquashfsVersionSufficient(toolname string) bool {
 	cmd := exec.Command(toolname, "-version")
 	out, err := cmd.CombinedOutput()
 	// Interestingly unsquashfs 4.4 does not return with 0, unlike mksquashfs 4.3
-	if strings.Contains(string(out), "version") == false {
+	if !strings.Contains(string(out), "version") {
 		PrintError(toolname, err)
 		fmt.Printf("%s", string(out))
 		return false
@@ -339,8 +334,9 @@ func CheckIfSquashfsVersionSufficient(toolname string) bool {
 		parts = strings.Split(ver, "-")
 		ver = parts[0]
 	}
-	v1, err := version.NewVersion(ver)
-	v2, err := version.NewVersion("4.4")
+	//TODO: Check errors
+	v1, _ := version.NewVersion(ver)
+	v2, _ := version.NewVersion("4.4")
 	if v1.LessThan(v2) {
 		fmt.Println(toolname, "on the $PATH is version", v1, "but we need at least version 4.4, exiting")
 		return false
@@ -549,10 +545,7 @@ func CheckForNeededTools(tools []string) error {
 // IsCommandAvailable returns true if a file is on the $PATH
 func IsCommandAvailable(name string) bool {
 	_, err := exec.LookPath(name)
-	if err == nil {
-		return true
-	}
-	return false
+	return err == nil
 }
 
 // SliceContains returns true if the []string contains string,

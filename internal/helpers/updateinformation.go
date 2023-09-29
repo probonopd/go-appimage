@@ -58,12 +58,12 @@ func NewUpdateInformationFromString(updateinformation string) (UpdateInformation
 	ui.transportmechanism = parts[0]
 	if ui.transportmechanism == "zsync" {
 		if len(parts) < 2 {
-			return ui, errors.New("Too short")
+			return ui, errors.New("too short")
 		}
 		ui.fileurl = parts[1]
 	} else if ui.transportmechanism == "gh-releases-zsync" {
 		if len(parts) < 5 {
-			return ui, errors.New("Too short")
+			return ui, errors.New("too short")
 		}
 		ui.username = parts[1]
 		ui.repository = parts[2]
@@ -71,14 +71,14 @@ func NewUpdateInformationFromString(updateinformation string) (UpdateInformation
 		ui.filename = parts[4]
 	} else if ui.transportmechanism == "bintray-zsync" {
 		if len(parts) < 5 {
-			return ui, errors.New("Too short")
+			return ui, errors.New("too short")
 		}
 		ui.username = parts[1]
 		ui.repository = parts[2]
 		ui.packagename = parts[3]
 		ui.filename = parts[4] // a.k.a. "zsync path"
 	} else {
-		return ui, errors.New("This transport mechanism is not yet implemented")
+		return ui, errors.New("this transport mechanism is not yet implemented")
 	}
 	return ui, nil
 }
@@ -89,7 +89,7 @@ func NewUpdateInformationFromString(updateinformation string) (UpdateInformation
 func ValidateUpdateInformation(updateinformation string) error {
 	parts := strings.Split(updateinformation, "|")
 	if len(parts) < 2 {
-		return errors.New("Too short")
+		return errors.New("too short")
 	}
 	// Check for allowed transport mechanisms,
 	// https://github.com/AppImage/AppImageSpec/blob/master/draft.md#update-information
@@ -101,7 +101,7 @@ func ValidateUpdateInformation(updateinformation string) error {
 		}
 	}
 	if detectedTm == "" {
-		return errors.New("Invalid transport mechanism")
+		return errors.New("invalid transport mechanism")
 	}
 
 	// Currently updateinformation needs to end in "zsync" for all transport mechanisms,
@@ -109,21 +109,21 @@ func ValidateUpdateInformation(updateinformation string) error {
 	// Note that it is allowable to have something like "some.zsync?foo=bar", which is why we parse it as an URL
 	u, err := url.Parse(parts[len(parts)-1])
 	if err != nil {
-		return errors.New("Cannot parse URL")
+		return errors.New("cannot parse URL")
 	}
 	if detectedTm == "zsync" && u.Scheme == "" { // FIXME: This apparently never triggers, why?
-		return errors.New("Scheme is missing, zsync needs e.,g,. http:// or https://")
+		return errors.New("scheme is missing, zsync needs e.,g,. http:// or https://")
 	}
-	if strings.HasSuffix(u.Path, ".zsync") == false {
+	if !strings.HasSuffix(u.Path, ".zsync") {
 		return errors.New(updateinformation + " does not end in .zsync")
 	}
 
 	return nil
 }
 
-func getChangelogHeadlineForUpdateInformation(updateinformation string) string {
-	return ""
-}
+// func getChangelogHeadlineForUpdateInformation(updateinformation string) string {
+// 	return ""
+// }
 
 // Taken and modified from
 // <https://github.com/AppImageCrafters/appimage-update/blob/945dfa16017496be7a3f21c827a7ffb11124e548/util/util.go>
@@ -137,7 +137,7 @@ func ReadUpdateInfo(appImagePath string) (string, error) {
 	if updInfoSect == nil {
 		return "", errors.New("ELF missing .upd_info section")
 	}
-	
+
 	sectionData, err := updInfoSect.Data()
 	if err != nil {
 		return "", errors.New("unable to read update information from section")

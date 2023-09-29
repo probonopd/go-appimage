@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"gopkg.in/ini.v1"
@@ -22,8 +23,8 @@ func NewAppDir(desktopFilePath string) (AppDir, error) {
 	var ad AppDir
 
 	// Check if desktop file exists
-	if Exists(desktopFilePath) == false {
-		return ad, errors.New("Desktop file not found")
+	if !Exists(desktopFilePath) {
+		return ad, errors.New("desktop file not found")
 	}
 	ad.DesktopFilePath = desktopFilePath
 
@@ -54,7 +55,7 @@ func NewAppDir(desktopFilePath string) (AppDir, error) {
 		if err != nil {
 			log.Printf("%v\n", err)
 		}
-		if strings.HasSuffix(info.Name(), ".desktop") == true {
+		if strings.HasSuffix(info.Name(), ".desktop") {
 			ad.DesktopFilePath = ad.Path + "/" + info.Name()
 			counter = counter + 1
 		}
@@ -80,7 +81,7 @@ func NewAppDir(desktopFilePath string) (AppDir, error) {
 		return ad, err
 	}
 
-	if sect.HasKey("Exec") == false {
+	if !sect.HasKey("Exec") {
 		err = errors.New("'Desktop Entry' section has no Exec= key")
 		return ad, err
 	}
@@ -99,7 +100,7 @@ func NewAppDir(desktopFilePath string) (AppDir, error) {
 	// Do not allow paths in the Exec= key
 	fmt.Println("Exec= key contains:", filepath.Base(strings.Split(exec.String(), " ")[0]))
 	if strings.Split(exec.String(), " ")[0] != filepath.Base(strings.Split(exec.String(), " ")[0]) {
-		err = errors.New("Exec= contains a path, please remove it")
+		err = errors.New("value of Exec contains a path, please remove it")
 		return ad, err
 	}
 
@@ -113,7 +114,7 @@ func NewAppDir(desktopFilePath string) (AppDir, error) {
 	// Do not allow paths in the Icon= key
 	fmt.Println("Icon= key contains:", filepath.Base(strings.Split(iconName.String(), " ")[0]))
 	if strings.Split(iconName.String(), " ")[0] != filepath.Base(strings.Split(iconName.String(), " ")[0]) {
-		err = errors.New("Icon= contains a path, please remove it")
+		err = errors.New("value of Icon contains a path, please remove it")
 		return ad, err
 	}
 
@@ -149,7 +150,7 @@ func (appdir AppDir) CreateIconDirectories() error {
 	iconSizes := []int{512, 256, 128, 48, 32, 24, 22, 16, 8}
 	var err error = nil
 	for _, iconSize := range iconSizes {
-		err = os.MkdirAll(appdir.Path+"/usr/share/icons/hicolor/"+string(iconSize)+"x"+string(iconSize)+"/apps", 0755)
+		err = os.MkdirAll(appdir.Path+"/usr/share/icons/hicolor/"+strconv.Itoa(iconSize)+"x"+strconv.Itoa(iconSize)+"/apps", 0755)
 	}
 	return err
 }
@@ -163,7 +164,7 @@ func (appdir AppDir) CopyMainIconToRoot(iconName string) error {
 		log.Println("Top-level icon already exists, leaving untouched")
 	} else {
 		for _, iconSize := range iconPreferenceOrder {
-			candidate := appdir.Path + "/usr/share/icons/hicolor/" + string(iconSize) + "x" + string(iconSize) + "/apps/" + iconName + ".png"
+			candidate := appdir.Path + "/usr/share/icons/hicolor/" + strconv.Itoa(iconSize) + "x" + strconv.Itoa(iconSize) + "/apps/" + iconName + ".png"
 			if Exists(candidate) {
 				CopyFile(candidate, appdir.Path+"/"+iconName+".png")
 			}

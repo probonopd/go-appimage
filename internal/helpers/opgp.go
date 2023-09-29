@@ -7,18 +7,17 @@ package helpers
 import (
 	"bytes"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"log"
 	"strings"
 	"time"
 
-	"golang.org/x/crypto/openpgp/packet"
+	"github.com/ProtonMail/go-crypto/openpgp/packet"
 
 	"os"
 
+	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/alokmenghrajani/gpgeez"
-	"golang.org/x/crypto/openpgp"
 )
 
 func CreateAndValidateKeyPair() {
@@ -96,17 +95,17 @@ func createKeyPair() {
 // based on https://stackoverflow.com/a/34008326
 func CheckSignature(path string) (*openpgp.Entity, error) {
 	var ent *openpgp.Entity
-	err := errors.New("could not verify AppImage signature") // Be pessimistic by default, unless we can positively verify the signature
-	pubkeybytes, err := GetSectionData(path, ".sig_key")
+	//TODO: check error
+	pubkeybytes, _ := GetSectionData(path, ".sig_key")
 
 	keyring, err := openpgp.ReadArmoredKeyRing(bytes.NewReader(pubkeybytes))
 	if err != nil {
 		return ent, err
 	}
+	//TODO: check error
+	sigbytes, _ := GetSectionData(path, ".sha256_sig")
 
-	sigbytes, err := GetSectionData(path, ".sha256_sig")
-
-	ent, err = openpgp.CheckArmoredDetachedSignature(keyring, strings.NewReader(CalculateSHA256Digest(path)), bytes.NewReader(sigbytes))
+	ent, err = openpgp.CheckArmoredDetachedSignature(keyring, strings.NewReader(CalculateSHA256Digest(path)), bytes.NewReader(sigbytes), nil)
 	if err != nil {
 		return ent, err
 	}
