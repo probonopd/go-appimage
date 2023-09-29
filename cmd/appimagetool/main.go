@@ -18,6 +18,116 @@ import (
 // * MD5 digest
 var Sections = []string{".upd_info", ".sha256_sig", ".sig_key", ".digest_md5"}
 
+// main Command Line Entrypoint. Defines the command line structure
+// and assign each subcommand and option to the appropriate function
+// which should be triggered when the subcommand is used
+func main() {
+
+	var version string
+
+	// Derive the commit message from -X main.commit=$YOUR_VALUE_HERE
+	// if the build does not have the commit variable set externally,
+	// fall back to unsupported custom build
+	if commit != "" {
+		version = commit
+	} else {
+		version = "unsupported custom build"
+	}
+
+	// let the user know that we are running within a docker container
+	checkRunningWithinDocker()
+
+	// build the Command Line interface
+	// https://github.com/urfave/cli/blob/master/docs/v2/manual.md
+
+	// basic information
+	app := &cli.App{
+		Name:                 "appimagetool",
+		Version:              version,
+		Usage:                "An automatic tool to create AppImages",
+		EnableBashCompletion: false,
+		HideHelp:             false,
+		HideVersion:          false,
+		Compiled:             time.Time{},
+		Action:               bootstrapAppImageBuild,
+	}
+	// Unclear: Does bootstrapAppImageBuild automatically get executed just
+	// because it is mentioned above?
+
+	// Add the location of the executable to the $PATH
+	helpers.AddHereToPath()
+
+	// fmt.Println("PATH:", os.Getenv("PATH"))
+
+	// Check for needed files on $PATH
+	tools := []string{"file", "mksquashfs", "desktop-file-validate", "uploadtool", "patchelf", "desktop-file-validate", "patchelf"} // "sh", "strings", "grep" no longer needed?; "curl" is needed for uploading only, "glib-compile-schemas" is needed in some cases only
+	// curl is needed by uploadtool; TODO: Replace uploadtool with native Go code
+	// "sh", "strings", "grep" are needed by appdirtool to parse qt_prfxpath; TODO: Replace with native Go code
+	err := helpers.CheckForNeededTools(tools)
+	if err != nil {
+		os.Exit(1)
+	}
+
+	// Check whether we have a sufficient version of mksquashfs for -offset
+	if !helpers.CheckIfSquashfsVersionSufficient("mksquashfs") {
+		os.Exit(1)
+	}
+
+	// define subcommands, like 'deploy', 'validate', ...
+	app.Commands = []*cli.Command{
+		{
+			Name:   "deploy",
+			Usage:  "Turns PREFIX directory into AppDir by deploying dependencies and AppRun file",
+			Action: bootstrapAppImageDeploy,
+		},
+		{
+			Name:   "validate",
+			Usage:  "Calculate the sha256 digest and check whether the signature is valid",
+			Action: bootstrapValidateAppImage,
+		},
+		{
+			Name:   "setupsigning",
+			Usage:  "Prepare a git repository that is used with Travis CI for signing AppImages",
+			Action: bootstrapSetupSigning,
+		},
+		{
+			Name:   "sections",
+			Usage:  "",
+			Action: bootstrapAppImageSections,
+		},
+	}
+
+	// define flags, such as --libapprun_hooks, --standalone here ...
+	app.Flags = []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "libapprun_hooks",
+			Aliases: []string{"l"},
+			Usage:   "Use libapprun_hooks",
+		},
+		&cli.BoolFlag{
+			Name:    "overwrite",
+			Aliases: []string{"o"},
+			Usage:   "Overwrite existing files",
+		},
+		&cli.BoolFlag{
+			Name:    "standalone",
+			Aliases: []string{"s"},
+			Usage:   "Make standalone self-contained bundle",
+		},
+	}
+
+	// TODO: move travis based Sections to travis.go in future
+	if os.Getenv("TRAVIS_TEST_RESULT") == "1" {
+		log.Fatal("$TRAVIS_TEST_RESULT is 1, exiting...")
+	}
+
+	errRuntime := app.Run(os.Args)
+	if errRuntime != nil {
+		log.Fatal(errRuntime)
+	}
+
+}
+
 // bootstrapAppImageDeploy wrapper function to deploy an AppImage
 // from Desktop file
 //
@@ -185,114 +295,4 @@ func bootstrapAppImageBuild(c *cli.Context) error {
 
 	}
 	return nil
-}
-
-// main Command Line Entrypoint. Defines the command line structure
-// and assign each subcommand and option to the appropriate function
-// which should be triggered when the subcommand is used
-func main() {
-
-	var version string
-
-	// Derive the commit message from -X main.commit=$YOUR_VALUE_HERE
-	// if the build does not have the commit variable set externally,
-	// fall back to unsupported custom build
-	if commit != "" {
-		version = commit
-	} else {
-		version = "unsupported custom build"
-	}
-
-	// let the user know that we are running within a docker container
-	checkRunningWithinDocker()
-
-	// build the Command Line interface
-	// https://github.com/urfave/cli/blob/master/docs/v2/manual.md
-
-	// basic information
-	app := &cli.App{
-		Name:                 "appimagetool",
-		Version:              version,
-		Usage:                "An automatic tool to create AppImages",
-		EnableBashCompletion: false,
-		HideHelp:             false,
-		HideVersion:          false,
-		Compiled:             time.Time{},
-		Action:               bootstrapAppImageBuild,
-	}
-	// Unclear: Does bootstrapAppImageBuild automatically get executed just
-	// because it is mentioned above?
-
-	// Add the location of the executable to the $PATH
-	helpers.AddHereToPath()
-
-	// fmt.Println("PATH:", os.Getenv("PATH"))
-
-	// Check for needed files on $PATH
-	tools := []string{"file", "mksquashfs", "desktop-file-validate", "uploadtool", "patchelf", "desktop-file-validate", "patchelf"} // "sh", "strings", "grep" no longer needed?; "curl" is needed for uploading only, "glib-compile-schemas" is needed in some cases only
-	// curl is needed by uploadtool; TODO: Replace uploadtool with native Go code
-	// "sh", "strings", "grep" are needed by appdirtool to parse qt_prfxpath; TODO: Replace with native Go code
-	err := helpers.CheckForNeededTools(tools)
-	if err != nil {
-		os.Exit(1)
-	}
-
-	// Check whether we have a sufficient version of mksquashfs for -offset
-	if !helpers.CheckIfSquashfsVersionSufficient("mksquashfs") {
-		os.Exit(1)
-	}
-
-	// define subcommands, like 'deploy', 'validate', ...
-	app.Commands = []*cli.Command{
-		{
-			Name:   "deploy",
-			Usage:  "Turns PREFIX directory into AppDir by deploying dependencies and AppRun file",
-			Action: bootstrapAppImageDeploy,
-		},
-		{
-			Name:   "validate",
-			Usage:  "Calculate the sha256 digest and check whether the signature is valid",
-			Action: bootstrapValidateAppImage,
-		},
-		{
-			Name:   "setupsigning",
-			Usage:  "Prepare a git repository that is used with Travis CI for signing AppImages",
-			Action: bootstrapSetupSigning,
-		},
-		{
-			Name:   "sections",
-			Usage:  "",
-			Action: bootstrapAppImageSections,
-		},
-	}
-
-	// define flags, such as --libapprun_hooks, --standalone here ...
-	app.Flags = []cli.Flag{
-		&cli.BoolFlag{
-			Name:    "libapprun_hooks",
-			Aliases: []string{"l"},
-			Usage:   "Use libapprun_hooks",
-		},
-		&cli.BoolFlag{
-			Name:    "overwrite",
-			Aliases: []string{"o"},
-			Usage:   "Overwrite existing files",
-		},
-		&cli.BoolFlag{
-			Name:    "standalone",
-			Aliases: []string{"s"},
-			Usage:   "Make standalone self-contained bundle",
-		},
-	}
-
-	// TODO: move travis based Sections to travis.go in future
-	if os.Getenv("TRAVIS_TEST_RESULT") == "1" {
-		log.Fatal("$TRAVIS_TEST_RESULT is 1, exiting...")
-	}
-
-	errRuntime := app.Run(os.Args)
-	if errRuntime != nil {
-		log.Fatal(errRuntime)
-	}
-
 }
