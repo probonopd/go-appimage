@@ -29,14 +29,14 @@ require (
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef
 	github.com/urfave/cli/v2 v2.25.7
 	go.lsp.dev/uri v0.3.0
-	golang.org/x/sys v0.12.0
+	golang.org/x/crypto v0.14.0
+	golang.org/x/sys v0.13.0
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/src-d/go-git.v4 v4.13.1
 )
 
 require (
 	github.com/CalebQ42/fuse v0.1.0 // indirect
-	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
@@ -45,9 +45,10 @@ require (
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/kevinburke/ssh_config v0.0.0-20190725054713-01f96b0aa0cd // indirect
-	github.com/klauspost/compress v1.16.7 // indirect
+	github.com/klauspost/compress v1.15.12 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
-	github.com/pierrec/lz4/v4 v4.1.18 // indirect
+	github.com/pierrec/lz4/v4 v4.1.17 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rasky/go-lzo v0.0.0-20200203143853-96a758eda86e // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/rustyoz/Mtransform v0.0.0-20190224104252-60c8c35a3681 // indirect
@@ -63,12 +64,11 @@ require (
 	github.com/ulikunitz/xz v0.5.11 // indirect
 	github.com/xanzy/ssh-agent v0.2.1 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
-	github.com/yusufpapurcu/wmi v1.2.3 // indirect
-	golang.org/x/crypto v0.7.0 // indirect
-	golang.org/x/image v0.0.0-20211028202545-6944b10bf410 // indirect
-	golang.org/x/net v0.8.0 // indirect
-	golang.org/x/sync v0.3.0 // indirect
-	golang.org/x/text v0.8.0 // indirect
+	github.com/yusufpapurcu/wmi v1.2.2 // indirect
+	golang.org/x/image v0.5.0 // indirect
+	golang.org/x/net v0.17.0 // indirect
+	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
+	golang.org/x/text v0.13.0 // indirect
 	gopkg.in/src-d/go-billy.v4 v4.3.2 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
