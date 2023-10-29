@@ -3,8 +3,8 @@
     <module name="appimage" />
     <working_directory value="$PROJECT_DIR$/" />
     <kind value="DIRECTORY" />
-    <package value="$PROJECT_DIR$/src/appimaged" />
-    <directory value="$PROJECT_DIR$/src/appimagetool" />
+    <package value="$PROJECT_DIR$/cmd/appimaged" />
+    <directory value="$PROJECT_DIR$/cmd/appimagetool" />
     <method v="2" />
   </configuration>
 </component>

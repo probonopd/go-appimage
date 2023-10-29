@@ -8,8 +8,8 @@ import (
 // Kicking it after the function has already been called restarts it.
 // https://codereview.stackexchange.com/questions/144273/watchdog-in-golang
 type Watchdog struct {
-	interval time.Duration
 	timer    *time.Timer
+	interval time.Duration
 }
 
 func NewWatchdog(interval time.Duration, callback func()) *Watchdog {

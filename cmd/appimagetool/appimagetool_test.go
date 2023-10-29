@@ -4,11 +4,11 @@ import "testing"
 
 func TestGenerateAppImage(t *testing.T) {
 	type args struct {
-		appdir string
+		// appdir string
 	}
 	tests := []struct {
-		name string
 		args args
+		name string
 	}{
 		// TODO: Add test cases.
 	}

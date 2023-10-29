@@ -3,16 +3,6 @@
 set -e
 set -x
 
-# Now accepting arguments!
-# If you want a non-native architecture, specify those first, then which
-# tools you want to build (leave empty for all).
-# Architectures are using GOARCH values, specifically
-# amd64, arm64, arm, and 386
-#
-# ex: ./build.sh amd64 arm appimagetool
-#
-# TODO: make this better with an arch paramater: ./build -a amd64,arm appimagetool
-
 # Build and upload the contents of this repository.
 #
 # NOTE: Please contact the author before trying to convert this script
@@ -95,7 +85,7 @@ build () {
   echo CC: $CC
   which zig
   zig env
-  CGO_ENABLED=1 go build -o $BUILDDIR -v -trimpath -ldflags="-linkmode=external -extldflags \"-static\" -s -w -X main.commit=$COMMIT" $PROJECT/src/$PROG
+  CGO_ENABLED=1 go build -o $BUILDDIR -v -trimpath -ldflags="-linkmode=external -extldflags \"-static\" -s -w -X main.commit=$COMMIT" $PROJECT/cmd/$PROG
   ls -lh $PROG
   file $PROG
   # common appimage steps
@@ -247,7 +237,7 @@ cd $BUILDDIR
 
 # Install zig, it comes with musl libc
 if [ ! -e $BUILDDIR/zig ]; then
-  wget -c -q "https://ziglang.org/download/0.10.0/zig-linux-x86_64-0.10.0.tar.xz"
+  wget -c -q "https://ziglang.org/download/0.11.0/zig-linux-x86_64-0.11.0.tar.xz"
   tar xf zig-linux-*.tar.xz
   rm zig-linux-*.tar.xz
   mv zig-linux-* zig

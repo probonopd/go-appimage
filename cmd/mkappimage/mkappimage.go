@@ -38,7 +38,8 @@ func listLongFilesInAppImage(path string) {
 // check if all the necessary dependencies exist,
 // finally check if the provided argument, AppDir is a directly.
 // Call GenerateAppImage with the converted arguments
-// 		Args: c: cli.Context
+//
+//	Args: c: cli.Context
 func bootstrapMkAppImage(c *cli.Context) error {
 
 	// check if the number of arguments are stictly 1, if not
@@ -55,7 +56,7 @@ func bootstrapMkAppImage(c *cli.Context) error {
 	helpers.AddHereToPath()
 
 	// Check whether we have a sufficient version of mksquashfs for -offset
-	if helpers.CheckIfSquashfsVersionSufficient("mksquashfs") == false {
+	if !helpers.CheckIfSquashfsVersionSufficient("mksquashfs") {
 		os.Exit(1)
 	}
 
