@@ -413,8 +413,8 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 		}
 
 		if err != nil {
-			helpers.PrintError("Could not deploy the interpreter", err)
-			os.Exit(1)
+			helpers.PrintError("Could not deploy the interpreter", err) // TODO: Don't print this for musl libc
+			// os.Exit(1) // There is no gconf is musl libc
 		}
 
 		// Make ld-linux executable
