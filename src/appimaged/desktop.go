@@ -133,7 +133,7 @@ func writeDesktopFile(ai AppImage) error {
 			cfg.Section("Desktop Action Trash").Key("Exec").SetValue("kioclient move \"" + ai.Path + "\" trash:/")
 		} else {
 			// Provide a fallback shell command to prevent parser errors on other desktops
-			cfg.Section("Desktop Action Trash").Key("Exec").SetValue("mv \"" + ai.Path + "\" ~/.local/share/Trash/")
+			cfg.Section("Desktop Action Trash").Key("Exec").SetValue("mv \"" + ai.Path + "\" \"" + filepath.Join(home, "/.local/share/Trash/") + "\"")
 		}
 
 		// Add OpenPortableHome action
