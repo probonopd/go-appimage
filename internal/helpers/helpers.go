@@ -273,7 +273,7 @@ func ValidateDesktopFile(desktopfile string) error {
 // Returns error if validation fails and prints any errors to stderr
 func ValidateAppStreamMetainfoFile(appdirpath string) error {
 	// Validate_desktop_file
-	cmd := exec.Command("appstreamcli", "validate-tree", appdirpath)
+	cmd := exec.Command("appstreamcli", "validate-tree", appdirpath, "--no-net")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		PrintError("appstreamcli", err)
