@@ -9,8 +9,6 @@ Documentation:
 
 Download them from https://github.com/probonopd/go-appimage/releases/tag/continuous.
 
-__NOTE:__ You might be looking for https://github.com/AppImage/AppImageKit instead in case you are looking for current production code.
-
 ## Why Go?
 
 * Go follows the "keep it simple" principle - in line with what I like
