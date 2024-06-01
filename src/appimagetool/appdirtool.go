@@ -34,6 +34,7 @@ type QMLImport struct {
 
 var allELFs []string
 var libraryLocations []string // All directories in the host system that may contain libraries
+var seenDeps []string
 
 var quirksModePatchQtPrfxPath = false
 
@@ -974,6 +975,10 @@ func findAllExecutablesAndLibraries(path string) ([]string, error) {
 }
 
 func getDeps(binaryOrLib string) error {
+	if containsString(seenDeps, binaryOrLib) == true {
+		log.Println("skipping already seen dep, circular ref", binaryOrLib)
+		return nil
+	}
 	var libs []string
 
 	if helpers.IsDirectory(binaryOrLib) == true {
@@ -994,6 +999,10 @@ func getDeps(binaryOrLib string) error {
 	libs, err = e.ImportedLibraries()
 	helpers.PrintError("e.ImportedLibraries", err)
 
+	err = e.Close()
+	helpers.PrintError("e.Close", err)
+
+	seenDeps = helpers.AppendIfMissing(seenDeps, binaryOrLib)
 	for _, lib := range libs {
 		s, err := findLibrary(lib)
 		if err != nil {
