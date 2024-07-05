@@ -209,14 +209,14 @@ func AppDirDeploy(path string) {
 	// GStreamer
 	handleGStreamer(appdir)
 
-	// Gtk 3 modules/plugins
-	// If there is a .so with the name libgtk-3 inside the AppDir, then we need to
+	// Gtk modules/plugins
+	// If there is a .so with the name libgtk-* inside the AppDir, then we need to
 	// bundle Gdk modules/plugins
+	deployGtkDirectory(appdir, 4)
 	deployGtkDirectory(appdir, 3)
-
-	// Gtk 2 modules/plugins
-	// Same as above, but for Gtk 2
 	deployGtkDirectory(appdir, 2)
+
+	deployGtkUiFiles(appdir)
 
 	// ALSA
 	handleAlsa(appdir)
@@ -817,11 +817,13 @@ func deployGtkDirectory(appdir helpers.AppDir, gtkVersion int) {
 				for _, loc := range locs {
 					log.Println("Bundling dependencies of Gtk", strconv.Itoa(gtkVersion), "directory...")
 					determineELFsInDirTree(appdir, loc)
-					log.Println("Bundling Default theme for Gtk", strconv.Itoa(gtkVersion), "(for GTK_THEME=Default)...")
-					err = copy.Copy("/usr/share/themes/Default/gtk-"+strconv.Itoa(gtkVersion)+".0", appdir.Path+"/usr/share/themes/Default/gtk-"+strconv.Itoa(gtkVersion)+".0")
-					if err != nil {
-						helpers.PrintError("Copy", err)
-						os.Exit(1)
+					if gtkVersion <= 3 {
+						log.Println("Bundling Default theme for Gtk", strconv.Itoa(gtkVersion), "(for GTK_THEME=Default)...")
+						err = copy.Copy("/usr/share/themes/Default/gtk-"+strconv.Itoa(gtkVersion)+".0", appdir.Path+"/usr/share/themes/Default/gtk-"+strconv.Itoa(gtkVersion)+".0")
+						if err != nil {
+							helpers.PrintError("Copy", err)
+							os.Exit(1)
+						}
 					}
 
 					/*
@@ -837,7 +839,9 @@ func deployGtkDirectory(appdir helpers.AppDir, gtkVersion int) {
 			break
 		}
 	}
+}
 
+func deployGtkUiFiles(appdir helpers.AppDir) {
 	// Check for the presence of Gtk .ui files
 	uifiles := helpers.FilesWithSuffixInDirectoryRecursive(appdir.Path, ".ui")
 	if len(uifiles) > 0 {
