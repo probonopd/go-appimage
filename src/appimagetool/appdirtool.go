@@ -817,11 +817,42 @@ func deployGtkDirectory(appdir helpers.AppDir, gtkVersion int) {
 				for _, loc := range locs {
 					log.Println("Bundling dependencies of Gtk", strconv.Itoa(gtkVersion), "directory...")
 					determineELFsInDirTree(appdir, loc)
+
 					if gtkVersion <= 3 {
 						log.Println("Bundling Default theme for Gtk", strconv.Itoa(gtkVersion), "(for GTK_THEME=Default)...")
 						err = copy.Copy("/usr/share/themes/Default/gtk-"+strconv.Itoa(gtkVersion)+".0", appdir.Path+"/usr/share/themes/Default/gtk-"+strconv.Itoa(gtkVersion)+".0")
 						if err != nil {
 							helpers.PrintError("Copy", err)
+							os.Exit(1)
+						}
+					}
+
+					if gtkVersion <= 3 {
+						log.Println("Bundling immodules.cache for Gtk", strconv.Itoa(gtkVersion))
+						immodulesCaches := helpers.FilesWithSuffixInDirectoryRecursive(loc, "immodules.cache")
+						if len(immodulesCaches) < 1 {
+							log.Println("Couldn't find immodules.cache")
+							os.Exit(1)
+						}
+						immodulesCache := immodulesCaches[0]
+
+						err = copy.Copy(immodulesCache, appdir.Path + immodulesCache)
+						if err != nil {
+							helpers.PrintError("Copy", err)
+							os.Exit(1)
+						}
+
+						immodulesCacheLoc, err := filepath.EvalSymlinks(filepath.Dir(immodulesCache))
+						if err != nil {
+							helpers.PrintError("Could not get the location of immodules.cache", err)
+							os.Exit(1)
+						}
+
+						whatToPatchAway := immodulesCacheLoc + "/immodules/"
+						log.Println("Patching", appdir.Path + immodulesCache, "removing", whatToPatchAway)
+						err = PatchFile(appdir.Path + immodulesCache, whatToPatchAway, "")
+						if err != nil {
+							helpers.PrintError("PatchFile immodules.cache", err)
 							os.Exit(1)
 						}
 					}
