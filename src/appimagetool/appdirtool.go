@@ -128,16 +128,14 @@ LD_LINUX=$(find "$HERE" -name 'ld-*.so.*' | head -n 1)
 if [ -e "$LD_LINUX" ] ; then
   export GCONV_PATH="$HERE/usr/lib/gconv"
   export FONTCONFIG_FILE="$HERE/etc/fonts/fonts.conf"
-  export GTK_EXE_PREFIX="$HERE/usr"
+  export GTK_PATH=$(find "$HERE/lib" -name gtk-* -type d)
   export GTK_THEME=Default # This one should be bundled so that it can work on systems without Gtk
   export GDK_PIXBUF_MODULEDIR=$(find "$HERE" -name loaders -type d -path '*gdk-pixbuf*')
   export GDK_PIXBUF_MODULE_FILE=$(find "$HERE" -name loaders.cache -type f -path '*gdk-pixbuf*') # Patched to contain no paths
-  # export LIBRARY_PATH=$GDK_PIXBUF_MODULEDIR # Otherwise getting "Unable to load image-loading module"
   export XDG_DATA_DIRS="${HERE}"/usr/share/:"${XDG_DATA_DIRS}"
   export PERLLIB="${HERE}"/usr/share/perl5/:"${HERE}"/usr/lib/perl5/:"${PERLLIB}"
   export GSETTINGS_SCHEMA_DIR="${HERE}"/usr/share/glib-2.0/runtime-schemas/:"${HERE}"/usr/share/glib-2.0/schemas/:"${GSETTINGS_SCHEMA_DIR}"
   export QT_PLUGIN_PATH="$(readlink -f "$(dirname "$(find "${HERE}" -type d -path '*/plugins/platforms' 2>/dev/null)" 2>/dev/null)" 2>/dev/null)"
-  # exec "${LD_LINUX}" --inhibit-cache --library-path "${LIBRARY_PATH}" "${MAIN_BIN}" "$@"
   case $line in
     "ld-linux"*) exec "${LD_LINUX}" --inhibit-cache "${MAIN_BIN}" "$@" ;;
     *) exec "${LD_LINUX}" "${MAIN_BIN}" "$@" ;;
