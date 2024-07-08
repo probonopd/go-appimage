@@ -128,16 +128,14 @@ LD_LINUX=$(find "$HERE" -name 'ld-*.so.*' | head -n 1)
 if [ -e "$LD_LINUX" ] ; then
   export GCONV_PATH="$HERE/usr/lib/gconv"
   export FONTCONFIG_FILE="$HERE/etc/fonts/fonts.conf"
-  export GTK_EXE_PREFIX="$HERE/usr"
+  export GTK_PATH=$(find "$HERE/lib" -name gtk-* -type d)
   export GTK_THEME=Default # This one should be bundled so that it can work on systems without Gtk
   export GDK_PIXBUF_MODULEDIR=$(find "$HERE" -name loaders -type d -path '*gdk-pixbuf*')
   export GDK_PIXBUF_MODULE_FILE=$(find "$HERE" -name loaders.cache -type f -path '*gdk-pixbuf*') # Patched to contain no paths
-  # export LIBRARY_PATH=$GDK_PIXBUF_MODULEDIR # Otherwise getting "Unable to load image-loading module"
   export XDG_DATA_DIRS="${HERE}"/usr/share/:"${XDG_DATA_DIRS}"
   export PERLLIB="${HERE}"/usr/share/perl5/:"${HERE}"/usr/lib/perl5/:"${PERLLIB}"
   export GSETTINGS_SCHEMA_DIR="${HERE}"/usr/share/glib-2.0/runtime-schemas/:"${HERE}"/usr/share/glib-2.0/schemas/:"${GSETTINGS_SCHEMA_DIR}"
   export QT_PLUGIN_PATH="$(readlink -f "$(dirname "$(find "${HERE}" -type d -path '*/plugins/platforms' 2>/dev/null)" 2>/dev/null)" 2>/dev/null)"
-  # exec "${LD_LINUX}" --inhibit-cache --library-path "${LIBRARY_PATH}" "${MAIN_BIN}" "$@"
   case $line in
     "ld-linux"*) exec "${LD_LINUX}" --inhibit-cache "${MAIN_BIN}" "$@" ;;
     *) exec "${LD_LINUX}" "${MAIN_BIN}" "$@" ;;
@@ -209,14 +207,14 @@ func AppDirDeploy(path string) {
 	// GStreamer
 	handleGStreamer(appdir)
 
-	// Gtk 3 modules/plugins
-	// If there is a .so with the name libgtk-3 inside the AppDir, then we need to
+	// Gtk modules/plugins
+	// If there is a .so with the name libgtk-* inside the AppDir, then we need to
 	// bundle Gdk modules/plugins
+	deployGtkDirectory(appdir, 4)
 	deployGtkDirectory(appdir, 3)
-
-	// Gtk 2 modules/plugins
-	// Same as above, but for Gtk 2
 	deployGtkDirectory(appdir, 2)
+
+	deployGtkUiFiles(appdir)
 
 	// ALSA
 	handleAlsa(appdir)
@@ -817,11 +815,44 @@ func deployGtkDirectory(appdir helpers.AppDir, gtkVersion int) {
 				for _, loc := range locs {
 					log.Println("Bundling dependencies of Gtk", strconv.Itoa(gtkVersion), "directory...")
 					determineELFsInDirTree(appdir, loc)
-					log.Println("Bundling Default theme for Gtk", strconv.Itoa(gtkVersion), "(for GTK_THEME=Default)...")
-					err = copy.Copy("/usr/share/themes/Default/gtk-"+strconv.Itoa(gtkVersion)+".0", appdir.Path+"/usr/share/themes/Default/gtk-"+strconv.Itoa(gtkVersion)+".0")
-					if err != nil {
-						helpers.PrintError("Copy", err)
-						os.Exit(1)
+
+					if gtkVersion <= 3 {
+						log.Println("Bundling Default theme for Gtk", strconv.Itoa(gtkVersion), "(for GTK_THEME=Default)...")
+						err = copy.Copy("/usr/share/themes/Default/gtk-"+strconv.Itoa(gtkVersion)+".0", appdir.Path+"/usr/share/themes/Default/gtk-"+strconv.Itoa(gtkVersion)+".0")
+						if err != nil {
+							helpers.PrintError("Copy", err)
+							os.Exit(1)
+						}
+					}
+
+					if gtkVersion <= 3 {
+						log.Println("Bundling immodules.cache for Gtk", strconv.Itoa(gtkVersion))
+						immodulesCaches := helpers.FilesWithSuffixInDirectoryRecursive(loc, "immodules.cache")
+						if len(immodulesCaches) < 1 {
+							log.Println("Couldn't find immodules.cache")
+							os.Exit(1)
+						}
+						immodulesCache := immodulesCaches[0]
+
+						err = copy.Copy(immodulesCache, appdir.Path + immodulesCache)
+						if err != nil {
+							helpers.PrintError("Copy", err)
+							os.Exit(1)
+						}
+
+						immodulesCacheLoc, err := filepath.EvalSymlinks(filepath.Dir(immodulesCache))
+						if err != nil {
+							helpers.PrintError("Could not get the location of immodules.cache", err)
+							os.Exit(1)
+						}
+
+						whatToPatchAway := immodulesCacheLoc + "/immodules/"
+						log.Println("Patching", appdir.Path + immodulesCache, "removing", whatToPatchAway)
+						err = PatchFile(appdir.Path + immodulesCache, whatToPatchAway, "")
+						if err != nil {
+							helpers.PrintError("PatchFile immodules.cache", err)
+							os.Exit(1)
+						}
 					}
 
 					/*
@@ -837,7 +868,9 @@ func deployGtkDirectory(appdir helpers.AppDir, gtkVersion int) {
 			break
 		}
 	}
+}
 
+func deployGtkUiFiles(appdir helpers.AppDir) {
 	// Check for the presence of Gtk .ui files
 	uifiles := helpers.FilesWithSuffixInDirectoryRecursive(appdir.Path, ".ui")
 	if len(uifiles) > 0 {
