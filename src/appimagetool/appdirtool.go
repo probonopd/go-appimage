@@ -1315,6 +1315,19 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 			}
 		}
 
+        // platform plugin context - required for special characters - included if libQt5Gui.so.5/libQt6.Gui.so.6 is included
+        // similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1229
+		for _, lib := range allELFs {
+			if strings.HasSuffix(lib, fmt.Sprintf("libQt%dGui.so.%d", qtVersion, qtVersion)) == true {
+				if helpers.Exists(qtPrfxpath + "/plugins/platforminputcontexts/") {
+					determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/platforminputcontexts/")
+				} else {
+					fmt.Println("Skipping", appdir, qtPrfxpath+"/plugins/platforminputcontexts/", "because it does not exist")
+				}
+				break
+			}
+		}
+
 		// Platform OpenGL context, if one of several libraries is about to be deployed
 		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1282
 		for _, lib := range allELFs {
