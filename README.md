@@ -25,3 +25,6 @@ Download them from https://github.com/probonopd/go-appimage/releases/tag/continu
 ## Conventions
 
 * https://github.com/golang-standards/project-layout/tree/master/pkg
+
+## Stargazers over time
+[![Stargazers over time](https://starchart.cc/probonopd/go-appimage.svg?variant=adaptive)](https://starchart.cc/probonopd/go-appimage)
