@@ -1492,11 +1492,14 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 
 func getQtPrfxpath(f *os.File, err error, qtVersion int) string {
 
-	// If the user has set $QTDIR, use that instead of the one from qt_prfxpath in the library
+	// If the user has set $QTDIR or $QT_ROOT_DIR, use that instead of the one from qt_prfxpath in the library
 	qtPrefixEnv := os.Getenv("QTDIR")
+	if qtPrefixEnv == "" {
+	    qtPrefixEnv = os.Getenv("QT_ROOT_DIR")
+	}
 	if qtPrefixEnv != "" {
-		log.Println("Using $QTDIR:", qtPrefixEnv)
-		return qtPrefixEnv
+	    log.Println("Using QTDIR or QT_ROOT_DIR:", qtPrefixEnv)
+	    return qtPrefixEnv
 	}
 
 	f.Seek(0, 0)
