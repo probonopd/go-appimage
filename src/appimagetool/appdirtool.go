@@ -511,7 +511,12 @@ func patchQtPrfxpath(appdir helpers.AppDir, lib string, libraryLocationsInAppDir
 	f.Seek(0, 0)
 	// Search from the beginning of the file
 	search := []byte("qt_prfxpath=")
-	offset := ScanFile(f, search) + int64(len(search))
+	prfxpathPos := ScanFile(f, search)
+	if prfxpathPos < 0 {
+		helpers.PrintError("Could not find offset for " + string(search), errors.New("no " + string(search) + " token in binary"))
+		os.Exit(1)
+	}
+	offset := prfxpathPos + int64(len(search))
 	log.Println("Offset of qt_prfxpath:", offset)
 	/*
 		What does qt_prfxpath=. actually mean on a Linux system? Where is "."?
