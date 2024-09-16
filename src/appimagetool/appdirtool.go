@@ -268,8 +268,10 @@ func AppDirDeploy(path string) {
 		qtVersionDetected = 4
 	}
 
+	qtPrefixPathRequiresPatch := true
+
 	if qtVersionDetected > 0 {
-		handleQt(appdir, qtVersionDetected)
+		qtPrefixPathRequiresPatch = handleQt(appdir, qtVersionDetected)
 	}
 
 	fmt.Println("")
@@ -314,7 +316,8 @@ func AppDirDeploy(path string) {
 		deployElf(lib, appdir, err)
 		patchRpathsInElf(appdir, libraryLocationsInAppDir, lib)
 
-		if strings.Contains(lib, fmt.Sprintf("libQt%dCore.so.%d", qtVersionDetected, qtVersionDetected)) {
+		if qtPrefixPathRequiresPatch &&
+			strings.Contains(lib, fmt.Sprintf("libQt%dCore.so.%d", qtVersionDetected, qtVersionDetected)) {
 			fmt.Println("Patching Qt prefix path in " + lib)
 			patchQtPrfxpath(appdir, lib, libraryLocationsInAppDir, ldLinux)
 		}
@@ -1247,7 +1250,9 @@ func getCopyrightFile(path string) (string, error) {
 }
 
 // Let's see in how many lines of code we can re-implement the guts of linuxdeployqt
-func handleQt(appdir helpers.AppDir, qtVersion int) {
+func handleQt(appdir helpers.AppDir, qtVersion int) bool {
+
+	qtPrefixPathRequiresPatch := true
 
 	if qtVersion >= 5 {
 
@@ -1260,7 +1265,7 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 			os.Exit(1)
 		}
 
-		qtPrfxpath := getQtPrfxpath(library, qtVersion)
+		qtPrfxpath, qtPrefixPathRequiresPatch := getQtPrfxpath(library, qtVersion)
 
 		if qtPrfxpath == "" {
 			log.Println("Got empty qtPrfxpath, exiting")
@@ -1420,7 +1425,7 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		qmlImportScanners := helpers.FilesWithSuffixInDirectoryRecursive(qtPrfxpath, "qmlimportscanner")
 		if len(qmlImportScanners) < 1 {
 			log.Println("qmlimportscanner not found, skipping QML deployment") // TODO: Exit if we have qml files and qmlimportscanner is not there
-			return
+			return qtPrefixPathRequiresPatch
 		} else {
 			log.Println("Found qmlimportscanner:", qmlImportScanners[0])
 		}
@@ -1481,9 +1486,11 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 			}
 		}
 	}
+
+	return qtPrefixPathRequiresPatch
 }
 
-func getQtPrfxpath(library string, qtVersion int) string {
+func getQtPrfxpath(library string, qtVersion int) (string, bool) {
 	// Some notes on Qt behavior:
 	// https://doc.qt.io/qt-5/qt-conf.html
 	// https://doc.qt.io/qt-6/qt-conf.html
@@ -1505,16 +1512,6 @@ func getQtPrfxpath(library string, qtVersion int) string {
 
 	// TODO IDEA: Use AppRun to generate qt.conf at application start?
 
-	// If the user has set $QTDIR or $QT_ROOT_DIR, use that instead of the one from qt_prfxpath in the library
-	qtPrefixEnv := os.Getenv("QTDIR")
-	if qtPrefixEnv == "" {
-	    qtPrefixEnv = os.Getenv("QT_ROOT_DIR")
-	}
-	if qtPrefixEnv != "" {
-	    log.Println("Using QTDIR or QT_ROOT_DIR:", qtPrefixEnv)
-	    return qtPrefixEnv
-	}
-
 	f, err := os.Open(library)
 	if err != nil {
 		helpers.PrintError(fmt.Sprintf("Could not open libQt%dCore.so.%d", qtVersion, qtVersion), err)
@@ -1532,10 +1529,12 @@ func getQtPrfxpath(library string, qtVersion int) string {
 	f.Seek(offset, 0)
 	length := ScanFile(f, search)
 
-	var qt_prfxpath = ""
+	qt_prfxpath := ""
+	qtPrefixPathRequiresPatch := true
 
 	// When length is 0, Qt has been built as relocatable
 	if length == 0 {
+		qtPrefixPathRequiresPatch = false
 		// Directory should be in ../Qt${qtVersion}
 		// TODO: Check if this is true for relocatable binaries in Qt5
 		qt_prfxpath = filepath.Dir(library) + fmt.Sprintf("/../Qt%d", qtVersion)
@@ -1555,9 +1554,18 @@ func getQtPrfxpath(library string, qtVersion int) string {
 		qt_prfxpath = strings.TrimSpace(string(buf))
 		log.Println("qt_prfxpath:", qt_prfxpath)
 		if qt_prfxpath == "" {
-			log.Println("Could not get qt_prfxpath")
-			return ""
+			log.Println("Could not get qt_prfxpath from", library)
 		}
+	}
+
+	// If the user has set $QTDIR or $QT_ROOT_DIR, use that instead of the one from qt_prfxpath in the library
+	qtPrefixEnv := os.Getenv("QTDIR")
+	if qtPrefixEnv == "" {
+		qtPrefixEnv = os.Getenv("QT_ROOT_DIR")
+	}
+	if qtPrefixEnv != "" {
+		log.Println("Using QTDIR or QT_ROOT_DIR:", qtPrefixEnv)
+		qt_prfxpath = qtPrefixEnv
 	}
 
 	// Special case:
@@ -1581,7 +1589,7 @@ func getQtPrfxpath(library string, qtVersion int) string {
 		}
 	}
 
-	return qt_prfxpath
+	return qt_prfxpath, qtPrefixPathRequiresPatch
 }
 
 // ScanFile returns the offset of the first occurrence of a []byte in a file from the current position,
