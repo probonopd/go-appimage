@@ -163,7 +163,7 @@ func sendDesktopNotification(title string, body string, durationms int32) {
 		return
 	}
 
-	call := obj.Call("org.freedesktop.Notifications.Notify", 0, "", uint32(0),
+	call := obj.Call("org.freedesktop.Notifications.Notify", 0, "appimaged", uint32(0),
 		"", title, body, []string{},
 		map[string]dbus.Variant{}, durationms)
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/acobaugh/osrelease"
 	"github.com/adrg/xdg"
+	"github.com/mattn/go-isatty"
 
 	//	"github.com/amenzhinsky/go-polkit"
 
@@ -343,12 +344,14 @@ func setupToRunThroughSystemd() {
 	}
 
 	if !CheckIfInvokedBySystemd() {
+		installed := false
 
 		log.Println("Manually launched, not by systemd. Check if enabled in systemd...")
 
 		if _, err := os.Stat("/etc/systemd/user/appimaged.service"); os.IsNotExist(err) {
 			log.Println("/etc/systemd/user/appimaged.service does not exist")
 			installServiceFileInHome()
+			installed = true
 		}
 
 		prc := exec.Command("systemctl", "--user", "status", "appimaged")
@@ -368,6 +371,7 @@ func setupToRunThroughSystemd() {
 			if err != nil {
 				log.Println(prc.String())
 				log.Println(err)
+				os.Exit(0)
 			} else {
 				os.Exit(0)
 			}
@@ -378,6 +382,7 @@ func setupToRunThroughSystemd() {
 			if err != nil {
 				log.Println(prc.String())
 				log.Println(err)
+				os.Exit(0)
 			}
 			log.Println("Starting systemd service...")
 			prc = exec.Command("systemctl", "--user", "restart", "appimaged")
@@ -385,7 +390,12 @@ func setupToRunThroughSystemd() {
 			if err != nil {
 				log.Println(prc.String())
 				log.Println(err)
+				os.Exit(0)
 			} else {
+				// If we are installing appimaged, but the user didn't run it in a terminal, give them a notification.
+				if installed && !isatty.IsTerminal(os.Stdin.Fd()) {
+					sendDesktopNotification("appimaged installed", "", -1)
+				}
 				log.Println("appimaged should now be running via systemd. To check this, run")
 				log.Println("/usr/bin/systemctl -l --no-pager --user status appimaged")
 				os.Exit(0)
