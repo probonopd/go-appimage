@@ -28,17 +28,6 @@ type archiveReader interface {
 	ExtractTo(path, destination string, resolveSymlinks bool) error
 }
 
-func (ai *AppImage) populateReader(allowFallback, forceFallback bool) (err error) {
-	if ai.imageType == 1 {
-		ai.reader, err = newType1Reader(ai.Path)
-		return err
-	} else if ai.imageType == 2 {
-		ai.reader, err = newType2Reader(ai)
-		return err
-	}
-	return errors.New("invalid AppImage type")
-}
-
 // TODO: Implement command based fallback here.
 type type2Reader struct {
 	rdr *squashfs.Reader
@@ -74,7 +63,7 @@ func (r *type2Reader) FileReader(filepath string) (io.ReadCloser, error) {
 	}
 	fil := fsFil.(*squashfs.File)
 	for fil.IsSymlink() {
-		fil = fil.GetSymlinkFile()
+		fil = fil.GetSymlinkFile().(*squashfs.File)
 		if fil == nil {
 			return nil, errors.New("Can't resolve symlink at: " + filepath)
 		}
@@ -92,7 +81,7 @@ func (r *type2Reader) IsDir(filepath string) bool {
 	}
 	fil := fsFil.(*squashfs.File)
 	if fil.IsSymlink() {
-		fil = fil.GetSymlinkFile()
+		fil = fil.GetSymlinkFile().(*squashfs.File)
 		if fil == nil {
 			return false
 		}
@@ -107,7 +96,7 @@ func (r *type2Reader) ListFiles(path string) []string {
 	}
 	fil := fsFil.(*squashfs.File)
 	if fil.IsSymlink() {
-		fil = fil.GetSymlinkFile()
+		fil = fil.GetSymlinkFile().(*squashfs.File)
 		if fil == nil {
 			return nil
 		}
