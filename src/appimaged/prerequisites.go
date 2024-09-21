@@ -371,10 +371,8 @@ func setupToRunThroughSystemd() {
 			if err != nil {
 				log.Println(prc.String())
 				log.Println(err)
-				os.Exit(0)
-			} else {
-				os.Exit(0)
 			}
+			os.Exit(0)
 		} else {
 			log.Println("Enabling systemd service...")
 			prc := exec.Command("systemctl", "--user", "enable", "appimaged")
@@ -382,6 +380,9 @@ func setupToRunThroughSystemd() {
 			if err != nil {
 				log.Println(prc.String())
 				log.Println(err)
+				if installed && !isatty.IsTerminal(os.Stdin.Fd()) {
+					sendDesktopNotification("Install Failed", "Unable to enable systemd service", -1)
+				}
 				os.Exit(0)
 			}
 			log.Println("Starting systemd service...")
@@ -390,16 +391,18 @@ func setupToRunThroughSystemd() {
 			if err != nil {
 				log.Println(prc.String())
 				log.Println(err)
-				os.Exit(0)
-			} else {
-				// If we are installing appimaged, but the user didn't run it in a terminal, give them a notification.
 				if installed && !isatty.IsTerminal(os.Stdin.Fd()) {
-					sendDesktopNotification("appimaged installed", "", -1)
+					sendDesktopNotification("Install Failed", "Unable to start systemd service", -1)
 				}
-				log.Println("appimaged should now be running via systemd. To check this, run")
-				log.Println("/usr/bin/systemctl -l --no-pager --user status appimaged")
 				os.Exit(0)
 			}
+			// If we are installing appimaged, but the user didn't run it in a terminal, give them a notification.
+			if installed && !isatty.IsTerminal(os.Stdin.Fd()) {
+				sendDesktopNotification("Successfully installed", "", -1)
+			}
+			log.Println("appimaged should now be running via systemd. To check this, run")
+			log.Println("/usr/bin/systemctl -l --no-pager --user status appimaged")
+			os.Exit(0)
 		}
 
 	}
