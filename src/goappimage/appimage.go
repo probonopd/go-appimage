@@ -74,10 +74,8 @@ func NewAppImage(path string) (ai *AppImage, err error) {
 	}
 	if ai.imageType == 1 {
 		ai.reader, err = newType1Reader(ai.Path)
-		return
 	} else if ai.imageType == 2 {
 		ai.reader, err = newType2Reader(ai)
-		return
 	}
 	//try to load up the desktop file for some information.
 	var desk string

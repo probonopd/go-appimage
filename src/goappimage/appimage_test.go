@@ -8,24 +8,25 @@ import (
 	"testing"
 )
 
-//NOTE: If you internet is a bit slow, it's not a bad idea to download it manually instead of letting the test download it
-//TODO: Change to a different AppImage since Blender is a bit large...
-const type1TestURL = "https://bintray.com/probono/AppImages/download_file?file_path=Blender-2.78c.glibc2.17-x86_64.AppImage"
-const type1TestFilename = "Blender-2.78c.glibc2.17-x86_64.AppImage"
+// TODO: Find a new source for type 1 AppImages for testing.
 
-//NOTE: If you internet is a bit slow, it's not a bad idea to download it manually instead of letting the test download it
-const type2TestURL = "https://github.com/subsurface/subsurface/releases/download/v4.9.4/Subsurface-4.9.4-x86_64.AppImage"
-const type2TestFilename = "Subsurface-4.9.4-x86_64.AppImage"
+// NOTE: If you internet is a bit slow, it's not a bad idea to download it manually instead of letting the test download it
+// const type1TestURL = "https://bintray.com/probono/AppImages/download_file?file_path=Blender-2.78c.glibc2.17-x86_64.AppImage"
+// const type1TestFilename = "Blender-2.78c.glibc2.17-x86_64.AppImage"
 
-func TestAppImageType1(t *testing.T) {
-	testImg := getAppImage(1, t)
-	ai, err := NewAppImage(testImg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	fmt.Println("Name", ai.Name)
-	t.Fatal("No Problem")
-}
+// NOTE: If you internet is a bit slow, it's not a bad idea to download it manually instead of letting the test download it
+const type2TestURL = "https://github.com/subsurface/subsurface/releases/download/v4.9.3/Subsurface-4.9.3-x86_64.AppImage"
+const type2TestFilename = "Subsurface-4.9.3-x86_64.AppImage"
+
+// func TestAppImageType1(t *testing.T) {
+// 	testImg := getAppImage(1, t)
+// 	ai, err := NewAppImage(testImg)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	fmt.Println("Name", ai.Name)
+// 	t.Fatal("No Problem")
+// }
 
 func TestAppImageType2(t *testing.T) {
 	testImg := getAppImage(2, t)
@@ -38,7 +39,7 @@ func TestAppImageType2(t *testing.T) {
 	t.Fatal("No Problem")
 }
 
-//this is so I can easily use unsquashfs & gui tools to double check my work
+// this is so I can easily use unsquashfs & gui tools to double check my work
 func getCleanSquashfsFromAppImage(ai *AppImage, name string, t *testing.T) {
 	fil, err := os.Create(name)
 	if os.IsExist(err) {
@@ -63,7 +64,8 @@ func getAppImage(imageType int, t *testing.T) string {
 	var filename string
 	switch imageType {
 	case 1:
-		filename = type1TestFilename
+		t.Fatal("We currently do not have a source for type 1 appimages...")
+		// filename = type1TestFilename
 	case 2:
 		filename = type2TestFilename
 	default:
@@ -104,8 +106,9 @@ func downloadTestImage(imageType int, dir string, t *testing.T) {
 	var url string
 	switch imageType {
 	case 1:
-		url = type1TestURL
-		filename = type1TestFilename
+		t.Fatal("We currently do not have a source for type 1 appimages...")
+		// url = type1TestURL
+		// filename = type1TestFilename
 	case 2:
 		url = type2TestURL
 		filename = type2TestFilename
