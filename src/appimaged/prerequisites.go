@@ -6,6 +6,7 @@ import (
 
 	"github.com/acobaugh/osrelease"
 	"github.com/adrg/xdg"
+	"github.com/mattn/go-isatty"
 
 	//	"github.com/amenzhinsky/go-polkit"
 
@@ -343,12 +344,14 @@ func setupToRunThroughSystemd() {
 	}
 
 	if !CheckIfInvokedBySystemd() {
+		installed := false
 
 		log.Println("Manually launched, not by systemd. Check if enabled in systemd...")
 
 		if _, err := os.Stat("/etc/systemd/user/appimaged.service"); os.IsNotExist(err) {
 			log.Println("/etc/systemd/user/appimaged.service does not exist")
 			installServiceFileInHome()
+			installed = true
 		}
 
 		prc := exec.Command("systemctl", "--user", "status", "appimaged")
@@ -368,9 +371,8 @@ func setupToRunThroughSystemd() {
 			if err != nil {
 				log.Println(prc.String())
 				log.Println(err)
-			} else {
-				os.Exit(0)
 			}
+			os.Exit(0)
 		} else {
 			log.Println("Enabling systemd service...")
 			prc := exec.Command("systemctl", "--user", "enable", "appimaged")
@@ -378,6 +380,10 @@ func setupToRunThroughSystemd() {
 			if err != nil {
 				log.Println(prc.String())
 				log.Println(err)
+				if installed && !isatty.IsTerminal(os.Stdin.Fd()) {
+					sendDesktopNotification("Install Failed", "Unable to enable systemd service", -1)
+				}
+				os.Exit(0)
 			}
 			log.Println("Starting systemd service...")
 			prc = exec.Command("systemctl", "--user", "restart", "appimaged")
@@ -385,11 +391,18 @@ func setupToRunThroughSystemd() {
 			if err != nil {
 				log.Println(prc.String())
 				log.Println(err)
-			} else {
-				log.Println("appimaged should now be running via systemd. To check this, run")
-				log.Println("/usr/bin/systemctl -l --no-pager --user status appimaged")
+				if installed && !isatty.IsTerminal(os.Stdin.Fd()) {
+					sendDesktopNotification("Install Failed", "Unable to start systemd service", -1)
+				}
 				os.Exit(0)
 			}
+			// If we are installing appimaged, but the user didn't run it in a terminal, give them a notification.
+			if installed && !isatty.IsTerminal(os.Stdin.Fd()) {
+				sendDesktopNotification("Successfully installed", "", -1)
+			}
+			log.Println("appimaged should now be running via systemd. To check this, run")
+			log.Println("/usr/bin/systemctl -l --no-pager --user status appimaged")
+			os.Exit(0)
 		}
 
 	}

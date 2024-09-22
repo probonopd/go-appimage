@@ -18,12 +18,12 @@ jobs:
     name: Build for all architectures
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Set up Go
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v5
       with:
-        go-version: 1.18
-    - uses: actions/cache@v2
+        go-version: '>=1.23'
+    - uses: actions/cache@v4
       with:
         path: |
           ~/.cache/go-build
@@ -34,7 +34,7 @@ jobs:
     - name: Run build script
       run: ./scripts/build.sh -a amd64,386,arm64,arm
     - name: Upload to GitHub Artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: artifacts
         path: ./build/*
