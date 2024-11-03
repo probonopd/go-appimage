@@ -779,28 +779,26 @@ func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, 
 		return
 	}
 
-	if strings.HasPrefix(filepath.Base(path), "ld-") == true {
-		os.Chmod(path, 0755)
-		log.Println("Not writing rpath in", path, "because its name starts with ld-...")
+	// If the file starts with ld-, we don't want to patch it
+	basePath, err := filepath.Base(path)
+	if err != nil {
+		helpers.PrintError("filepath.Base", err)
 		return
 	}
-
-	// Be sure that the file we want to patch exists
-	if helpers.Exists(path) == false {
-		log.Println(path, "does not exist, hence we cannot set its rpath, exiting")
-		// os.Exit(1)
-	}
-
-	// Call patchelf to set the rpath
-	if helpers.Exists(path) == true {
-		// log.Println("Rewriting rpath of", path)
-		cmd := exec.Command("patchelf", "--set-rpath", newRpathStringForElf, path)
-		// log.Println(cmd.Args)
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			fmt.Println(cmd.String())
-			helpers.PrintError("patchelf --set-rpath "+path+": "+string(out), err)
-			os.Exit(1)
+	if strings.HasPrefix(basePath, "ld-") {
+		log.Println("Not writing rpath because file is ld-")
+	} else {
+		// Call patchelf to set the rpath
+		if helpers.Exists(path) == true {
+			// log.Println("Rewriting rpath of", path)
+			cmd := exec.Command("patchelf", "--set-rpath", newRpathStringForElf, path)
+			// log.Println(cmd.Args)
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				fmt.Println(cmd.String())
+				helpers.PrintError("patchelf --set-rpath "+path+": "+string(out), err)
+				os.Exit(1)
+			}
 		}
 	}
 }
