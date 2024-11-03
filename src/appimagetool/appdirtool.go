@@ -780,13 +780,10 @@ func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, 
 	}
 
 	// If the file starts with ld-, we don't want to patch it
-	basePath, err := filepath.Base(path)
-	if err != nil {
-		helpers.PrintError("filepath.Base", err)
-		return
-	}
+	basePath := filepath.Base(path)
+	log.Println("Checking whether", basePath, "starts with ld-")
 	if strings.HasPrefix(basePath, "ld-") {
-		log.Println("Not writing rpath because file is ld-")
+		log.Println("Not patching rpath because file starts with ld-")
 	} else {
 		// Call patchelf to set the rpath
 		if helpers.Exists(path) == true {
