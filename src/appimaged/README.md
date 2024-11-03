@@ -7,13 +7,13 @@ This is an experimental implementation of the optional AppImage daemon, `appimag
 Assuming you are using a 64-bit Intel machine (amd64, also known as x86_64), you can use our pre-compiled binaries. To try it out, boot a Ubuntu, Debian, Fedora, openSUSE, elementary OS, KDE neon,... Live ISO and run:
 
 ```bash
-# Remove pre-existing similar tools
+# Remove pre-existing conflicting tools (if any)
 systemctl --user stop appimaged.service || true
-sudo apt-get -y remove appimagelauncher || true
+sudo apt-get -y purge appimagelauncher || true
+[ -f ~/.config/systemd/user/default.target.wants/appimagelauncherd.service ] && rm ~/.config/systemd/user/default.target.wants/appimagelauncherd.service
 
 # Clear cache
 rm "$HOME"/.local/share/applications/appimage*
-[ -f ~/.config/systemd/user/default.target.wants/appimagelauncherd.service ] && rm ~/.config/systemd/user/default.target.wants/appimagelauncherd.service
 
 # Optionally, install Firejail (if you want sandboxing functionality)
 
