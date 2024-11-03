@@ -779,11 +779,11 @@ func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, 
 		return
 	}
 
-	// If the file starts with ld-, we don't want to patch it
+	// If the file starts with ld- or libc., we don't patch the rpath
+	// NOTE: In Alpine Linux, ld-musl-x86_64.so.1 links to libc.musl-x86_64.so.1
 	basePath := filepath.Base(path)
-	log.Println("Checking whether", basePath, "starts with ld-")
-	if strings.HasPrefix(basePath, "ld-") {
-		log.Println("Not patching rpath because file starts with ld-")
+	if strings.HasPrefix(basePath, "ld-") || strings.HasPrefix(basePath, "libc.") {
+		log.Println("Not patching rpath because file starts with ld- or libc.")
 	} else {
 		// Call patchelf to set the rpath
 		if helpers.Exists(path) == true {
