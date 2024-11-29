@@ -11,6 +11,7 @@ require (
 	github.com/eclipse/paho.mqtt.golang v1.5.0
 	github.com/esiqveland/notify v0.13.3
 	github.com/fsnotify/fsnotify v1.7.0
+	github.com/go-git/go-git/v5 v5.12.0
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/h2non/go-is-svg v0.0.0-20160927212452-35e8c4b0612c
@@ -34,36 +35,48 @@ require (
 )
 
 require (
+	dario.cat/mergo v1.0.0 // indirect
+	github.com/Microsoft/go-winio v0.6.1 // indirect
+	github.com/ProtonMail/go-crypto v1.0.0 // indirect
+	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
-	github.com/emirpasic/gods v1.12.0 // indirect
+	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
+	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.5 // indirect
+	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
+	github.com/go-git/go-billy/v5 v5.5.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
+	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/go-querystring v0.0.0-20170111101155-53e6ce116135 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
-	github.com/kevinburke/ssh_config v0.0.0-20190725054713-01f96b0aa0cd // indirect
+	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.21 // indirect
+	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/rasky/go-lzo v0.0.0-20200203143853-96a758eda86e // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/rustyoz/Mtransform v0.0.0-20190224104252-60c8c35a3681 // indirect
 	github.com/rustyoz/genericlexer v0.0.0-20190224115003-eb82fd2987bd // indirect
 	github.com/rustyoz/svg v0.0.0-20200706102315-fe1aeca2ba20 // indirect
 	github.com/sabhiram/pngr v0.0.0-20180419043407-2df49b015d4b // indirect
-	github.com/sergi/go-diff v1.0.0 // indirect
+	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
+	github.com/skeema/knownhosts v1.2.2 // indirect
 	github.com/src-d/gcfg v1.4.0 // indirect
 	github.com/therootcompany/xz v1.0.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.14 // indirect
 	github.com/tklauser/numcpus v0.8.0 // indirect
 	github.com/ulikunitz/xz v0.5.12 // indirect
-	github.com/xanzy/ssh-agent v0.2.1 // indirect
+	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	golang.org/x/image v0.0.0-20211028202545-6944b10bf410 // indirect
+	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/net v0.27.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/text v0.18.0 // indirect
+	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
 	gopkg.in/src-d/go-billy.v4 v4.3.2 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
