@@ -11,8 +11,6 @@ import (
 	"path"
 	"strconv"
 	"syscall"
-	"regexp"
-	"io/ioutil"
 
 	"debug/elf"
 	"os"
@@ -288,26 +286,7 @@ func AppDirDeploy(path string) {
 		if strings.HasPrefix(lib, appdir.Path) == false {
 			lib = appdir.Path + lib
 		}
-		// Check if the directory contains at least one file that has ".so" in its name
-		// followed by either nothing or only digits and dots;
-		// this is a heuristic to determine whether the directory contains shared libraries
-		found := false
-		files, err := ioutil.ReadDir(lib)
-		if err != nil {
-			helpers.PrintError("ReadDir", err)
-			os.Exit(1)
-		}
-		for _, file := range files {
-			if strings.Contains(file.Name(), ".so") && regexp.MustCompile(`\.so(\d|\.)+$`).MatchString(file.Name()) {
-				found = true
-				break
-			}
-		}
-		if found {
-			libraryLocationsInAppDir = helpers.AppendIfMissing(libraryLocationsInAppDir, lib)
-		} else {
-			log.Println("Not adding", lib, "to libraryLocationsInAppDir because it does not contain shared libraries")
-		}
+		libraryLocationsInAppDir = helpers.AppendIfMissing(libraryLocationsInAppDir, lib)
 	}
 	fmt.Println("")
 
