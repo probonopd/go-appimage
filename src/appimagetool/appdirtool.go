@@ -291,22 +291,25 @@ func AppDirDeploy(path string) {
 		// Check if the directory contains at least one file that has ".so" in its name
 		// followed by either nothing or only digits and dots;
 		// this is a heuristic to determine whether the directory contains shared libraries
-		found := false
-		files, err := ioutil.ReadDir(lib)
-		if err != nil {
-			helpers.PrintError("ReadDir", err)
-			os.Exit(1)
-		}
-		for _, file := range files {
-			if strings.Contains(file.Name(), ".so") && regexp.MustCompile(`\.so(\d|\.)+$`).MatchString(file.Name()) {
-				found = true
-				break
+		if helpers.Exists(lib) {
+			found := false
+			files, err := ioutil.ReadDir(lib)
+			if err != nil {
+				helpers.PrintError("ReadDir", err)
 			}
-		}
-		if found {
-			libraryLocationsInAppDir = helpers.AppendIfMissing(libraryLocationsInAppDir, lib)
+			for _, file := range files {
+				if strings.Contains(file.Name(), ".so") && regexp.MustCompile(`\.so(\d|\.)+$`).MatchString(file.Name()) {
+					found = true
+					break
+				}
+			}
+			if found {
+				libraryLocationsInAppDir = helpers.AppendIfMissing(libraryLocationsInAppDir, lib)
+			} else {
+				log.Println("Not adding", lib, "to libraryLocationsInAppDir because it does not contain shared libraries")
+			}
 		} else {
-			log.Println("Not adding", lib, "to libraryLocationsInAppDir because it does not contain shared libraries")
+			log.Println("Directory", lib, "does not exist, skipping")
 		}
 	}
 	fmt.Println("")
