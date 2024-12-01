@@ -511,7 +511,12 @@ func patchQtPrfxpath(appdir helpers.AppDir, lib string, libraryLocationsInAppDir
 	f.Seek(0, 0)
 	// Search from the beginning of the file
 	search := []byte("qt_prfxpath=")
-	offset := ScanFile(f, search) + int64(len(search))
+	prfxpathPos := ScanFile(f, search)
+	if prfxpathPos < 0 {
+		helpers.PrintError("Could not find offset for " + string(search), errors.New("no " + string(search) + " token in binary"))
+		os.Exit(1)
+	}
+	offset := prfxpathPos + int64(len(search))
 	log.Println("Offset of qt_prfxpath:", offset)
 	/*
 		What does qt_prfxpath=. actually mean on a Linux system? Where is "."?
@@ -1487,11 +1492,14 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 
 func getQtPrfxpath(f *os.File, err error, qtVersion int) string {
 
-	// If the user has set $QTDIR, use that instead of the one from qt_prfxpath in the library
+	// If the user has set $QTDIR or $QT_ROOT_DIR, use that instead of the one from qt_prfxpath in the library
 	qtPrefixEnv := os.Getenv("QTDIR")
+	if qtPrefixEnv == "" {
+	    qtPrefixEnv = os.Getenv("QT_ROOT_DIR")
+	}
 	if qtPrefixEnv != "" {
-		log.Println("Using $QTDIR:", qtPrefixEnv)
-		return qtPrefixEnv
+	    log.Println("Using QTDIR or QT_ROOT_DIR:", qtPrefixEnv)
+	    return qtPrefixEnv
 	}
 
 	f.Seek(0, 0)
