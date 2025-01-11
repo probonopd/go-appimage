@@ -147,17 +147,18 @@ func sendErrorDesktopNotification(title string, body string) {
 // which have Exec= entries pointing to the executable
 func findDesktopFilesPointingToExecutable(executablefilepath string) ([]string, error) {
 	var results []string
-	files, e := os.ReadDir(xdg.DataHome + "/applications/")
+	files, e := os.ReadDir(filepath.Join(xdg.DataHome, "applications"))
 	helpers.LogError("desktop", e)
 	if e != nil {
 		return results, e
 	}
 	for _, file := range files {
 		if strings.HasSuffix(file.Name(), ".desktop") {
+			filePath := filepath.Join(xdg.DataHome, "applications", file.Name())
 			var cfg *ini.File
 			info, _ := file.Info()
 			if info.Mode()&os.ModeSymlink != 0 { // Check if it's a symlink
-				linkfile, err := os.Readlink(xdg.DataHome + "/applications/" + file.Name()) // Read the symlink target
+				linkfile, err := os.Readlink(filePath) // Read the symlink target
 				if err != nil {
 					log.Printf("Readlink error %s on file %s", err, linkfile)
 					continue
@@ -168,8 +169,13 @@ func findDesktopFilesPointingToExecutable(executablefilepath string) ([]string, 
 					continue
 				}
 			} else { // If not a symlink then load the file directly
-				cfg, _ = ini.LoadSources(ini.LoadOptions{IgnoreInlineComment: true}, // Do not cripple lines hat contain ";"
-					xdg.DataHome+"/applications/"+file.Name())
+				var err error
+				cfg, err = ini.LoadSources(ini.LoadOptions{IgnoreInlineComment: true}, // Do not cripple lines hat contain ";"
+					filePath)
+				if err != nil {
+					log.Printf("ini.Load error %s on file %s", err, filePath)
+					continue
+				}
 			}
 			// log.Println(xdg.DataHome + "/applications/" + file.Name())
 			s := cfg.Section("Desktop Entry").Key("Exec").String()

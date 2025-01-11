@@ -3,7 +3,7 @@ module github.com/probonopd/go-appimage
 go 1.23
 
 require (
-	github.com/CalebQ42/squashfs v1.0.2
+	github.com/CalebQ42/squashfs v1.0.4
 	github.com/acobaugh/osrelease v0.1.0
 	github.com/adrg/xdg v0.5.0
 	github.com/alokmenghrajani/gpgeez v0.0.0-20161206084504-1a06f1c582f9
