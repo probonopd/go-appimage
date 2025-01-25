@@ -77,6 +77,9 @@ func NewAppImage(path string) (ai *AppImage, err error) {
 	} else if ai.imageType == 2 {
 		ai.reader, err = newType2Reader(ai)
 	}
+	if err != nil {
+		return ai, errors.Join(errors.New("unable to create AppImage file reader"), err)
+	}
 	//try to load up the desktop file for some information.
 	var desk string
 	files := ai.reader.ListFiles(".")
