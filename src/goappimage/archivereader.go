@@ -63,10 +63,11 @@ func (r *type2Reader) FileReader(filepath string) (io.ReadCloser, error) {
 	}
 	fil := fsFil.(*squashfs.File)
 	for fil.IsSymlink() {
-		fil = fil.GetSymlinkFile().(*squashfs.File)
-		if fil == nil {
+		symFil := fil.GetSymlinkFile()
+		if symFil == nil {
 			return nil, errors.New("Can't resolve symlink at: " + filepath)
 		}
+		fil = symFil.(*squashfs.File)
 	}
 	if fil.IsDir() {
 		return nil, errors.New("Path is a directory: " + filepath)
@@ -80,11 +81,12 @@ func (r *type2Reader) IsDir(filepath string) bool {
 		return false
 	}
 	fil := fsFil.(*squashfs.File)
-	if fil.IsSymlink() {
-		fil = fil.GetSymlinkFile().(*squashfs.File)
-		if fil == nil {
+	for fil.IsSymlink() {
+		symFil := fil.GetSymlinkFile()
+		if symFil == nil {
 			return false
 		}
+		fil = symFil.(*squashfs.File)
 	}
 	return fil.IsDir()
 }
@@ -95,11 +97,12 @@ func (r *type2Reader) ListFiles(path string) []string {
 		return nil
 	}
 	fil := fsFil.(*squashfs.File)
-	if fil.IsSymlink() {
-		fil = fil.GetSymlinkFile().(*squashfs.File)
-		if fil == nil {
+	for fil.IsSymlink() {
+		symFil := fil.GetSymlinkFile()
+		if symFil == nil {
 			return nil
 		}
+		fil = symFil.(*squashfs.File)
 	}
 	if !fil.IsDir() {
 		return nil
