@@ -19,7 +19,8 @@ rm "$HOME"/.local/share/applications/appimage*
 
 # Download
 mkdir -p ~/Applications
-wget -c https://github.com/$(wget -q https://github.com/probonopd/go-appimage/releases/expanded_assets/continuous -O - | grep "appimaged-.*-x86_64.AppImage" | head -n 1 | cut -d '"' -f 2) -P ~/Applications/
+appimage_url=$(wget -q https://github.com/probonopd/go-appimage/releases/expanded_assets/continuous -O - | grep "appimaged-.*-x86_64.AppImage" | head -n 1 | cut -d '"' -f 2)
+wget -c "https://github.com/${appimage_url}" -P ~/Applications/
 chmod +x ~/Applications/appimaged-*.AppImage
 
 # Launch
