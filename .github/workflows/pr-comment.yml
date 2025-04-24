@@ -10,7 +10,7 @@ on:
 jobs:
   artifacts-url-comments:
     name: Add artifact links to PR and issues
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     # Restrict permissions for the GITHUB_TOKEN, https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs
     permissions:
