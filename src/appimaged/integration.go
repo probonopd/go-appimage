@@ -22,6 +22,8 @@ func AddIntegration(path string, notify bool) (err error) {
 	integrationLock.Lock()
 	defer integrationLock.Unlock()
 	if _, ok := integrations[path]; ok {
+		// Make sure AppImage is executable
+		os.Chmod(path, 0755)
 		return
 	}
 	ai, err := NewAppImage(path)
@@ -88,6 +90,8 @@ func AddIntegrationsFromDir(dir string) {
 		if IsPossibleAppImage(path) {
 			_, ok := integrations[path]
 			if ok {
+				// Make sure AppImage is executable
+				os.Chmod(path, 0755)
 				continue
 			}
 			ai, err := NewAppImage(path)
