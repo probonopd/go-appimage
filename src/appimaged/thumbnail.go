@@ -37,12 +37,12 @@ func (ai AppImage) getThumbnailOrIcon() (out []byte) {
 	fallback := defaultIcon
 	rdr, err := ai.Thumbnail()
 	if err != nil {
-		fmt.Println("Error getting thumbnail")
+		fmt.Println("Error getting thumbnail", err)
 		goto icon
 	}
 	out, err = io.ReadAll(rdr)
 	if err != nil {
-		fmt.Println("Error reading thumbnail")
+		fmt.Println("Error reading thumbnail", err)
 		goto icon
 	}
 	if issvg.Is(out) {
@@ -55,12 +55,12 @@ icon:
 	fmt.Println("Checking icon")
 	rdr, _, err = ai.Icon()
 	if err != nil {
-		fmt.Println("Error getting icon")
+		fmt.Println("Error getting icon", err)
 		return fallback
 	}
 	out, err = io.ReadAll(rdr)
 	if err != nil {
-		fmt.Println("Error reading icon")
+		fmt.Println("Error reading icon", err)
 		return fallback
 	}
 	return

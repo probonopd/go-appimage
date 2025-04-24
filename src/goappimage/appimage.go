@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -75,7 +76,12 @@ func NewAppImage(path string) (ai *AppImage, err error) {
 	if ai.imageType == 1 {
 		ai.reader, err = newType1Reader(ai.Path)
 	} else if ai.imageType == 2 {
-		ai.reader, err = newType2Reader(ai)
+		ai.reader, err = newType2SquashfsReader(ai)
+		if err != nil {
+			fmt.Println(ai.Path, "is not a squashfs AppImage, falling back to generic implementation")
+			err = nil
+			ai.reader = newType2GenericReader(ai.Path)
+		}
 	}
 	if err != nil {
 		return ai, errors.Join(errors.New("unable to create AppImage file reader"), err)
@@ -176,20 +182,13 @@ func determineImageType(path string) int {
 }
 
 // SquashfsReader allows direct access to an AppImage's squashfs.
-// Only works on type 2 AppImages
+// Only works on type 2 AppImages made with squashfs archive
 func (ai AppImage) SquashfsReader() (*squashfs.Reader, error) {
-	if ai.imageType != 2 {
-		return nil, errors.New("not a type 2 appimage")
+	sfsRdr, ok := ai.reader.(*type2SquashfsReader)
+	if !ok {
+		return nil, errors.New("appimage is not type 2 with squashfs")
 	}
-	aiFil, err := os.Open(ai.Path)
-	if err != nil {
-		return nil, err
-	}
-	squashRdr, err := squashfs.NewReaderAtOffset(aiFil, ai.offset)
-	if err != nil {
-		return nil, err
-	}
-	return squashRdr, nil
+	return sfsRdr.rdr, nil
 }
 
 // Type is the type of the AppImage. Should be either 1 or 2.
@@ -237,8 +236,14 @@ func (ai AppImage) Icon() (io.ReadCloser, string, error) {
 			return rdr, icon, nil
 		}
 	}
+	var possibleImgs []string
 	rootFils := ai.reader.ListFiles("/")
 	for _, fil := range rootFils {
+		if strings.HasSuffix(fil, ".png") {
+			possibleImgs = append(possibleImgs, fil)
+		} else if strings.HasSuffix(fil, ".svg") {
+			possibleImgs = append(possibleImgs, fil)
+		}
 		if strings.HasPrefix(fil, icon) {
 			if fil == icon+".png" {
 				rdr, err := ai.reader.FileReader(fil)
@@ -254,6 +259,10 @@ func (ai AppImage) Icon() (io.ReadCloser, string, error) {
 				return rdr, fil, nil
 			}
 		}
+	}
+	if len(possibleImgs) > 0 {
+		rdr, err := ai.reader.FileReader(possibleImgs[0])
+		return rdr, possibleImgs[0], err
 	}
 	return nil, "", errors.New("Cannot find the AppImage's icon: " + icon)
 }
@@ -289,8 +298,10 @@ func runCommand(cmd *exec.Cmd) (bytes.Buffer, error) {
 // it will try to get that information from the squashfs, if not, it returns the file's ModTime.
 func (ai AppImage) ModTime() time.Time {
 	if ai.imageType == 2 {
-		if ai.reader != nil {
-			return ai.reader.(*type2Reader).rdr.ModTime()
+		if sfsRdr, ok := ai.reader.(*type2SquashfsReader); !ok {
+			goto fallback
+		} else if sfsRdr != nil {
+			return sfsRdr.rdr.ModTime()
 		}
 		result, err := exec.Command("unsquashfs", "-q", "-fstime", "-o", strconv.FormatInt(ai.offset, 10), ai.Path).Output()
 		resstr := strings.TrimSpace(string(bytes.TrimSpace(result)))
