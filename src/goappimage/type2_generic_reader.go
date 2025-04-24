@@ -23,8 +23,13 @@ type type2GenericFile struct {
 	file    *os.File
 }
 
-func newType2GenericReader(aiPath string) type2GenericReader {
-	return type2GenericReader{aiPath}
+func newType2GenericReader(aiPath string) (type2GenericReader, error) {
+	// Make sure AppImage is executable
+	err := os.Chmod(aiPath, 0755)
+	if err != nil {
+		return type2GenericReader{}, err
+	}
+	return type2GenericReader{aiPath}, nil
 }
 
 func (r type2GenericFile) Read(b []byte) (int, error) {

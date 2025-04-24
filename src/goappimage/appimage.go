@@ -79,8 +79,7 @@ func NewAppImage(path string) (ai *AppImage, err error) {
 		ai.reader, err = newType2SquashfsReader(ai)
 		if err != nil {
 			fmt.Println(ai.Path, "is not a squashfs AppImage, falling back to generic implementation")
-			err = nil
-			ai.reader = newType2GenericReader(ai.Path)
+			ai.reader, err = newType2GenericReader(ai.Path)
 		}
 	}
 	if err != nil {
