@@ -106,7 +106,10 @@ build () {
   cp $PROJECT/data/appimage.png $BUILDDIR/$PROG-$ARCH.AppDir/
   if [ $PROG == appimaged ]; then
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/bsdtar-$AIARCH -O bsdtar )
-    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/mhx/dwarfs/releases/download/v0.12.3/dwarfs-fuse-extract-0.12.3-Linux-$AIARCH -O dwarfs )
+    # dwarfs only compiles for arm64 and amd64
+    if [ $ARCH == arm64 ] || [ $ARCH == amd64 ]; then
+    	( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/mhx/dwarfs/releases/download/v0.12.3/dwarfs-fuse-extract-0.12.3-Linux-$AIARCH -O dwarfs )
+    fi
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; ln -sf dwarfs dwarfsextract )
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/unsquashfs-$AIARCH -O unsquashfs )
     cat > $BUILDDIR/$PROG-$ARCH.AppDir/appimaged.desktop <<\EOF
