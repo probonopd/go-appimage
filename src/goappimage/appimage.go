@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -72,26 +71,27 @@ func NewAppImage(path string) (ai *AppImage, err error) {
 	if ai.imageType > 1 {
 		ai.offset = helpers.CalculateElfSize(ai.Path)
 	}
-	if ai.imageType == 1 {
+	switch ai.imageType {
+	case 1:
 		ai.reader, err = newType1Reader(ai.Path)
-	} else if ai.imageType == 2 {
+	case 2:
 		// Determine if AppImage is squashfs or dwarfs
 		magic := make([]byte, 6)
 		var aiFil *os.File
 		aiFil, err = os.Open(ai.Path)
 		if err != nil {
-			return nil, err
+			return ai, err
 		}
 		_, err = aiFil.ReadAt(magic, ai.offset)
 		if err != nil {
-			return nil, err
+			return ai, err
 		}
-		if bytes.Equal(magic, []byte("DWARFS")) {
-
-		} else if bytes.Equal(magic[:4], []byte("SQFS")) {
+		if bytes.Equal(magic[:4], []byte("hsqs")) {
 			ai.reader, err = newType2SquashfsReader(ai)
+		} else if bytes.Equal(magic, []byte("DWARFS")) {
+			ai.reader, err = newType2DwarfsReader(ai)
 		} else {
-			return nil, errors.New("type 2 appimage does not use squashfs or dwarfs which is currently unsupported")
+			return ai, errors.New("type 2 appimage does not use squashfs or dwarfs which is currently unsupported")
 		}
 	}
 	if err != nil {
@@ -113,6 +113,7 @@ func NewAppImage(path string) (ai *AppImage, err error) {
 	if err != nil {
 		return
 	}
+	defer desktopFil.Close()
 
 	//cleaning the desktop file so it can be parsed properly
 	var desktop []byte
@@ -193,20 +194,12 @@ func determineImageType(path string) int {
 }
 
 // SquashfsReader allows direct access to an AppImage's squashfs.
-// Only works on type 2 AppImages
+// Only works on type 2 AppImages that use squashfs
 func (ai AppImage) SquashfsReader() (*squashfs.Reader, error) {
-	if ai.imageType != 2 {
-		return nil, errors.New("not a type 2 appimage")
+	if sfsRdr, ok := ai.reader.(*type2SquashfsReader); ok {
+		return sfsRdr.rdr, nil
 	}
-	aiFil, err := os.Open(ai.Path)
-	if err != nil {
-		return nil, err
-	}
-	squashRdr, err := squashfs.NewReaderAtOffset(aiFil, ai.offset)
-	if err != nil {
-		return nil, err
-	}
-	return squashRdr, nil
+	return nil, errors.New("not a type 2 appimage with squashfs")
 }
 
 // Type is the type of the AppImage. Should be either 1 or 2.
@@ -254,8 +247,14 @@ func (ai AppImage) Icon() (io.ReadCloser, string, error) {
 			return rdr, icon, nil
 		}
 	}
+	pngs, svgs := []string{}, []string{}
 	rootFils := ai.reader.ListFiles("/")
 	for _, fil := range rootFils {
+		if strings.HasSuffix(fil, ".png") {
+			pngs = append(pngs, fil)
+		} else if strings.HasSuffix(fil, ".svg") {
+			svgs = append(svgs, fil)
+		}
 		if strings.HasPrefix(fil, icon) {
 			if fil == icon+".png" {
 				rdr, err := ai.reader.FileReader(fil)
@@ -270,6 +269,17 @@ func (ai AppImage) Icon() (io.ReadCloser, string, error) {
 				}
 				return rdr, fil, nil
 			}
+		}
+	}
+	if len(pngs) > 0 {
+		rdr, err := ai.reader.FileReader(pngs[0])
+		if err == nil {
+			return rdr, pngs[0], nil
+		}
+	} else if len(svgs) > 0 {
+		rdr, err := ai.reader.FileReader(svgs[0])
+		if err == nil {
+			return rdr, svgs[0], nil
 		}
 	}
 	return nil, "", errors.New("Cannot find the AppImage's icon: " + icon)
@@ -305,20 +315,9 @@ func runCommand(cmd *exec.Cmd) (bytes.Buffer, error) {
 // ModTime is the time the AppImage was edited/created. If the AppImage is type 2,
 // it will try to get that information from the squashfs, if not, it returns the file's ModTime.
 func (ai AppImage) ModTime() time.Time {
-	if ai.imageType == 2 {
-		if ai.reader != nil {
-			return ai.reader.(*type2SquashfsReader).rdr.ModTime()
-		}
-		result, err := exec.Command("unsquashfs", "-q", "-fstime", "-o", strconv.FormatInt(ai.offset, 10), ai.Path).Output()
-		resstr := strings.TrimSpace(string(bytes.TrimSpace(result)))
-		if err != nil {
-			goto fallback
-		}
-		if n, err := strconv.Atoi(resstr); err == nil {
-			return time.Unix(int64(n), 0)
-		}
+	if sfsRdr, ok := ai.reader.(*type2SquashfsReader); ok {
+		return sfsRdr.rdr.ModTime()
 	}
-fallback:
 	fil, err := os.Open(ai.Path)
 	if err != nil {
 		return time.Unix(0, 0)

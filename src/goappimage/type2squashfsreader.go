@@ -22,7 +22,7 @@ func newType2SquashfsReader(ai *AppImage) (*type2SquashfsReader, error) {
 		return nil, err
 	}
 	return &type2SquashfsReader{
-		rdr: squashRdr,
+		rdr: &squashRdr,
 	}, nil
 }
 
@@ -103,7 +103,7 @@ func (r *type2SquashfsReader) ExtractTo(filepath, destination string, resolveSym
 		return err
 	}
 	options := squashfs.DefaultOptions()
-	options.DereferenceSymlink = true
+	options.DereferenceSymlink = resolveSymlinks
 	err = fsFil.(*squashfs.File).ExtractWithOptions(destination, options)
 	return err
 }
