@@ -106,6 +106,7 @@ build () {
   cp $PROJECT/data/appimage.png $BUILDDIR/$PROG-$ARCH.AppDir/
   if [ $PROG == appimaged ]; then
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/bsdtar-$AIARCH -O bsdtar )
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/mhx/dwarfs/releases/download/v0.12.3/dwarfs-fuse-extract-0.12.3-Linux-$AIARCH -O dwarfs )
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/unsquashfs-$AIARCH -O unsquashfs )
     cat > $BUILDDIR/$PROG-$ARCH.AppDir/appimaged.desktop <<\EOF
 [Desktop Entry]
@@ -126,7 +127,7 @@ EOF
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse3-aarch64 -O runtime-aarch64 )
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse3-armhf -O runtime-armhf )
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse3-i686 -O runtime-i686 )
-    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse3-x86_64 -O runtime-x86_64 )     
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse3-x86_64 -O runtime-x86_64 )
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh -O uploadtool )
     cat > $BUILDDIR/$PROG-$ARCH.AppDir/appimagetool.desktop <<\EOF
 [Desktop Entry]
@@ -146,7 +147,7 @@ EOF
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse3-aarch64 -O runtime-aarch64 )
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse3-armhf -O runtime-armhf )
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse3-i686 -O runtime-i686 )
-    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse3-x86_64 -O runtime-x86_64 )    
+    ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/runtime-fuse3-x86_64 -O runtime-x86_64 )
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/uploadtool/raw/master/upload.sh -O uploadtool )
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/bsdtar-$AIARCH -O bsdtar )
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/unsquashfs-$AIARCH -O unsquashfs )

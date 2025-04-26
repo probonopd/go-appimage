@@ -75,7 +75,24 @@ func NewAppImage(path string) (ai *AppImage, err error) {
 	if ai.imageType == 1 {
 		ai.reader, err = newType1Reader(ai.Path)
 	} else if ai.imageType == 2 {
-		ai.reader, err = newType2Reader(ai)
+		// Determine if AppImage is squashfs or dwarfs
+		magic := make([]byte, 6)
+		var aiFil *os.File
+		aiFil, err = os.Open(ai.Path)
+		if err != nil {
+			return nil, err
+		}
+		_, err = aiFil.ReadAt(magic, ai.offset)
+		if err != nil {
+			return nil, err
+		}
+		if bytes.Equal(magic, []byte("DWARFS")) {
+
+		} else if bytes.Equal(magic[:4], []byte("SQFS")) {
+			ai.reader, err = newType2SquashfsReader(ai)
+		} else {
+			return nil, errors.New("type 2 appimage does not use squashfs or dwarfs which is currently unsupported")
+		}
 	}
 	if err != nil {
 		return ai, errors.Join(errors.New("unable to create AppImage file reader"), err)
@@ -290,7 +307,7 @@ func runCommand(cmd *exec.Cmd) (bytes.Buffer, error) {
 func (ai AppImage) ModTime() time.Time {
 	if ai.imageType == 2 {
 		if ai.reader != nil {
-			return ai.reader.(*type2Reader).rdr.ModTime()
+			return ai.reader.(*type2SquashfsReader).rdr.ModTime()
 		}
 		result, err := exec.Command("unsquashfs", "-q", "-fstime", "-o", strconv.FormatInt(ai.offset, 10), ai.Path).Output()
 		resstr := strings.TrimSpace(string(bytes.TrimSpace(result)))
