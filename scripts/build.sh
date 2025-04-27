@@ -107,7 +107,7 @@ build () {
   if [ $PROG == appimaged ]; then
     ( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/probonopd/static-tools/releases/download/continuous/bsdtar-$AIARCH -O bsdtar )
     # dwarfs only compiles for arm64 and amd64
-    if [ $ARCH == "arm64" ] || [ $ARCH == "amd64" ]; then
+    if [ $ARCH == x86_64 ] || [ $ARCH == aarch64 ]; then
     	( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; wget -c https://github.com/mhx/dwarfs/releases/download/v0.12.3/dwarfs-fuse-extract-0.12.3-Linux-$AIARCH -O dwarfs )
     	( cd $BUILDDIR/$PROG-$ARCH.AppDir/usr/bin/ ; ln -sf dwarfs dwarfsextract )
     fi
