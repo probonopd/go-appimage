@@ -17,11 +17,11 @@ type type2DwarfsReader struct {
 }
 
 func newType2DwarfsReader(ai *AppImage) (*type2DwarfsReader, error) {
-	pth, err := exec.LookPath("dwarfs")
+	pth, _ := exec.LookPath("dwarfs")
 	if pth == "" {
 		return nil, errors.New("dwarfs not found in PATH, cannot read dwarfs AppImage")
 	}
-	pth, err = exec.LookPath("dwarfsextract")
+	pth, _ = exec.LookPath("dwarfsextract")
 	if pth == "" {
 		return nil, errors.New("dwarfsextract not found in PATH, cannot read dwarfs AppImage")
 	}
