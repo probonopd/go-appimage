@@ -111,6 +111,13 @@ func writeDesktopFile(ai AppImage) error {
 		}
 	}
 
+	// Remove localized Icon[LANG] keys
+	for _, key := range cfg.Section("Desktop Entry").Keys() {
+		if strings.HasPrefix(key.Name(), "Icon[") && strings.HasSuffix(key.Name(), "]") {
+			cfg.Section("Desktop Entry").DeleteKey(key.Name())
+		}
+	}
+
 	if isWritable(ai.Path) {
 		// Add "Move to Trash" action
 		// if the AppImage is writeable (= the user can remove it)
