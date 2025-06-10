@@ -77,6 +77,8 @@ Name=Make executable
 %s
 </actions>	
 `
+	DesktopFileName := "appimaged.desktop"
+
 	// TODO: Nautilus (also) has $HOME/.local/share/nautilus/scripts
 
 	// GNOME
@@ -88,17 +90,27 @@ Name=Make executable
 		helpers.PrintError("filemanager", err)
 	}
 	d1 := []byte(GNOMEFileManagerActionEntry)
-	err = os.WriteFile(xdg.DataHome+"/file-manager/actions/appimaged.desktop", d1, 0644)
+	err = os.WriteFile(xdg.DataHome+"/file-manager/actions/"+DesktopFileName, d1, 0644)
 	helpers.PrintError("filemanager", err)
 
 	// KDE
-	// $HOME/.local/share/kservices5/ServiceMenus/appimageupdate.desktop
-	err = os.MkdirAll(xdg.DataHome+"/kservices5/ServiceMenus/", 0755)
+	// $HOME/.local/share/kio/servicemenus/appimaged.desktop
+	// Prior to KDE Frameworks 5.85
+	// $HOME/.local/share/kservices5/ServiceMenus/appimaged.desktop
+	oldServiceMenusDir := "/kservices5/ServiceMenus/"
+	newServiceMenusDir := "/kio/servicemenus/"
+	err = os.MkdirAll(xdg.DataHome+oldServiceMenusDir, 0755)
 	if err != nil {
 		helpers.PrintError("filemanager", err)
 	}
 	d2 := []byte(KDEServiceMenuEntry)
-	err = os.WriteFile(xdg.DataHome+"/kservices5/ServiceMenus/appimaged.desktop", d2, 0644)
+	err = os.WriteFile(xdg.DataHome+oldServiceMenusDir+DesktopFileName, d2, 0644)
+	helpers.PrintError("filemanager", err)
+	err = os.MkdirAll(xdg.DataHome+newServiceMenusDir, 0755)
+	if err != nil {
+		helpers.PrintError("filemanager", err)
+	}
+	err = os.Symlink(xdg.DataHome+oldServiceMenusDir+DesktopFileName, xdg.DataHome+newServiceMenusDir+DesktopFileName)
 	helpers.PrintError("filemanager", err)
 
 	// XFCE
