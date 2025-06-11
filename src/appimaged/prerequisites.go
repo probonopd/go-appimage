@@ -509,21 +509,37 @@ func installServiceFileInHome() {
 	log.Println("thisai.path:", thisai.Path)
 	d1 := []byte(`[Unit]
 Description=AppImage system integration daemon
-After=syslog.target network.target
+After=syslog.target network.target gvfs-udisks2-volume-monitor.service plasma-powerdevil.service
 
 [Service]
-Type=simple
+ExecCondition=/bin/sh -c ' \
+    unit_status() { \
+        systemctl --user --quiet "is-$${1}" "$$2"; \
+    }; \
+    some_enabled=false; \
+    some_active=false; \
+    for service in "gvfs-udisks2-volume-monitor" "plasma-powerdevil"; do \
+        service="$${service}.service"; \
+        if unit_status enabled "$$service"; then \
+            some_enabled=true; \
+            if unit_status active "$$service"; then \
+                some_active=true; \
+                break; \
+            fi; \
+        fi; \
+    done; \
+    $$some_active || ! $$some_enabled; \
+'
 ExecStart=` + thisai.Path + `
-
-LimitNOFILE=65536
-
 RestartSec=3
 Restart=always
-
 Environment=LAUNCHED_BY_SYSTEMD=1
+Slice=background.slice
+LimitNOFILE=65536
 
 [Install]
-WantedBy=default.target`)
+WantedBy=default.target gvfs-udisks2-volume-monitor.service plasma-powerdevil.service
+`)
 	err = syncWriteFile(pathToServiceDir+"appimaged.service", d1, 0644)
 	helpers.LogError("Error writing service file", err)
 
