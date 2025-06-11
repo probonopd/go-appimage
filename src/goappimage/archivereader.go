@@ -9,8 +9,6 @@ import (
 	"path"
 	"sort"
 	"strings"
-
-	"github.com/CalebQ42/squashfs"
 )
 
 type archiveReader interface {
@@ -26,107 +24,6 @@ type archiveReader interface {
 	ListFiles(path string) []string
 	//ExtractTo extracts the file/folder at path to the folder at destination.
 	ExtractTo(path, destination string, resolveSymlinks bool) error
-}
-
-// TODO: Implement command based fallback here.
-type type2Reader struct {
-	rdr *squashfs.Reader
-}
-
-func newType2Reader(ai *AppImage) (*type2Reader, error) {
-	aiFil, err := os.Open(ai.Path)
-	if err != nil {
-		return nil, err
-	}
-	squashRdr, err := squashfs.NewReaderAtOffset(aiFil, ai.offset)
-	if err != nil {
-		return nil, err
-	}
-	return &type2Reader{
-		rdr: squashRdr,
-	}, nil
-}
-
-// type anonymousCloser struct {
-// 	close func() error
-// }
-
-// func (a anonymousCloser) Close() error {
-// 	return a.close()
-// }
-
-func (r *type2Reader) FileReader(filepath string) (io.ReadCloser, error) {
-	//TODO: command fallback
-	fsFil, err := r.rdr.Open(filepath)
-	if err != nil {
-		return nil, err
-	}
-	fil := fsFil.(*squashfs.File)
-	for fil.IsSymlink() {
-		symFil := fil.GetSymlinkFile()
-		if symFil == nil {
-			return nil, errors.New("Can't resolve symlink at: " + filepath)
-		}
-		fil = symFil.(*squashfs.File)
-	}
-	if fil.IsDir() {
-		return nil, errors.New("Path is a directory: " + filepath)
-	}
-	return fil, nil
-}
-
-func (r *type2Reader) IsDir(filepath string) bool {
-	fsFil, err := r.rdr.Open(filepath)
-	if err != nil {
-		return false
-	}
-	fil := fsFil.(*squashfs.File)
-	for fil.IsSymlink() {
-		symFil := fil.GetSymlinkFile()
-		if symFil == nil {
-			return false
-		}
-		fil = symFil.(*squashfs.File)
-	}
-	return fil.IsDir()
-}
-
-func (r *type2Reader) ListFiles(path string) []string {
-	fsFil, err := r.rdr.Open(path)
-	if err != nil {
-		return nil
-	}
-	fil := fsFil.(*squashfs.File)
-	for fil.IsSymlink() {
-		symFil := fil.GetSymlinkFile()
-		if symFil == nil {
-			return nil
-		}
-		fil = symFil.(*squashfs.File)
-	}
-	if !fil.IsDir() {
-		return nil
-	}
-	children, err := fil.ReadDir(0)
-	if err != nil {
-		return nil
-	}
-	out := make([]string, len(children))
-	for _, child := range children {
-		out = append(out, child.Name())
-	}
-	return out
-}
-
-func (r *type2Reader) ExtractTo(filepath, destination string, resolveSymlinks bool) error {
-	fsFil, err := r.rdr.Open(filepath)
-	if err != nil {
-		return err
-	}
-	options := squashfs.DefaultOptions()
-	options.DereferenceSymlink = true
-	err = fsFil.(*squashfs.File).ExtractWithOptions(destination, options)
-	return err
 }
 
 type type1Reader struct {

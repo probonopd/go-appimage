@@ -1,9 +1,11 @@
 module github.com/probonopd/go-appimage
 
-go 1.23
+go 1.24.0
+
+toolchain go1.24.2
 
 require (
-	github.com/CalebQ42/squashfs v1.0.4
+	github.com/CalebQ42/squashfs v1.2.0
 	github.com/acobaugh/osrelease v0.1.0
 	github.com/adrg/xdg v0.5.0
 	github.com/alokmenghrajani/gpgeez v0.0.0-20161206084504-1a06f1c582f9
@@ -42,9 +44,9 @@ require (
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/kevinburke/ssh_config v0.0.0-20190725054713-01f96b0aa0cd // indirect
-	github.com/klauspost/compress v1.17.9 // indirect
+	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
-	github.com/pierrec/lz4/v4 v4.1.21 // indirect
+	github.com/pierrec/lz4/v4 v4.1.22 // indirect
 	github.com/rasky/go-lzo v0.0.0-20200203143853-96a758eda86e // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/rustyoz/Mtransform v0.0.0-20190224104252-60c8c35a3681 // indirect
