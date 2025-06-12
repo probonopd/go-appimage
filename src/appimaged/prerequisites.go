@@ -413,8 +413,8 @@ func setupToRunThroughSystemd() {
 		if os.Getenv("LAUNCHED_BY_SYSTEMD") != "2" {
 			installServiceFileInHome()
 			// Re-enabling is required if [Install] section of service unit file changes
-			prc = exec.Command("systemctl", "--user", "reenable", "appimaged")
-			_, err = prc.CombinedOutput()
+			prc := exec.Command("systemctl", "--user", "reenable", "appimaged")
+			_, err := prc.CombinedOutput()
 			if err != nil {
 				log.Println(prc.String())
 				log.Println(err)
