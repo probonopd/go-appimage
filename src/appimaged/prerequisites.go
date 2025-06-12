@@ -405,6 +405,38 @@ func setupToRunThroughSystemd() {
 			os.Exit(0)
 		}
 
+	} else {
+		// Quick hack to check systemd service unit file revision
+		// The environment variable value isn't used anywhere else anyway
+		// Ideally, existing service unit file content should be compared
+		// against the content we would have written
+		if os.Getenv("LAUNCHED_BY_SYSTEMD") != "2" {
+			installServiceFileInHome()
+			// Re-enabling is required if [Install] section of service unit file changes
+			prc = exec.Command("systemctl", "--user", "reenable", "appimaged")
+			_, err = prc.CombinedOutput()
+			if err != nil {
+				log.Println(prc.String())
+				log.Println(err)
+				if !isatty.IsTerminal(os.Stdin.Fd()) {
+					sendDesktopNotification("Update Failed", "Unable to enable systemd service", -1)
+				}
+				os.Exit(0)
+			}
+			log.Println("Starting systemd service...")
+			prc = exec.Command("systemctl", "--user", "restart", "appimaged")
+			_, err = prc.CombinedOutput()
+			if err != nil {
+				log.Println(prc.String())
+				log.Println(err)
+				// The new version of service unit will be in effect on next boot anyway
+			} else {
+				// The current process was started by systemd as a service,
+				// and systemctl command is issued to restart the service.
+				// Is it even possible for this process to still be alive?
+				os.Exit(0)
+			}
+		}
 	}
 
 }
@@ -533,7 +565,7 @@ ExecCondition=/bin/sh -c ' \
 ExecStart=` + thisai.Path + `
 RestartSec=3
 Restart=always
-Environment=LAUNCHED_BY_SYSTEMD=1
+Environment=LAUNCHED_BY_SYSTEMD=2
 Slice=background.slice
 LimitNOFILE=65536
 
