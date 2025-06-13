@@ -351,6 +351,19 @@ func setupToRunThroughSystemd() {
 		if _, err := os.Stat("/etc/systemd/user/appimaged.service"); os.IsNotExist(err) {
 			log.Println("/etc/systemd/user/appimaged.service does not exist")
 			installServiceFileInHome()
+			// If another version of appimaged service is enabled, but this instance is
+			// launched manually, we still want to re-enable the service after installing
+			// this version to reflect potential changes in [Install] section of the unit file
+			prc := exec.Command("systemctl", "--user", "reenable", "appimaged")
+			_, err = prc.CombinedOutput()
+			if err != nil {
+				log.Println(prc.String())
+				log.Println(err)
+				if !isatty.IsTerminal(os.Stdin.Fd()) {
+					sendDesktopNotification("Install Failed", "Unable to enable systemd service", -1)
+				}
+				os.Exit(0)
+			}
 			installed = true
 		}
 
