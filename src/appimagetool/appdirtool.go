@@ -286,7 +286,20 @@ func AppDirDeploy(path string) {
 		if strings.HasPrefix(lib, appdir.Path) == false {
 			lib = appdir.Path + lib
 		}
-		libraryLocationsInAppDir = helpers.AppendIfMissing(libraryLocationsInAppDir, lib)
+		files, err := os.ReadDir(lib)
+		if err != nil {
+			continue
+		}
+		hasSo := false
+		for _, file := range files {
+			if !file.IsDir() && (strings.HasSuffix(file.Name(), ".so") || strings.Contains(file.Name(), ".so.")) {
+				hasSo = true
+				break
+			}
+		}
+		if hasSo {
+			libraryLocationsInAppDir = helpers.AppendIfMissing(libraryLocationsInAppDir, lib)
+		}
 	}
 	fmt.Println("")
 
