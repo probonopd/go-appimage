@@ -67,6 +67,23 @@ if [ -e "${HERE}"/usr/share/tcltk/tcl8.6 ] ; then
 fi
 
 ############################################################################################
+# Use the system OpenSSL certificates if available
+############################################################################################
+
+# On most modern machines
+if [ -e /etc/ssl/certs/ca-certificates.crt ]; then
+  export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+# Legacy versions of RHEL/Fedora
+elif [ -e /etc/ssl/certs/ca-bundle.crt ]; then
+  export SSL_CERT_FILE=/etc/ssl/certs/ca-bundle.crt
+# Misc
+elif [ -e /etc/ssl/cacert.pem ]; then
+  export SSL_CERT_FILE=/etc/ssl/cacert.pem
+elif [ -e /etc/ssl/cert.pem ]; then
+  export SSL_CERT_FILE=/etc/ssl/cert.pem
+fi
+
+############################################################################################
 # Make it look more native on Gtk+ based systems
 ############################################################################################
 
