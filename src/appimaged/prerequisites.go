@@ -554,26 +554,18 @@ func installServiceFileInHome() {
 	log.Println("thisai.path:", thisai.Path)
 	d1 := []byte(`[Unit]
 Description=AppImage system integration daemon
-After=syslog.target network.target gvfs-udisks2-volume-monitor.service plasma-powerdevil.service
+After=syslog.target network.target plasma-powerdevil.service graphical-session.target
 
 [Service]
 ExecCondition=/bin/sh -c ' \
     unit_status() { \
         systemctl --user --quiet "is-$${1}" "$$2"; \
     }; \
-    some_enabled=false; \
-    some_active=false; \
-    for service in "gvfs-udisks2-volume-monitor" "plasma-powerdevil"; do \
-        service="$${service}.service"; \
-        if unit_status enabled "$$service"; then \
-            some_enabled=true; \
-            if unit_status active "$$service"; then \
-                some_active=true; \
-                break; \
-            fi; \
-        fi; \
-    done; \
-    $$some_active || ! $$some_enabled; \
+    POWERDEVIL_SERVICE="plasma-powerdevil.service"; \
+    unit_status enabled gvfs-udisks2-volume-monitor.service || \
+    unit_status active "$$POWERDEVIL_SERVICE" || \
+    ! unit_status enabled "$$POWERDEVIL_SERVICE" || \
+    unit_status active graphical-session.target; \
 '
 ExecStart=` + thisai.Path + `
 RestartSec=3
@@ -583,7 +575,7 @@ Slice=background.slice
 LimitNOFILE=65536
 
 [Install]
-WantedBy=default.target gvfs-udisks2-volume-monitor.service plasma-powerdevil.service
+WantedBy=default.target plasma-powerdevil.service graphical-session.target
 `)
 	err = syncWriteFile(pathToServiceDir+"appimaged.service", d1, 0644)
 	helpers.LogError("Error writing service file", err)
