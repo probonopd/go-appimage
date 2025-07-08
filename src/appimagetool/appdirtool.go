@@ -1356,6 +1356,18 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		for _, lib := range allELFs {
 			if strings.HasSuffix(lib, fmt.Sprintf("libQt%dNetwork.so.%d", qtVersion, qtVersion)) == true {
 				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/bearer/")
+				determineELFsInDirTree(appdir, qtPrfxpath+"/plugins/tls/")
+
+				// TLS plugins in Qt 6 require OpenSSL 3
+				if qtVersion >= 6 {
+					sslLibrary, err := findLibrary("libssl.so.3")
+					if err != nil {
+						helpers.PrintError("Could not find libssl.so.3", err)
+						os.Exit(1)
+					}
+					determineELFsInDirTree(appdir, sslLibrary)
+				}
+
 				break
 			}
 		}
