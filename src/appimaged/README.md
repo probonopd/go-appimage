@@ -10,7 +10,8 @@ Assuming you are using a 64-bit Intel machine (amd64, also known as x86_64), you
 # Remove pre-existing conflicting tools (if any)
 systemctl --user stop appimaged.service || true
 sudo apt-get -y purge appimagelauncher || true
-[ -f ~/.config/systemd/user/default.target.wants/appimagelauncherd.service ] && rm ~/.config/systemd/user/default.target.wants/appimagelauncherd.service
+rm -f ~/.config/systemd/user/default.target.wants/appimagelauncherd.service
+systemctl --user daemon-reload
 
 # Clear cache
 rm "$HOME"/.local/share/applications/appimage*
