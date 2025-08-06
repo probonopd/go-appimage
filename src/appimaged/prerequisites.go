@@ -351,6 +351,19 @@ func setupToRunThroughSystemd() {
 		if _, err := os.Stat("/etc/systemd/user/appimaged.service"); os.IsNotExist(err) {
 			log.Println("/etc/systemd/user/appimaged.service does not exist")
 			installServiceFileInHome()
+			// If another version of appimaged service is enabled, but this instance is
+			// launched manually, we still want to re-enable the service after installing
+			// this version to reflect potential changes in [Install] section of the unit file
+			prc := exec.Command("systemctl", "--user", "reenable", "appimaged")
+			_, err = prc.CombinedOutput()
+			if err != nil {
+				log.Println(prc.String())
+				log.Println(err)
+				if !isatty.IsTerminal(os.Stdin.Fd()) {
+					sendDesktopNotification("Install Failed", "Unable to enable systemd service", -1)
+				}
+				os.Exit(0)
+			}
 			installed = true
 		}
 
@@ -405,6 +418,38 @@ func setupToRunThroughSystemd() {
 			os.Exit(0)
 		}
 
+	} else {
+		// Quick hack to check systemd service unit file revision
+		// The environment variable value isn't used anywhere else anyway
+		// Ideally, existing service unit file content should be compared
+		// against the content we would have written
+		if os.Getenv("LAUNCHED_BY_SYSTEMD") != "2" {
+			installServiceFileInHome()
+			// Re-enabling is required if [Install] section of service unit file changes
+			prc := exec.Command("systemctl", "--user", "reenable", "appimaged")
+			_, err := prc.CombinedOutput()
+			if err != nil {
+				log.Println(prc.String())
+				log.Println(err)
+				if !isatty.IsTerminal(os.Stdin.Fd()) {
+					sendDesktopNotification("Update Failed", "Unable to enable systemd service", -1)
+				}
+				os.Exit(0)
+			}
+			log.Println("Starting systemd service...")
+			prc = exec.Command("systemctl", "--user", "restart", "appimaged")
+			_, err = prc.CombinedOutput()
+			if err != nil {
+				log.Println(prc.String())
+				log.Println(err)
+				// The new version of service unit will be in effect on next boot anyway
+			} else {
+				// The current process was started by systemd as a service,
+				// and systemctl command is issued to restart the service.
+				// Is it even possible for this process to still be alive?
+				os.Exit(0)
+			}
+		}
 	}
 
 }
@@ -509,21 +554,29 @@ func installServiceFileInHome() {
 	log.Println("thisai.path:", thisai.Path)
 	d1 := []byte(`[Unit]
 Description=AppImage system integration daemon
-After=syslog.target network.target
+After=syslog.target network.target plasma-powerdevil.service graphical-session.target
 
 [Service]
-Type=simple
+ExecCondition=/bin/sh -c ' \
+    unit_status() { \
+        systemctl --user --quiet "is-$${1}" "$$2"; \
+    }; \
+    POWERDEVIL_SERVICE="plasma-powerdevil.service"; \
+    unit_status enabled gvfs-udisks2-volume-monitor.service || \
+    unit_status active "$$POWERDEVIL_SERVICE" || \
+    ! unit_status enabled "$$POWERDEVIL_SERVICE" || \
+    unit_status active graphical-session.target; \
+'
 ExecStart=` + thisai.Path + `
-
-LimitNOFILE=65536
-
 RestartSec=3
 Restart=always
-
-Environment=LAUNCHED_BY_SYSTEMD=1
+Environment=LAUNCHED_BY_SYSTEMD=2
+Slice=background.slice
+LimitNOFILE=65536
 
 [Install]
-WantedBy=default.target`)
+WantedBy=default.target plasma-powerdevil.service graphical-session.target
+`)
 	err = syncWriteFile(pathToServiceDir+"appimaged.service", d1, 0644)
 	helpers.LogError("Error writing service file", err)
 
