@@ -18,6 +18,10 @@ VERSION=1.0 ./appimagetool-*.AppImage ./AppDir # turn AppDir into AppImage
 
 <https://github.com/probonopd/go-appimage/releases/tag/continuous> has builds for 32-bit Intel, 32-bit ARM (e.g., Raspberry Pi), and 64-bit ARM.
 
+### Recognized env vars
+
+- `QTDIR`: root directory for the Qt installation to copy shared libraries from, e.g. `/usr/lib/qt6/`
+
 ## Features
 
 Implemented
