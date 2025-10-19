@@ -40,6 +40,7 @@ func (ai AppImage) getThumbnailOrIcon() (out []byte) {
 		fmt.Println("Error getting thumbnail")
 		goto icon
 	}
+	defer rdr.Close()
 	out, err = io.ReadAll(rdr)
 	if err != nil {
 		fmt.Println("Error reading thumbnail")
@@ -58,6 +59,7 @@ icon:
 		fmt.Println("Error getting icon")
 		return fallback
 	}
+	defer rdr.Close()
 	out, err = io.ReadAll(rdr)
 	if err != nil {
 		fmt.Println("Error reading icon")
