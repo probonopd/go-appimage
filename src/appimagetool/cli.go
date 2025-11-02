@@ -32,6 +32,7 @@ func bootstrapAppImageDeploy(c *cli.Context) error {
 	options = DeployOptions{
 		standalone:     c.Bool("standalone"),
 		libAppRunHooks: c.Bool("libapprun_hooks"),
+		preserveCwd:    c.Bool("preserve_cwd"),
 	}
 	AppDirDeploy(c.Args().Get(0))
 	return nil
@@ -277,6 +278,10 @@ func main() {
 			Name:    "standalone",
 			Aliases: []string{"s"},
 			Usage:   "Make standalone self-contained bundle",
+		},
+		&cli.BoolFlag{
+			Name:    "preserve_cwd",
+			Usage:   "Preserve the current working directory when running the app",
 		},
 	}
 
