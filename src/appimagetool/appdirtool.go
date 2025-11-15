@@ -38,7 +38,8 @@ var seenDeps []string
 
 var quirksModePatchQtPrfxPath = false
 
-var AppRunData = `#!/bin/sh
+func getAppRunData() string {
+	apprun := `#!/bin/sh
 
 HERE="$(dirname "$(readlink -f "${0}")")"
 
@@ -90,7 +91,10 @@ fi
 case "${XDG_CURRENT_DESKTOP}" in
     *GNOME*|*gnome*)
         export QT_QPA_PLATFORMTHEME=gtk2
-esac
+esac`
+
+	if options.preserveCwd == false {
+		apprun += `
 
 ############################################################################################
 # If .ui files are in the AppDir, then chances are that we need to cd into usr/
@@ -100,7 +104,10 @@ esac
 UIFILES=$(find "$HERE" -name "*.ui")
 if [ ! -z "$UIFILES" ] ; then
   cd "$HERE/usr"
-fi
+fi`
+	}
+
+	apprun += `
 
 ############################################################################################
 # Use bundled GStreamer
@@ -117,9 +124,15 @@ fi
 ############################################################################################
 # Run experimental bundle that bundles everything if a private ld-linux-x86-64.so.2 is there
 # This allows the bundle to run even on older systems than the one it was built on
-############################################################################################
+############################################################################################`
 
-cd "$HERE/usr" # Not all applications will need this; TODO: Make this opt-in
+	if options.preserveCwd == false {
+		apprun += `
+
+cd "$HERE/usr"`
+	}
+
+	apprun += `
 
 # Try to find a binary with the same name as the AppImage or the symlink through which
 # it was invoked, without any suffix
@@ -161,6 +174,8 @@ else
   exec "${MAIN_BIN}" "$@"
 fi
 `
+	return apprun
+}
 
 type ELF struct {
 	path     string
@@ -202,6 +217,7 @@ var packagesContainingFiles = make(map[string]string) // Need to use 'make', oth
 type DeployOptions struct {
 	standalone     bool
 	libAppRunHooks bool
+	preserveCwd    bool
 }
 
 // this is the public options instance
@@ -259,7 +275,7 @@ func AppDirDeploy(path string) {
 	if options.libAppRunHooks == false {
 		// If libapprun_hooks is not used
 		log.Println("Adding AppRun...")
-		err = os.WriteFile(appdir.Path+"/AppRun", []byte(AppRunData), 0755)
+		err = os.WriteFile(appdir.Path+"/AppRun", []byte(getAppRunData()), 0755)
 		if err != nil {
 			helpers.PrintError("write AppRun", err)
 			os.Exit(1)
