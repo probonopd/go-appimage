@@ -754,7 +754,6 @@ func handleAlsa(appdir helpers.AppDir) {
 			if err != nil {
 				log.Println("Could not find alsa-lib directory")
 				log.Println("E.g., in Alpine Linux: apk add alsa-plugins alsa-plugins-pulse")
-				os.Exit(1)
 			} else {
 				log.Println("Bundling dependencies of alsa-lib directory...")
 				determineELFsInDirTree(appdir, locs[0])
