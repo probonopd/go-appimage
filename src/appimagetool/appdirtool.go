@@ -432,7 +432,9 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 
 		log.Println("Deploying", ldLinux+"...")
 
-		ldTargetPath := appdir.Path + ldLinux
+		// Normalize the path to use /usr prefix per AppImage spec/FHS recommendation
+		normalizedLdLinux := normalizePathToUsrPrefix(ldLinux)
+		ldTargetPath := appdir.Path + normalizedLdLinux
 		if options.libAppRunHooks {
 			// This file is part of the libc family of libraries and we want to use libapprun_hooks,
 			// hence copy to a separate directory unlike the rest of the libraries. The reason is
@@ -440,7 +442,7 @@ func deployInterpreter(appdir helpers.AppDir) (string, error) {
 			// bundled version is newer than what is already on the target system; this allows
 			// us to also load libraries from the system such as proprietary GPU drivers
 			log.Println(ldLinux, "is part of libc; copy to", LibcDir, "subdirectory")
-			ldTargetPath = appdir.Path + "/" + LibcDir + "/" + ldLinux // If libapprun_hooks is used
+			ldTargetPath = appdir.Path + "/" + LibcDir + normalizedLdLinux // If libapprun_hooks is used
 		}
 		err = copy.Copy(src, ldTargetPath)
 		if err != nil {
