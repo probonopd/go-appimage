@@ -36,6 +36,33 @@ rm ~/.local/share/applications/appimagekit*.desktop
 rm ~/Applications/appimaged-*-x86_64.AppImage
 ```
 
+## Autoupdate
+
+The appimaged daemon supports automatic self-updating. This feature is **opt-in** and must be explicitly enabled.
+
+### Enabling Autoupdate
+
+To enable automatic updates, run appimaged with the `--autoupdate` flag:
+
+```bash
+~/Applications/appimaged-*.AppImage --autoupdate
+```
+
+When autoupdate is enabled:
+- appimaged will automatically check for updates from GitHub releases
+- When a new version is available, it will be downloaded and installed automatically
+- A desktop notification will inform you when an update has been completed
+- You may need to restart the daemon after an update
+
+### Update Mechanism
+
+The autoupdate feature uses:
+- **UpdateInformation** embedded in the AppImage (as per [AppImageSpec](https://github.com/AppImage/AppImageSpec/blob/master/draft.md#update-information))
+- **GitHub Releases API** to check for and download new versions
+- **MQTT PubSub** for real-time update notifications
+
+Without the `--autoupdate` flag, appimaged will still notify you when updates are available, but will not automatically install them.
+
 ## Notes
 
 Do not remove "~/Applications/appimaged*.AppImage". The service is running from this location (unless you want to do the uninstallation process)
@@ -69,6 +96,7 @@ Implemented
 * Real-time notification based on PubSub when updates are available, as soon as they are uploaded
 * Quality checking of AppImages and notifications in case of errors (can be extended)
 * Launch Services like functionality, e.g., being able to launch the newest version of an AppImage that we know of
+* **Automatic self-updating** (opt-in via `--autoupdate` flag)
 
 Envisioned
 

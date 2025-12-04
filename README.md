@@ -9,6 +9,12 @@ Documentation:
 
 Download them from https://github.com/probonopd/go-appimage/releases/tag/continuous.
 
+## Features
+
+* **Autoupdate**: The `appimaged` daemon supports automatic self-updating. Enable it with `--autoupdate` flag. See the [appimaged documentation](https://github.com/probonopd/go-appimage/blob/master/src/appimaged/README.md#autoupdate) for details.
+* **UpdateInformation**: AppImages created with `appimagetool` automatically include [UpdateInformation](https://github.com/AppImage/AppImageSpec/blob/master/draft.md#update-information) when built on CI systems (GitHub Actions, Travis CI), enabling delta updates via zsync.
+* **Real-time notifications**: When updates are available for integrated AppImages, desktop notifications inform users immediately via MQTT PubSub.
+
 ## Why Go?
 
 * Go follows the "keep it simple" principle - in line with what I like
