@@ -22,12 +22,31 @@ VERSION=1.0 ./appimagetool-*.AppImage ./AppDir # turn AppDir into AppImage
 
 - `QTDIR`: root directory for the Qt installation to copy shared libraries from, e.g. `/usr/lib/qt6/`
 
+## Update Information (for CI/CD)
+
+When `appimagetool` runs on GitHub Actions, it automatically:
+
+1. **Embeds [UpdateInformation](https://github.com/AppImage/AppImageSpec/blob/master/draft.md#update-information)** into the AppImage
+2. **Generates a `.zsync` file** alongside the AppImage for efficient delta updates
+3. **Uploads both files** to the GitHub Release
+
+The UpdateInformation format is:
+```
+gh-releases-zsync|<owner>|<repo>|<release>|<AppName>-*-<arch>.AppImage.zsync
+```
+
+This is detected automatically using `GITHUB_REPOSITORY` and `GITHUB_REF` environment variables.
+
+The release channel is determined as:
+- `continuous` - for builds from the master branch
+- `latest` - for tagged releases (non-continuous)
+
 ## Features
 
 Implemented
 
 * Creates AppImage
-* If running on GitHub, determines updateinformation, embeds updateinformation, signs, and writes zsync file
+* If running on GitHub Actions, determines updateinformation, embeds updateinformation, signs, and writes zsync file
 * Simplified signing
 * Automatic upload to GitHub Releases
 * Prepare self-contained AppDirs using the `deploy` verb

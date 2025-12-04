@@ -9,6 +9,19 @@ Documentation:
 
 Download them from https://github.com/probonopd/go-appimage/releases/tag/continuous.
 
+## Update Information
+
+When `appimagetool` runs on GitHub Actions, it automatically embeds [UpdateInformation](https://github.com/AppImage/AppImageSpec/blob/master/draft.md#update-information) into the generated AppImages. This enables delta updates using zsync.
+
+The format of the generated UpdateInformation is:
+```
+gh-releases-zsync|<owner>|<repo>|<release>|<filename>.zsync
+```
+
+For example: `gh-releases-zsync|probonopd|go-appimage|continuous|appimaged-*-x86_64.AppImage.zsync`
+
+Additionally, a `.zsync` file is automatically generated alongside each AppImage and uploaded to the GitHub Release, enabling efficient delta updates.
+
 ## Why Go?
 
 * Go follows the "keep it simple" principle - in line with what I like
