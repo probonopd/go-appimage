@@ -98,14 +98,11 @@ func SubscribeMQTT(client mqtt.Client, updateinformation string) {
 			unescapedui, _ := url.QueryUnescape(queryEscapedUpdateInformation)
 			if unescapedui == thisai.updateinformation {
 				log.Println("++++++++++++++++++++++++++++++++++++++++++++++++++")
-				log.Println("+ Update available for this AppImage (appimaged).")
+				log.Println("+ Update available for this AppImage.")
+				log.Println("+ Something special should happen here: Selfupdate")
+				log.Println("+ To be imlpemented.")
 				log.Println("++++++++++++++++++++++++++++++++++++++++++++++++++")
-				if *autoupdatePtr {
-					log.Println("Autoupdate is enabled, performing self-update...")
-					go performSelfUpdateIfAvailable()
-				} else {
-					sendDesktopNotification("Update available", "An update for the AppImage daemon is available.\nRun appimaged with --autoupdate to enable automatic updates.", 30000)
-				}
+				sendDesktopNotification("Update available", "An update for the AppImage daemon is available; I could update myself now...", 0)
 			}
 
 			mostRecent := FindMostRecentAppImageWithMatchingUpdateInformation(unescapedui)

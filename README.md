@@ -9,11 +9,18 @@ Documentation:
 
 Download them from https://github.com/probonopd/go-appimage/releases/tag/continuous.
 
-## Features
+## Update Information
 
-* **Autoupdate**: The `appimaged` daemon supports automatic self-updating. Enable it with `--autoupdate` flag. See the [appimaged documentation](https://github.com/probonopd/go-appimage/blob/master/src/appimaged/README.md#autoupdate) for details.
-* **UpdateInformation**: AppImages created with `appimagetool` automatically include [UpdateInformation](https://github.com/AppImage/AppImageSpec/blob/master/draft.md#update-information) when built on CI systems (GitHub Actions, Travis CI), enabling delta updates via zsync.
-* **Real-time notifications**: When updates are available for integrated AppImages, desktop notifications inform users immediately via MQTT PubSub.
+When `appimagetool` runs on GitHub Actions or Travis CI, it automatically embeds [UpdateInformation](https://github.com/AppImage/AppImageSpec/blob/master/draft.md#update-information) into the generated AppImages. This enables delta updates using zsync.
+
+The format of the generated UpdateInformation is:
+```
+gh-releases-zsync|<owner>|<repo>|<release>|<filename>.zsync
+```
+
+For example: `gh-releases-zsync|probonopd|go-appimage|continuous|appimaged-*-x86_64.AppImage.zsync`
+
+Additionally, a `.zsync` file is automatically generated alongside each AppImage and uploaded to the GitHub Release, enabling efficient delta updates.
 
 ## Why Go?
 

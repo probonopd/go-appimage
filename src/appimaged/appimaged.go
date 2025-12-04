@@ -44,11 +44,6 @@ var cleanPtr = flag.Bool("c", true, "Clean pre-existing desktop files")
 
 var quietPtr = flag.Bool("q", false, "Do not send desktop notifications")
 
-// autoupdatePtr enables automatic self-updating of appimaged
-// When enabled, appimaged will automatically download and install updates
-// when they become available (opt-in feature)
-var autoupdatePtr = flag.Bool("autoupdate", false, "Enable automatic self-updating (opt-in)")
-
 // var noZeroconfPtr = flag.Bool("nz", false, "Do not announce this service on the network using Zeroconf")
 
 var updateChannel chan struct{} = make(chan struct{}, 10)
@@ -121,11 +116,6 @@ func main() {
 		fmt.Fprintf(os.Stderr, "start <updateinformation>:\n\tStart the most recent AppImage registered\n\tfor the updateinformation provided and exit immediately\n")
 		fmt.Fprintf(os.Stderr, "update <path to AppImage>:\n\tUpdate the AppImage using the most recent\n\tAppImageUpdate registered\n")
 		fmt.Fprintf(os.Stderr, "wrap <path to executable>:\n\tExecute the exeutable and send\n\tdesktop notifications for any errors\n")
-		fmt.Fprintf(os.Stderr, "\n")
-		fmt.Fprintf(os.Stderr, "Autoupdate:\n")
-		fmt.Fprintf(os.Stderr, "Use --autoupdate to enable automatic self-updating.\n")
-		fmt.Fprintf(os.Stderr, "When enabled, appimaged will automatically download and install\n")
-		fmt.Fprintf(os.Stderr, "updates when they become available from GitHub releases.\n")
 		fmt.Fprintf(os.Stderr, "\n")
 
 		flag.PrintDefaults()
