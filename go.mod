@@ -4,9 +4,9 @@ go 1.23
 
 require (
 	github.com/CalebQ42/squashfs v1.0.4
+	github.com/ProtonMail/gopenpgp/v3 v3.3.0
 	github.com/acobaugh/osrelease v0.1.0
 	github.com/adrg/xdg v0.5.0
-	github.com/alokmenghrajani/gpgeez v0.0.0-20161206084504-1a06f1c582f9
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/eclipse/paho.mqtt.golang v1.5.0
 	github.com/esiqveland/notify v0.13.3
@@ -27,13 +27,14 @@ require (
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef
 	github.com/urfave/cli/v2 v2.27.4
 	go.lsp.dev/uri v0.3.0
-	golang.org/x/crypto v0.31.0
-	golang.org/x/sys v0.28.0
+	golang.org/x/sys v0.30.0
 	gopkg.in/ini.v1 v1.67.0
 	gopkg.in/src-d/go-git.v4 v4.13.1
 )
 
 require (
+	github.com/ProtonMail/go-crypto v1.3.0 // indirect
+	github.com/cloudflare/circl v1.6.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
 	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.5 // indirect
@@ -60,10 +61,11 @@ require (
 	github.com/xanzy/ssh-agent v0.2.1 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
+	golang.org/x/crypto v0.33.0 // indirect
 	golang.org/x/image v0.0.0-20211028202545-6944b10bf410 // indirect
 	golang.org/x/net v0.33.0 // indirect
-	golang.org/x/sync v0.10.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/sync v0.11.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
 	gopkg.in/src-d/go-billy.v4 v4.3.2 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
