@@ -38,6 +38,36 @@ var seenDeps []string
 
 var quirksModePatchQtPrfxPath = false
 
+// normalizePathToUsrPrefix transforms paths outside of /usr to be under /usr
+// to comply with the AppImage spec recommendation and FHS conventions.
+// For example:
+// - /lib/x86_64-linux-gnu/libfoo.so -> /usr/lib/x86_64-linux-gnu/libfoo.so
+// - /lib64/libbar.so -> /usr/lib64/libbar.so
+// - /usr/lib/libqux.so -> /usr/lib/libqux.so (unchanged)
+// - /sbin/foo -> /usr/sbin/foo
+// - /bin/bar -> /usr/bin/bar
+// This ensures all deployed files follow the /usr prefix convention.
+func normalizePathToUsrPrefix(path string) string {
+	// Prefixes that should be moved under /usr
+	prefixMappings := []struct {
+		from string
+		to   string
+	}{
+		{"/lib64/", "/usr/lib64/"},
+		{"/lib/", "/usr/lib/"},
+		{"/bin/", "/usr/bin/"},
+		{"/sbin/", "/usr/sbin/"},
+	}
+
+	for _, mapping := range prefixMappings {
+		if strings.HasPrefix(path, mapping.from) {
+			return mapping.to + strings.TrimPrefix(path, mapping.from)
+		}
+	}
+
+	return path
+}
+
 func getAppRunData() string {
 	apprun := `#!/bin/sh
 
@@ -317,7 +347,8 @@ func AppDirDeploy(path string) {
 	var libraryLocationsInAppDir []string
 	for _, lib := range libraryLocations {
 		if strings.HasPrefix(lib, appdir.Path) == false {
-			lib = appdir.Path + lib
+			// Normalize the path to use /usr prefix per AppImage spec/FHS recommendation
+			lib = appdir.Path + normalizePathToUsrPrefix(lib)
 		}
 		libraryLocationsInAppDir = helpers.AppendIfMissing(libraryLocationsInAppDir, lib)
 	}
@@ -473,7 +504,9 @@ func deployElf(lib string, appdir helpers.AppDir, err error) {
 
 	log.Println("Working on", lib)
 	if strings.HasPrefix(lib, appdir.Path) == false { // Do not copy if it is already in the AppDir
-		libTargetPath := appdir.Path + "/" + lib
+		// Normalize the path to use /usr prefix per AppImage spec/FHS recommendation
+		normalizedLib := normalizePathToUsrPrefix(lib)
+		libTargetPath := appdir.Path + normalizedLib
 		if options.libAppRunHooks && checkWhetherPartOfLibc(lib) == true {
 			// This file is part of the libc family of libraries and we want to use libapprun_hooks,
 			// hence copy to a separate directory unlike the rest of the libraries. The reason is
@@ -481,7 +514,7 @@ func deployElf(lib string, appdir helpers.AppDir, err error) {
 			// bundled version is newer than what is already on the target system; this allows
 			// us to also load libraries from the system such as proprietary GPU drivers
 			log.Println(lib, "is part of libc; copy to", LibcDir, "subdirectory")
-			libTargetPath = appdir.Path + "/" + LibcDir + "/" + lib // If libapprun_hooks is used
+			libTargetPath = appdir.Path + "/" + LibcDir + normalizedLib // If libapprun_hooks is used
 		}
 
 		// Skip copying if the source is a directory
@@ -797,7 +830,8 @@ func handleGStreamer(appdir helpers.AppDir) {
 func patchRpathsInElf(appdir helpers.AppDir, libraryLocationsInAppDir []string, path string) {
 
 	if strings.HasPrefix(path, appdir.Path) == false {
-		path = filepath.Clean(appdir.Path + "/" + path)
+		// Normalize the path to use /usr prefix per AppImage spec/FHS recommendation
+		path = filepath.Clean(appdir.Path + normalizePathToUsrPrefix(path))
 	}
 	var newRpathStringForElf string
 	var newRpathStrings []string
