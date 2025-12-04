@@ -43,6 +43,8 @@ func validate(key *crypto.Key) error {
 	if err != nil {
 		return err
 	}
+	defer encHandle.ClearPrivateParams()
+
 	message, err := encHandle.Encrypt([]byte("Hello world"))
 	if err != nil {
 		return err
@@ -56,6 +58,8 @@ func validate(key *crypto.Key) error {
 	if err != nil {
 		return err
 	}
+	defer decHandle.ClearPrivateParams()
+
 	decrypted, err := decHandle.Decrypt([]byte(armored), crypto.Armor)
 	if err != nil {
 		return err
@@ -63,9 +67,6 @@ func validate(key *crypto.Key) error {
 	if sigErr := decrypted.SignatureError(); sigErr != nil {
 		return sigErr
 	}
-
-	encHandle.ClearPrivateParams()
-	decHandle.ClearPrivateParams()
 
 	fmt.Println("PASSED")
 	return nil
@@ -158,13 +159,13 @@ func SignAppImage(path string, digest string) error {
 		fmt.Println("Error creating signer:", err)
 		return err
 	}
+	defer signer.ClearPrivateParams()
 
 	signature, err := signer.Sign([]byte(digest), crypto.Armor)
 	if err != nil {
 		fmt.Println("Error signing input:", err)
 		return err
 	}
-	signer.ClearPrivateParams()
 
 	err = EmbedStringInSegment(path, ".sha256_sig", string(signature))
 	if err != nil {
