@@ -11,7 +11,7 @@ Download them from https://github.com/probonopd/go-appimage/releases/tag/continu
 
 ## Update Information
 
-When `appimagetool` runs on GitHub Actions or Travis CI, it automatically embeds [UpdateInformation](https://github.com/AppImage/AppImageSpec/blob/master/draft.md#update-information) into the generated AppImages. This enables delta updates using zsync.
+When `appimagetool` runs on GitHub Actions, it automatically embeds [UpdateInformation](https://github.com/AppImage/AppImageSpec/blob/master/draft.md#update-information) into the generated AppImages. This enables delta updates using zsync.
 
 The format of the generated UpdateInformation is:
 ```

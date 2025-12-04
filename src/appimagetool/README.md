@@ -24,7 +24,7 @@ VERSION=1.0 ./appimagetool-*.AppImage ./AppDir # turn AppDir into AppImage
 
 ## Update Information (for CI/CD)
 
-When `appimagetool` runs on GitHub Actions or Travis CI, it automatically:
+When `appimagetool` runs on GitHub Actions, it automatically:
 
 1. **Embeds [UpdateInformation](https://github.com/AppImage/AppImageSpec/blob/master/draft.md#update-information)** into the AppImage
 2. **Generates a `.zsync` file** alongside the AppImage for efficient delta updates
@@ -35,9 +35,7 @@ The UpdateInformation format is:
 gh-releases-zsync|<owner>|<repo>|<release>|<AppName>-*-<arch>.AppImage.zsync
 ```
 
-This is detected automatically based on:
-- **GitHub Actions**: Uses `GITHUB_REPOSITORY` and `GITHUB_REF` environment variables
-- **Travis CI**: Uses `TRAVIS_REPO_SLUG` and `TRAVIS_TAG` environment variables (requires `GITHUB_TOKEN`)
+This is detected automatically using `GITHUB_REPOSITORY` and `GITHUB_REF` environment variables.
 
 The release channel is determined as:
 - `continuous` - for builds from the master branch
@@ -48,7 +46,7 @@ The release channel is determined as:
 Implemented
 
 * Creates AppImage
-* If running on GitHub Actions or Travis CI, determines updateinformation, embeds updateinformation, signs, and writes zsync file
+* If running on GitHub Actions, determines updateinformation, embeds updateinformation, signs, and writes zsync file
 * Simplified signing
 * Automatic upload to GitHub Releases
 * Prepare self-contained AppDirs using the `deploy` verb
