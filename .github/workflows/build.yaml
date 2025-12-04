@@ -3,49 +3,50 @@ name: Build All Architectures
 on:
   workflow_dispatch:
   push:
-    branches:    
-      - 'master'
+    branches:
+      - "master"
     paths-ignore:
-      - '.idea/..'
-      - 'docs/**'
+      - ".idea/.."
+      - "docs/**"
   pull_request:
     paths-ignore:
-      - '.idea/..'
-      - 'docs/**'
+      - ".idea/.."
+      - "docs/**"
 
 jobs:
   build-all:
     name: Build for all architectures
     runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '>=1.23'
-    - uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
-    - name: Run build script
-      run: ./scripts/build.sh -a amd64,386,arm64,arm
-    - name: Upload to GitHub Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: artifacts
-        path: ./build/*
-    - name: Upload to GitHub Releases
-      if: github.event_name != 'pull_request' && github.ref_name == 'master'
-      uses: "marvinpinto/action-automatic-releases@latest"
-      with:
-        repo_token: "${{ secrets.GITHUB_TOKEN }}"
-        automatic_release_tag: "continuous"
-        prerelease: true
-        title: "Continuous Build"
-        files: |
-          ./build/*
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ">=1.23"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Run build script
+        run: ./scripts/build.sh -a amd64,386,arm64,arm
+      - name: Upload to GitHub Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts
+          path: ./build/*
+      - name: Upload to GitHub Releases
+        if: github.event_name != 'pull_request' && github.ref_name == 'master'
+        uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "continuous"
+          prerelease: true
+          title: "Continuous Build"
+          files: |
+            ./build/*
+
 #
