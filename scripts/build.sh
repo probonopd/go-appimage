@@ -95,7 +95,7 @@ build () {
   echo CC: $CC
   which zig
   zig env
-  CGO_ENABLED=1 go build -o $BUILDDIR -v -trimpath -ldflags="-linkmode=external -extldflags \"-static\" -s -w -X main.commit=$COMMIT" $PROJECT/src/$PROG
+  CGO_ENABLED=1 go build -o $BUILDDIR -v -trimpath -ldflags="-linkmode=external -extldflags \"-static\" -s -w -X 'main.commit=$BUILDID'" $PROJECT/src/$PROG
   ls -lh $PROG
   file $PROG
   # common appimage steps
@@ -208,21 +208,6 @@ done
 # Setup environment
 #############################################################
 
-# Export version and build number
-if [ ! -z "$GITHUB_RUN_NUMBER" ] ; then
-  export COMMIT="${GITHUB_RUN_NUMBER}"
-  export VERSION=$((GITHUB_RUN_NUMBER+646))
-else
-  export COMMIT=$(date '+%Y-%m-%d_%H%M%S')
-  export VERSION=$(date '+%Y-%m-%d_%H%M%S')
-fi
-
-# Install dependencies if needed
-if [ $GITHUB_ACTIONS ]; then
-  sudo apt-get update
-  sudo apt-get install --yes wget file
-fi
-
 if [ -z $BUILDTOOL ]; then
   BUILDTOOL=(appimaged appimagetool mkappimage)
 fi
@@ -232,9 +217,7 @@ if [ -z $BUILDARCH ]; then
 fi
 
 # Get the directories ready
-if [ $GITHUB_ACTIONS ]; then
-  PROJECT=$GITHUB_WORKSPACE
-else
+if [ -z "$PROJECT" ]; then
   PROJECT=$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )/..
 fi
 if [ -z $BUILDDIR ]; then
@@ -245,6 +228,24 @@ if [ ! -z $PRECLEAN ]; then
 fi
 mkdir -p $BUILDDIR || true
 cd $BUILDDIR
+
+# Export version and build number
+DATE="$(date '+%Y-%m-%d_%H%M%S')"
+if [ -z "$COMMIT" ] && [ -r "$PROJECT/.git" ]; then
+  COMMIT="$(git -C "$PROJECT" rev-parse @)"
+fi
+if [ -z "$COMMIT" ]; then
+  COMMIT="$DATE"
+fi
+if [ -z "$VERSION" ]; then
+  VERSION="$DATE"
+fi
+if [ "$COMMIT" != "$VERSION" ]; then
+  BUILDID="$VERSION - $COMMIT"
+else
+  BUILDID="$VERSION"
+fi
+export BUILDID COMMIT VERSION
 
 # Install zig, it comes with musl libc
 if [ ! -e $BUILDDIR/zig ]; then

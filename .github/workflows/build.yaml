@@ -18,12 +18,18 @@ jobs:
     name: Build for all architectures
     runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
+      with:
+        clean: false
+        fetch-depth: 0
+        fetch-tags: true
+        filter: tree:0
+        show-progress: false
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
         go-version: '>=1.23'
-    - uses: actions/cache@v4
+    - uses: actions/cache@v5
       with:
         path: |
           ~/.cache/go-build
@@ -31,21 +37,23 @@ jobs:
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           ${{ runner.os }}-go-
+    - name: Setup build
+      run: >
+        printf '%s\n'
+        COMMIT="$GITHUB_SHA"
+        PROJECT="$GITHUB_WORKSPACE"
+        VERSION="$((GITHUB_RUN_NUMBER+646))"
+        | tee "$GITHUB_ENV"
     - name: Run build script
       run: ./scripts/build.sh -a amd64,386,arm64,arm
     - name: Upload to GitHub Artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: artifacts
         path: ./build/*
     - name: Upload to GitHub Releases
       if: github.event_name != 'pull_request' && github.ref_name == 'master'
-      uses: "marvinpinto/action-automatic-releases@latest"
-      with:
-        repo_token: "${{ secrets.GITHUB_TOKEN }}"
-        automatic_release_tag: "continuous"
-        prerelease: true
-        title: "Continuous Build"
-        files: |
-          ./build/*
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: ./scripts/release.sh continuous "$COMMIT" ./build/*
 #
