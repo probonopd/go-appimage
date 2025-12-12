@@ -1,0 +1,28 @@
+name: Create Persistent Release
+
+on: workflow_dispatch
+
+jobs:
+  release:
+    name: Create persistent release
+    runs-on: ubuntu-22.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        clean: false
+        fetch-depth: 0
+        fetch-tags: true
+        filter: tree:0
+        show-progress: false
+    - name: Setup environment
+      run: >
+        gh release view continuous --json assets,targetCommitish --jq '
+        "COMMIT=" + .targetCommitish,
+        "VERSION=" + ([.assets[].name | match("-([0-9]+)-x86_64\\.AppImage")] | first.captures[0].string // halt_error )
+        ' | tee "$GITHUB_ENV"
+    - name: Retrieve assets
+      run: gh release download --dir build continuous
+    - name: Publish release
+      run: ./scripts/release.sh "$VERSION" "$COMMIT" ./build/*
