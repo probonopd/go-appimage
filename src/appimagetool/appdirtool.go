@@ -71,11 +71,11 @@ fi
 # Use bundled GNUstep if ./usr/lib/GNUstep exists
 ############################################################################################
 
-if [ -d "$HERE/usr/lib/GNUstep" ]; then
+if [ -e "${HERE}"/usr/lib/GNUstep ]; then
     # GNUstep resources and bundles (e.g., backend and images for gnustep-gui)
-    export GNUSTEP_SYSTEM_LIBRARY="$HERE/usr/lib/GNUstep"
+    export GNUSTEP_SYSTEM_LIBRARY="${HERE}"/usr/lib/GNUstep
     # Command-line tools needed by GNUstep (e.g., gdnc, gpbs, make_services)
-    export GNUSTEP_SYSTEM_TOOLS="$HERE/usr/lib/GNUstep/Tools"
+    export GNUSTEP_SYSTEM_TOOLS="${HERE}"/usr/lib/GNUstep/Tools
   env | grep GNUSTEP_
 fi
 
