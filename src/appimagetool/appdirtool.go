@@ -69,6 +69,8 @@ fi
 
 ############################################################################################
 # Use bundled GNUstep if ./usr/lib/GNUstep exists
+# NOTE: This apparently DOES NOT WORK; we may need to set these variables
+# in  a config file and export GNUSTEP_CONFIG_FILE?
 ############################################################################################
 
 if [ -e "${HERE}"/usr/lib/GNUstep ]; then
