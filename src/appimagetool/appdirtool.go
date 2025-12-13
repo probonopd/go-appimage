@@ -68,6 +68,18 @@ if [ -e "${HERE}"/usr/share/tcltk/tcl8.6 ] ; then
 fi
 
 ############################################################################################
+# Use bundled GNUstep if ./usr/lib/GNUstep exists
+############################################################################################
+
+if [ -d "$HERE/usr/lib/GNUstep" ]; then
+    # GNUstep resources and bundles (e.g., backend and images for gnustep-gui)
+    export GNUSTEP_SYSTEM_LIBRARY="$HERE/usr/lib/GNUstep"
+    # Command-line tools needed by GNUstep (e.g., gdnc, gpbs, make_services)
+    export GNUSTEP_SYSTEM_TOOLS="$HERE/usr/lib/GNUstep/Tools"
+  env | grep GNUSTEP_
+fi
+
+############################################################################################
 # Use the system OpenSSL certificates if available
 ############################################################################################
 
