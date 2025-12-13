@@ -73,7 +73,7 @@ fi
 # with paths relative to itself
 ############################################################################################
 
-if [ -e "${HERE}/usr/lib/GNUstep ]; then
+if [ -e "${HERE}"/usr/lib/GNUstep ]; then
     export GNUSTEP_CONFIG_FILE="${HERE}"/usr/lib/GNUstep/GNUstep.conf
     env | grep GNUSTEP_
 fi
