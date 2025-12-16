@@ -102,7 +102,7 @@ func main() {
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "\n")
-		fmt.Fprintf(os.Stderr, filepath.Base(os.Args[0])+" "+version+"\n")
+		fmt.Fprintf(os.Stderr, "%s", filepath.Base(os.Args[0])+" "+version+"\n")
 		fmt.Fprintf(os.Stderr, "\n")
 		fmt.Fprintf(os.Stderr, "Optional daemon that registers AppImages and integrates them with the system.\n")
 		fmt.Fprintf(os.Stderr, "\n")
