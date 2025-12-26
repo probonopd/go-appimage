@@ -312,8 +312,10 @@ func AppDirDeploy(path string) {
 		qtVersionDetected = 4
 	}
 
+	qtPrefixPathRequiresPatch := true
+
 	if qtVersionDetected > 0 {
-		handleQt(appdir, qtVersionDetected)
+		qtPrefixPathRequiresPatch = handleQt(appdir, qtVersionDetected)
 	}
 
 	fmt.Println("")
@@ -355,11 +357,11 @@ func AppDirDeploy(path string) {
 	handleNvidia()
 
 	for _, lib := range allELFs {
-
 		deployElf(lib, appdir, err)
 		patchRpathsInElf(appdir, libraryLocationsInAppDir, lib)
 
-		if strings.Contains(lib, fmt.Sprintf("libQt%dCore.so.%d", qtVersionDetected, qtVersionDetected)) {
+		if qtPrefixPathRequiresPatch &&
+			strings.Contains(lib, fmt.Sprintf("libQt%dCore.so.%d", qtVersionDetected, qtVersionDetected)) {
 			fmt.Println("Patching Qt prefix path in " + lib)
 			patchQtPrfxpath(appdir, lib, libraryLocationsInAppDir, ldLinux)
 		}
@@ -1291,11 +1293,14 @@ func getCopyrightFile(path string) (string, error) {
 }
 
 // Let's see in how many lines of code we can re-implement the guts of linuxdeployqt
-func handleQt(appdir helpers.AppDir, qtVersion int) {
+func handleQt(appdir helpers.AppDir, qtVersion int) bool {
+
+	qtPrefixPathRequiresPatch := true
 
 	if qtVersion >= 5 {
 
-		// Actually the libQt5Core.so.5/libQt6Core.so.6 contains (always?) qt_prfxpath=... which tells us the location in which 'plugins/' is located
+		// When libQt5Core.so.5/libQt6Core.so.6 is built non-relocatable, it contains qt_prfxpath=...
+		// This tells us the path in which 'plugins/' is located
 
 		library, err := findLibrary(fmt.Sprintf("libQt%dCore.so.%d", qtVersion, qtVersion))
 		if err != nil {
@@ -1303,14 +1308,7 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 			os.Exit(1)
 		}
 
-		f, err := os.Open(library)
-		defer f.Close()
-		if err != nil {
-			helpers.PrintError(fmt.Sprintf("Could not open libQt%dCore.so.%d", qtVersion, qtVersion), err)
-			os.Exit(1)
-		}
-
-		qtPrfxpath := getQtPrfxpath(f, err, qtVersion)
+		qtPrfxpath, qtPrefixPathRequiresPatch := getQtPrfxpath(library, qtVersion)
 
 		if qtPrfxpath == "" {
 			log.Println("Got empty qtPrfxpath, exiting")
@@ -1358,8 +1356,8 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 			}
 		}
 
-        // platform plugin context - required for special characters - included if libQt5Gui.so.5/libQt6.Gui.so.6 is included
-        // similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1229
+		// platform plugin context - required for special characters - included if libQt5Gui.so.5/libQt6.Gui.so.6 is included
+		// similar to https://github.com/probonopd/linuxdeployqt/blob/42e51ea7c7a572a0aa1a21fc47d0f80032809d9d/tools/linuxdeployqt/shared.cpp#L1229
 		for _, lib := range allELFs {
 			if strings.HasSuffix(lib, fmt.Sprintf("libQt%dGui.so.%d", qtVersion, qtVersion)) == true {
 				if helpers.Exists(qtPrfxpath + "/plugins/platforminputcontexts/") {
@@ -1482,7 +1480,7 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 		qmlImportScanners := helpers.FilesWithSuffixInDirectoryRecursive(qtPrfxpath, "qmlimportscanner")
 		if len(qmlImportScanners) < 1 {
 			log.Println("qmlimportscanner not found, skipping QML deployment") // TODO: Exit if we have qml files and qmlimportscanner is not there
-			return
+			return qtPrefixPathRequiresPatch
 		} else {
 			log.Println("Found qmlimportscanner:", qmlImportScanners[0])
 		}
@@ -1543,19 +1541,38 @@ func handleQt(appdir helpers.AppDir, qtVersion int) {
 			}
 		}
 	}
+
+	return qtPrefixPathRequiresPatch
 }
 
-func getQtPrfxpath(f *os.File, err error, qtVersion int) string {
+func getQtPrfxpath(library string, qtVersion int) (string, bool) {
+	// Some notes on Qt behavior:
+	// https://doc.qt.io/qt-5/qt-conf.html
+	// https://doc.qt.io/qt-6/qt-conf.html
+	//     qt.conf can be used to override default hardcoded paths
+	//     qt6.conf can be used when Qt6 and Qt5 are deployed side-by-side
 
-	// If the user has set $QTDIR or $QT_ROOT_DIR, use that instead of the one from qt_prfxpath in the library
-	qtPrefixEnv := os.Getenv("QTDIR")
-	if qtPrefixEnv == "" {
-	    qtPrefixEnv = os.Getenv("QT_ROOT_DIR")
+	// https://doc.qt.io/qt-5/qlibraryinfo.html
+	// https://doc.qt.io/qt-6/qlibraryinfo.html
+	//     Query paths at runtime using QLibraryInfo::location ( Qt5 ) and QLibraryInfo::path ( Qt6 )
+
+	// Qt source files relevant to this:
+	// qtbase/cmake/QtBuildRepoHelpers.cmake -- Configures prerequisites for QT_BUILD_INTERNALS_RELOCATABLE_INSTALL_PREFIX
+	// qtbase/cmake/QtBuildInternalsExtra.cmake.in -- Configures QT_BUILD_INTERNALS_RELOCATABLE_INSTALL_PREFIX ( relative path to Qt%d directory for relocatable library )
+	// qtbase/cmake/QtQmakeHelpers.cmake -- has function qt_generate_qconfig_cpp
+	// qtbase/src/corelib/CMakeLists.txt -- Configures qconfig.cpp.in
+	// qtbase/src/corelib/global/qconfig.cpp.in -- string constant with qt_prfxpath=
+	// qtbase/src/corelib/global/qlibraryinfo.h -- Class that handles Qt paths
+	// qtbase/src/corelib/global/qlibraryinfo.cpp -- "
+
+	// TODO IDEA: Use AppRun to generate qt.conf at application start?
+
+	f, err := os.Open(library)
+	if err != nil {
+		helpers.PrintError(fmt.Sprintf("Could not open libQt%dCore.so.%d", qtVersion, qtVersion), err)
+		os.Exit(1)
 	}
-	if qtPrefixEnv != "" {
-	    log.Println("Using QTDIR or QT_ROOT_DIR:", qtPrefixEnv)
-	    return qtPrefixEnv
-	}
+	defer f.Close()
 
 	f.Seek(0, 0)
 	// Search from the beginning of the file
@@ -1566,21 +1583,44 @@ func getQtPrfxpath(f *os.File, err error, qtVersion int) string {
 	// From the current location in the file, search to the next 0x00 byte
 	f.Seek(offset, 0)
 	length := ScanFile(f, search)
-	log.Println("Length of value of qt_prfxpath:", length)
-	// Now that we know where in the file the information is, go get it
-	f.Seek(offset, 0)
-	buf := make([]byte, length)
-	// Make a buffer that is exactly as long as the range we want to read
-	_, err = io.ReadFull(f, buf)
-	if err != nil {
-		helpers.PrintError("Unable to read qt_prfxpath", err)
-		os.Exit(1)
+
+	qt_prfxpath := ""
+	qtPrefixPathRequiresPatch := true
+
+	// When length is 0, Qt has been built as relocatable
+	if length == 0 {
+		qtPrefixPathRequiresPatch = false
+		// Directory should be in ../Qt${qtVersion}
+		// TODO: Check if this is true for relocatable binaries in Qt5
+		qt_prfxpath = filepath.Dir(library) + fmt.Sprintf("/../Qt%d", qtVersion)
+		log.Println("Using Qt prefix path:", qt_prfxpath)
+	} else {
+		log.Println("Length of value of qt_prfxpath:", length)
+
+		// Now that we know where in the file the information is, go get it
+		f.Seek(offset, 0)
+		buf := make([]byte, length)
+		// Make a buffer that is exactly as long as the range we want to read
+		_, err = io.ReadFull(f, buf)
+		if err != nil {
+			helpers.PrintError("Unable to read qt_prfxpath", err)
+			os.Exit(1)
+		}
+		qt_prfxpath = strings.TrimSpace(string(buf))
+		log.Println("qt_prfxpath:", qt_prfxpath)
+		if qt_prfxpath == "" {
+			log.Println("Could not get qt_prfxpath from", library)
+		}
 	}
-	qt_prfxpath := strings.TrimSpace(string(buf))
-	log.Println("qt_prfxpath:", qt_prfxpath)
-	if qt_prfxpath == "" {
-		log.Println("Could not get qt_prfxpath")
-		return ""
+
+	// If the user has set $QTDIR or $QT_ROOT_DIR, use that instead of the one from qt_prfxpath in the library
+	qtPrefixEnv := os.Getenv("QTDIR")
+	if qtPrefixEnv == "" {
+		qtPrefixEnv = os.Getenv("QT_ROOT_DIR")
+	}
+	if qtPrefixEnv != "" {
+		log.Println("Using QTDIR or QT_ROOT_DIR:", qtPrefixEnv)
+		qt_prfxpath = qtPrefixEnv
 	}
 
 	// Special case:
@@ -1604,7 +1644,7 @@ func getQtPrfxpath(f *os.File, err error, qtVersion int) string {
 		}
 	}
 
-	return qt_prfxpath
+	return qt_prfxpath, qtPrefixPathRequiresPatch
 }
 
 // ScanFile returns the offset of the first occurrence of a []byte in a file from the current position,
