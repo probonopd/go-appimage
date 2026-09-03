@@ -47,9 +47,12 @@ Folders being watched for AppImage files:
 * /usr/local/bin
 * /opt
 * ~/Applications
+* ~/bin
 * ~/.local/bin
-* ~/Downloads
+* $XDG_DOWNLOAD_DIR (usually ~/Downloads)
+* $XDG_DESKTOP_DIR (usually ~/Desktop)
 * $PATH, which frequently includes /bin, /sbin, /usr/bin, /usr/sbin, /usr/local/bin, /usr/local/sbin, and other locations
+* /Applications on mounted partitions or removable drives (e.g. /media/foobar/Applications or /mnt/usb/Applications)
 
 <https://github.com/probonopd/go-appimage/releases/tag/continuous> has builds for 32-bit Intel, 32-bit ARM (e.g., Raspberry Pi), and 64-bit ARM.
 
