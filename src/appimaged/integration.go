@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -20,6 +21,13 @@ var integrationLock sync.Mutex
 
 func AddIntegration(path string, notify bool) (err error) {
 	integrationLock.Lock()
+	defer func() {
+		if err := recover(); err != nil {
+			l := log.New(os.Stderr, "", 1)
+			l.Println("ERROR panic caught while integrating "+path+": ", err)
+			sendDesktopNotification("Critical Error", "See log for details. Please create an issue on Github, providing appimaged's logs.", 5000)
+		}
+	}()
 	defer integrationLock.Unlock()
 	if _, ok := integrations[path]; ok {
 		return
