@@ -58,7 +58,7 @@ func bootstrapValidateAppImage(c *cli.Context) error {
 	// Calculate the SHA256 signature
 	d := helpers.CalculateSHA256Digest(filePathToValidate)
 	log.Println("Calculated sha256 digest:", d)
-	ent, err := helpers.CheckSignature(filePathToValidate)
+	key, err := helpers.CheckSignature(filePathToValidate)
 
 	if err != nil {
 		// we encountered an error :(
@@ -67,14 +67,17 @@ func bootstrapValidateAppImage(c *cli.Context) error {
 
 	log.Println(filePathToValidate, "has a valid signature")
 
-	// TODO: Do something useful with this information
-	log.Println("Identities:", ent.Identities)
-	log.Println("KeyIdShortString:", ent.PrimaryKey.KeyIdShortString())
-	log.Println("CreationTime:", ent.PrimaryKey.CreationTime)
-	log.Println("KeyId:", ent.PrimaryKey.KeyId)
-	log.Println("Fingerprint:", ent.PrimaryKey.Fingerprint)
+	ent := key.GetEntity()
+	if ent != nil {
+		// TODO: Do something useful with this information
+		log.Println("Identities:", ent.Identities)
+		log.Println("KeyIdShortString:", ent.PrimaryKey.KeyIdShortString())
+		log.Println("CreationTime:", ent.PrimaryKey.CreationTime)
+		log.Println("KeyId:", ent.PrimaryKey.KeyId)
+		log.Println("Fingerprint:", ent.PrimaryKey.Fingerprint)
+	}
 
-	// happily ever after! no errors occured
+	// happily ever after! no errors occurred
 	return nil
 }
 

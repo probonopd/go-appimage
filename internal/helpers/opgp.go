@@ -5,20 +5,13 @@
 package helpers
 
 import (
-	"bytes"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
-	"strings"
-	"time"
-
-	"golang.org/x/crypto/openpgp/packet"
 
 	"os"
 
-	"github.com/alokmenghrajani/gpgeez"
-	"golang.org/x/crypto/openpgp"
+	"github.com/ProtonMail/gopenpgp/v3/crypto"
 )
 
 func CreateAndValidateKeyPair() {
@@ -29,61 +22,73 @@ func CreateAndValidateKeyPair() {
 		fmt.Println(err)
 		return
 	}
-	hexstring, _ := readPGP(b)
+	key, err := crypto.NewKey(b)
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = validate(hexstring)
+	err = validate(key)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func readPGP(armoredKey []byte) (string, error) {
-	keyReader := bytes.NewReader(armoredKey)
-	entityList, err := openpgp.ReadArmoredKeyRing(keyReader)
-	if err != nil {
-		log.Fatalf("error reading armored key %s", err)
-	}
-	serializedEntity := bytes.NewBuffer(nil)
-	err = entityList[0].Serialize(serializedEntity)
-	if err != nil {
-		return "", fmt.Errorf("error serializing entity for file %s", err)
-	}
-
-	return base64.StdEncoding.EncodeToString(serializedEntity.Bytes()), nil
-}
-
-func validate(keystring string) error {
-	data, err := base64.StdEncoding.DecodeString(keystring)
+func validate(key *crypto.Key) error {
+	pub, err := key.ToPublic()
 	if err != nil {
 		return err
 	}
-	_, err = openpgp.ReadEntity(packet.NewReader(bytes.NewBuffer(data)))
+
+	pgp := crypto.PGP()
+
+	encHandle, err := pgp.Encryption().SigningKey(key).Recipient(pub).New()
 	if err != nil {
 		return err
 	}
+	message, err := encHandle.Encrypt([]byte("Hello world"))
+	if err != nil {
+		return err
+	}
+	armored, err := message.Armor()
+	if err != nil {
+		return err
+	}
+
+	decHandle, err := pgp.Decryption().DecryptionKey(key).VerificationKey(pub).New()
+	if err != nil {
+		return err
+	}
+	decrypted, err := decHandle.Decrypt([]byte(armored), crypto.Armor)
+	if err != nil {
+		return err
+	}
+	if sigErr := decrypted.SignatureError(); sigErr != nil {
+		return sigErr
+	}
+
+	encHandle.ClearPrivateParams()
+	decHandle.ClearPrivateParams()
+
 	fmt.Println("PASSED")
 	return nil
 }
 
 func createKeyPair() {
-	config := gpgeez.Config{Expiry: 0 * time.Hour}
-	config.RSABits = 4096
-	key, err := gpgeez.CreateKey("Signing key", "", "", &config) // TODO: Better name, comment, email
+	pgp := crypto.PGP()
+	handle := pgp.KeyGeneration().New() // TODO: Better name, comment, email
+	key, err := handle.GenerateKey()
 	if err != nil {
 		fmt.Printf("Something went wrong while creating key pair: %v", err)
 		return
 	}
-	pubkeyascdata, err := key.Armor()
+	pubkeyascdata, err := key.GetArmoredPublicKey()
 	if err != nil {
-		fmt.Printf("Something went wrong while armoding public key: %v", err)
+		fmt.Printf("Something went wrong while armoring public key: %v", err)
 		return
 	}
 
-	privkeyascdata, err := key.ArmorPrivate(&config)
+	privkeyascdata, err := key.Armor()
 	if err != nil {
-		fmt.Printf("Something went wrong while armoding private key: %v", err)
+		fmt.Printf("Something went wrong while armoring private key: %v", err)
 		return
 	}
 
@@ -92,26 +97,37 @@ func createKeyPair() {
 }
 
 // CheckSignature checks the signature embedded in an AppImage at path,
-// returns the entity that has signed the AppImage and error
+// returns the key that has signed the AppImage and error
 // based on https://stackoverflow.com/a/34008326
-func CheckSignature(path string) (*openpgp.Entity, error) {
-	var ent *openpgp.Entity
+func CheckSignature(path string) (*crypto.Key, error) {
+	var key *crypto.Key
 	err := errors.New("could not verify AppImage signature") // Be pessimistic by default, unless we can positively verify the signature
 	pubkeybytes, err := GetSectionData(path, ".sig_key")
 
-	keyring, err := openpgp.ReadArmoredKeyRing(bytes.NewReader(pubkeybytes))
+	pubkey, err := crypto.NewKey(pubkeybytes)
 	if err != nil {
-		return ent, err
+		return key, err
 	}
 
 	sigbytes, err := GetSectionData(path, ".sha256_sig")
 
-	ent, err = openpgp.CheckArmoredDetachedSignature(keyring, strings.NewReader(CalculateSHA256Digest(path)), bytes.NewReader(sigbytes))
+	pgp := crypto.PGP()
+	verifier, err := pgp.Verify().VerificationKey(pubkey).New()
 	if err != nil {
-		return ent, err
+		return key, err
 	}
 
-	return ent, nil
+	verifyResult, err := verifier.VerifyDetached([]byte(CalculateSHA256Digest(path)), sigbytes, crypto.Armor)
+	if err != nil {
+		return key, err
+	}
+	if sigErr := verifyResult.SignatureError(); sigErr != nil {
+		return key, sigErr
+	}
+
+	signedbyKey := verifyResult.SignedByKey()
+
+	return signedbyKey, nil
 }
 
 // SignAppImage signs an AppImage, returns error
@@ -121,34 +137,37 @@ func SignAppImage(path string, digest string) error {
 	// Read in public key
 	pubkeyFileBuffer, _ := os.Open(PubkeyFileName)
 	defer pubkeyFileBuffer.Close()
-	_, err := openpgp.ReadArmoredKeyRing(pubkeyFileBuffer)
+	_, err := crypto.NewKeyFromReader(pubkeyFileBuffer)
 	if err != nil {
-		fmt.Println("openpgp.ReadArmoredKeyRing error while reading public key:", err)
+		fmt.Println("crypto.Key.NewKeyFromReader error while reading public key:", err)
 		return err
 	}
 
 	// Read in private key
 	privkeyFileBuffer, _ := os.Open(PrivkeyFileName)
 	defer privkeyFileBuffer.Close()
-	entityList, err := openpgp.ReadArmoredKeyRing(privkeyFileBuffer)
+	privkey, err := crypto.NewKeyFromReader(privkeyFileBuffer)
 	if err != nil {
-		fmt.Println("openpgp.ReadArmoredKeyRing error while reading private key:", err)
+		fmt.Println("crypto.Key.NewKeyFromReader error while reading private key:", err)
 		return err
 	}
 
-	buf := new(bytes.Buffer)
+	pgp := crypto.PGP()
 
-	// Get the digest we want to sign into an io.Reader
-	// FIXME: Use the digest we have already calculated earlier on (let's not do it twice)
-	whatToSignReader := strings.NewReader(digest)
+	signer, err := pgp.Sign().SigningKey(privkey).Detached().New()
+	if err != nil {
+		fmt.Println("Error creating signer:", err)
+		return err
+	}
 
-	err = openpgp.ArmoredDetachSign(buf, entityList[0], whatToSignReader, nil)
+	signature, err := signer.Sign([]byte(digest), crypto.Armor)
 	if err != nil {
 		fmt.Println("Error signing input:", err)
 		return err
 	}
+	signer.ClearPrivateParams()
 
-	err = EmbedStringInSegment(path, ".sha256_sig", buf.String())
+	err = EmbedStringInSegment(path, ".sha256_sig", string(signature))
 	if err != nil {
 		PrintError("EmbedStringInSegment", err)
 		return err
