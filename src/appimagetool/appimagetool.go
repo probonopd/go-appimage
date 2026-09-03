@@ -391,14 +391,10 @@ func GenerateAppImage(
 	}
 
 	if len(runtimeFile) < 1 {
-		runtimeDir := filepath.Clean(helpers.Here() + "/../share/AppImageKit/runtime/")
-		if _, err := os.Stat(runtimeDir); os.IsNotExist(err) {
-			runtimeDir = helpers.Here()
-		}
-		runtimeFile = runtimeDir + "/runtime-" + arch
+		runtimeFile = helpers.Here() + "/runtime-" + arch
 		if helpers.CheckIfFileExists(runtimeFile) == false {
 			log.Println("Cannot find " + runtimeFile + ", exiting")
-			log.Println("It should have been bundled, but you can get it from https://github.com/AppImage/AppImageKit/releases/continuous")
+			log.Println("It should have been bundled, but you can get it from https://github.com/AppImage/type2-runtime/releases/continuous")
 			// TODO: Download it from there?
 			os.Exit(1)
 		}
