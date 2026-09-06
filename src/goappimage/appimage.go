@@ -47,14 +47,16 @@ func IsAppImage(path string) bool {
 		strings.HasSuffix(path, ".crdownload") {
 		return false
 	}
-	return determineImageType(path) != -1
+	imageType, _ := determineImageType(path)
+	return imageType != -1
 }
 
 // NewAppImage creates an AppImage object from the location defined by path.
 // Returns an error if the given path is not an appimage, or is a temporary file.
 // In all instances, will still return the AppImage.
 func NewAppImage(path string) (ai *AppImage, err error) {
-	ai = &AppImage{Path: path, imageType: determineImageType(path)}
+	imageType, typeReason := determineImageType(path)
+	ai = &AppImage{Path: path, imageType: imageType}
 	// If we got a temp file, exit immediately
 	// E.g., ignore typical Internet browser temporary files used during download
 	if strings.HasSuffix(path, ".temp") ||
@@ -67,7 +69,7 @@ func NewAppImage(path string) (ai *AppImage, err error) {
 	}
 	// Don't waste more time if the file is not actually an AppImage
 	if ai.imageType < 0 {
-		return ai, errors.New("given path is NOT an AppImage")
+		return ai, errors.New("given path is NOT an AppImage: " + typeReason)
 	}
 	if ai.imageType > 1 {
 		ai.offset = helpers.CalculateElfSize(ai.Path)
@@ -88,7 +90,7 @@ func NewAppImage(path string) (ai *AppImage, err error) {
 	var (
 		rdr       io.ReadCloser
 		cfg       *ini.File
-		firstDesk string   // первый успешно распарсенный .desktop (для fallback)
+		firstDesk string // первый успешно распарсенный .desktop (для fallback)
 		firstCfg  *ini.File
 	)
 	for _, f := range files {
@@ -200,38 +202,39 @@ func (ai AppImage) calculateNiceName() string {
 	return niceName
 }
 
-// Check whether we have an AppImage at all.
-// Return image type, or -1 if it is not an AppImage
-func determineImageType(path string) int {
+// Check whether we have an AppImage at all, and if not, why.
+// Return image type, or -1 + reason if it is not an AppImage.
+func determineImageType(path string) (int, string) {
 	// log.Println("appimage: ", ai.path)
 	f, err := os.Open(path)
 	// printError("appimage", err)
 	if err != nil {
-		return -1 // If we were not able to open the file, then we report that it is not an AppImage
+		// If we were not able to open the file, then we report that it is not an AppImage
+		return -1, "could not open file: " + err.Error()
 	}
 	info, err := os.Stat(path)
 	if err != nil {
-		return -1
+		return -1, "could not stat file: " + err.Error()
 	}
 	// Directories cannot be AppImages, so return fast
 	if info.IsDir() {
-		return -1
+		return -1, "path is a directory"
 	}
 	// Very small files cannot be AppImages, so return fast
 	if info.Size() < 100*1024 {
-		return -1
+		return -1, "file is too small to be an AppImage"
 	}
 	if helpers.CheckMagicAtOffset(f, "414902", 8) {
-		return 2
+		return 2, ""
 	}
 	if helpers.CheckMagicAtOffset(f, "414901", 8) {
-		return 1
+		return 1, ""
 	}
 	// ISO9660 files that are also ELF files
 	if helpers.CheckMagicAtOffset(f, "7f454c", 0) && helpers.CheckMagicAtOffset(f, "4344303031", 32769) {
-		return 1
+		return 1, ""
 	}
-	return -1
+	return -1, "no AppImage magic bytes found (neither type 2 (0x414902) nor type 1 (0x414901) at offset 8, nor an ISO9660+ELF type-1 image)"
 }
 
 // SquashfsReader allows direct access to an AppImage's squashfs.
