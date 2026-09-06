@@ -26,6 +26,7 @@ func AddIntegration(path string, notify bool) (err error) {
 	}
 	ai, err := NewAppImage(path)
 	if err != nil {
+		helpers.LogError("add integration", err)
 		return
 	}
 	err = ai._integrate()
