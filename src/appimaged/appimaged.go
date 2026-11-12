@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/url"
+	// "net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/adrg/xdg"
-	mqtt "github.com/eclipse/paho.mqtt.golang"
+	// mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/prometheus/procfs"
 
 	"github.com/probonopd/go-appimage/internal/helpers"
@@ -50,7 +50,7 @@ var updateChannel chan struct{} = make(chan struct{}, 10)
 
 var thisai *AppImage // A reference to myself
 
-var MQTTclient mqtt.Client
+// var MQTTclient mqtt.Client
 
 // To keep track of what we already have subscribed. Something like this is needed in order
 // not to be flooded with messages.
@@ -60,7 +60,7 @@ var MQTTclient mqtt.Client
 // (multiple AppImages may share the same updateinformation)...
 // Checking whehter other AppImages are left is probably costly.
 // So better find a way to get this information from the mqtt library.
-var subscribedMQTTTopics []string
+// var subscribedMQTTTopics []string
 
 // This key in the desktop files written by us describes where the AppImage is in the filesystem.
 // We need this because we rewrite Exec= to include things like wrap and Firejail
@@ -140,19 +140,19 @@ func main() {
 	// overwritePtr = &ptrue
 
 	// Connect to MQTT server and subscribe to the topic for ourselves
-	if CheckIfConnectedToNetwork() {
-		uri, err := url.Parse(helpers.MQTTServerURI)
-		if err != nil {
-			log.Fatal(err)
-		}
+	// if CheckIfConnectedToNetwork() {
+	// uri, err := url.Parse(helpers.MQTTServerURI)
+	// if err != nil {
+	// log.Fatal(err)
+	// }
 
-		// go SubscribeMQTT(MQTTclient, "gh-releases-zsync|probonopd|merkaartor|continuous|Merkaartor-*-x86_64.AppImage.zsync")
-		// go SubscribeMQTT(MQTTclient, "gh-releases-zsync|AppImage|AppImageKit|continuous|appimagetool-x86_64.AppImage.zsync")
+	// go SubscribeMQTT(MQTTclient, "gh-releases-zsync|probonopd|merkaartor|continuous|Merkaartor-*-x86_64.AppImage.zsync")
+	// go SubscribeMQTT(MQTTclient, "gh-releases-zsync|AppImage|AppImageKit|continuous|appimagetool-x86_64.AppImage.zsync")
 
-		MQTTclient = connect("sub", uri)
-		log.Println("MQTT client connected:", MQTTclient.IsConnected())
+	// MQTTclient = connect("sub", uri)
+	// log.Println("MQTT client connected:", MQTTclient.IsConnected())
 
-	}
+	// }
 
 	// go monitorDbusSessionBus() // If used, then nothing else can use DBus anymore? FIXME #####################
 
@@ -221,18 +221,18 @@ func main() {
 	// still connected; try to reconnect if it is not.
 	// This is recommended by MQTT servers since they can go
 	// down for maintenance
-	ticker2 := time.NewTicker(120 * time.Second)
-	go func() {
-		for {
-			select {
-			case <-ticker2.C:
-				checkMQTTConnected(MQTTclient)
-			case <-quit:
-				ticker2.Stop()
-				return
-			}
-		}
-	}()
+	// ticker2 := time.NewTicker(120 * time.Second)
+	// go func() {
+	// for {
+	// select {
+	// case <-ticker2.C:
+	// checkMQTTConnected(MQTTclient)
+	// case <-quit:
+	// ticker2.Stop()
+	// return
+	// }
+	// }
+	// }()
 
 	<-quit
 
@@ -242,19 +242,19 @@ func main() {
 // still connected; try to reconnect if it is not.
 // This is recommended by MQTT servers since they can go
 // down for maintenance
-func checkMQTTConnected(MQTTclient mqtt.Client) {
-	if CheckIfConnectedToNetwork() {
-		if !MQTTclient.IsConnected() {
-			log.Println("MQTT client connected:", MQTTclient.IsConnected())
-			MQTTclient.Connect()
-			log.Println("MQTT client connected:", MQTTclient.IsConnected())
-			// TODO: Do we need to subscribe everything again when this happens?
-			// Not if we use a persistent session, see
-			// https://www.hivemq.com/blog/mqtt-essentials-part-7-persistent-session-queuing-messages/
-			// TODO: use a persistent session with the appropriate quality of service level
-		}
-	}
-}
+// func checkMQTTConnected(MQTTclient mqtt.Client) {
+// if CheckIfConnectedToNetwork() {
+// if !MQTTclient.IsConnected() {
+// log.Println("MQTT client connected:", MQTTclient.IsConnected())
+// MQTTclient.Connect()
+// log.Println("MQTT client connected:", MQTTclient.IsConnected())
+// TODO: Do we need to subscribe everything again when this happens?
+// Not if we use a persistent session, see
+// https://www.hivemq.com/blog/mqtt-essentials-part-7-persistent-session-queuing-messages/
+// TODO: use a persistent session with the appropriate quality of service level
+// }
+// }
+// }
 
 // Periodically update the application menu so that the menu does not get rebuilt all the time
 func updateMenu() error {

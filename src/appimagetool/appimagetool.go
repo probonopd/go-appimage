@@ -5,7 +5,7 @@ package main
 
 import (
 	// "crypto/md5"
-	"encoding/json"
+	// "encoding/json" // Only needed for MQTT
 	"errors"
 	"fmt"
 	"log"
@@ -55,34 +55,34 @@ func checkRunningWithinDocker() bool {
 }
 
 // constructMQTTPayload TODO: Add documentation
-func constructMQTTPayload(name string, version string, FSTime time.Time) (string, error) {
+// func constructMQTTPayload(name string, version string, FSTime time.Time) (string, error) {
 
-	psd := helpers.PubSubData{
-		Name:    name,
-		Version: version,
-		FSTime:  FSTime,
-		// Size:    size,
-		// Fruit:   []string{"Apple", "Banana", "Orange"},
-		// Id:      999,
-		// private: "Unexported field",
-		// Created: time.Now(),
-	}
+// psd := helpers.PubSubData{
+// Name:    name,
+// Version: version,
+// FSTime:  FSTime,
+// // Size:    size,
+// // Fruit:   []string{"Apple", "Banana", "Orange"},
+// // Id:      999,
+// // private: "Unexported field",
+// // Created: time.Now(),
+// }
 
-	var jsonData []byte
-	jsonData, err := json.Marshal(psd)
-	if err != nil {
-		return "", err
-	}
-	// Print it in a nice readable form, unlike the one that actually gets returned
-	var jsonDataReadable []byte
-	jsonDataReadable, err = json.MarshalIndent(psd, "", "    ")
-	if err != nil {
-		return "", err
-	}
-	fmt.Println(string(jsonDataReadable))
+// var jsonData []byte
+// jsonData, err := json.Marshal(psd)
+// if err != nil {
+// return "", err
+// }
+// // Print it in a nice readable form, unlike the one that actually gets returned
+// var jsonDataReadable []byte
+// jsonDataReadable, err = json.MarshalIndent(psd, "", "    ")
+// if err != nil {
+// return "", err
+// }
+// fmt.Println(string(jsonDataReadable))
 
-	return string(jsonData), nil
-}
+// return string(jsonData), nil
+// }
 
 // getMeta returns the version of the AppImage, and git repository, if any.
 func getMeta() (string, string) {
@@ -665,8 +665,8 @@ func GenerateAppImage(
 	}
 
 	// Create the payload the publishing
-	pl, _ := constructMQTTPayload(name, version, FSTime)
-	fmt.Println(pl)
+	// pl, _ := constructMQTTPayload(name, version, FSTime)
+	// fmt.Println(pl)
 
 	// Upload and publish if we know this is a Travis CI build
 	// https://github.com/probonopd/uploadtool says
@@ -691,7 +691,7 @@ func GenerateAppImage(
 			// If upload succeeded, publish MQTT message
 			// TODO: Message AppImageHub instead, which in turn messages the clients
 
-			helpers.PublishMQTTMessage(updateinformation, pl)
+			// helpers.PublishMQTTMessage(updateinformation, pl)
 		}
 	}
 
