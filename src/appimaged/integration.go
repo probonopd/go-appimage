@@ -18,10 +18,10 @@ var integrations = make(map[string]*AppImage)
 // If this also get's to messy, we can change to a buffered channel system.
 var integrationLock sync.Mutex
 
-func AddIntegration(path string, notify bool) (err error) {
+func AddIntegration(path string, notify bool, force bool) (err error) {
 	integrationLock.Lock()
 	defer integrationLock.Unlock()
-	if _, ok := integrations[path]; ok {
+	if _, ok := integrations[path]; !force && ok {
 		return
 	}
 	ai, err := NewAppImage(path)

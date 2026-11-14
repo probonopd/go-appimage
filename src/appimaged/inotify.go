@@ -22,7 +22,6 @@ package main
 // us Unix specific and not cross-platform. Therefore, we are using https://github.com/rjeczalik/notify
 
 import (
-	"log"
 	"path/filepath"
 	"strings"
 	"time"
@@ -70,7 +69,6 @@ mainLoop:
 			if !ok {
 				return
 			}
-			log.Println("fsnotify event:", ev)
 			for _, dir := range watchedDirectories {
 				// Deleting or creating a watched directory gives fsnotify.Rename.
 				if dir == ev.Name && ev.Has(fsnotify.Rename) {
@@ -135,7 +133,8 @@ func writeEnd(path string) {
 	_, ok := integrations[path]
 	if goappimage.IsAppImage(path) {
 		if !ok {
-			AddIntegration(path, true)
+			// Force re-integration because an existing AppImage might have been updated/replaced
+			AddIntegration(path, true, true)
 		}
 	} else if ok {
 		RemoveIntegration(path, true)

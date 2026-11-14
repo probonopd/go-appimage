@@ -40,7 +40,7 @@ var verbosePtr = flag.Bool("v", false, "Print verbose log messages")
 // information from AppImages (slow), we could just rewrite the path to this
 // program in all desktop files. That should be much faster.
 var overwritePtr = flag.Bool("o", false, "Overwrite existing desktop integration files (slower)")
-var cleanPtr = flag.Bool("c", true, "Clean pre-existing desktop files")
+var cleanPtr = flag.Bool("c", false, "Clean pre-existing desktop files")
 
 var quietPtr = flag.Bool("q", false, "Do not send desktop notifications")
 
@@ -328,7 +328,7 @@ func checkDirectories() {
 			path := filepath.Join(dir, fil.Name())
 			if IsPossibleAppImage(path) {
 				log.Println("integrating", path)
-				AddIntegration(path, false)
+				AddIntegration(path, false, false)
 			}
 		}
 	}
